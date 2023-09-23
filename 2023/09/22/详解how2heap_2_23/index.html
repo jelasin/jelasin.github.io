@@ -137,7 +137,7 @@
 <meta property="og:image" content="https://jelasin.github.io/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/958172_FSXFTBKCRMVYT59-1695379728616-4.webp">
 <meta property="og:image" content="https://jelasin.github.io/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/958172_NWAPT4CW7S4UWB8-1695379724638-1.webp">
 <meta property="article:published_time" content="2023-09-22T00:53:34.000Z">
-<meta property="article:modified_time" content="2023-09-22T10:53:57.029Z">
+<meta property="article:modified_time" content="2023-09-23T01:57:31.453Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Pwn_Heap">
 <meta name="twitter:card" content="summary">
@@ -441,8 +441,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2023-09-22 18:53:57</span>
-            <span class="mobile">2023-09-22 18:53:57</span>
+            <span class="desktop">2023-09-23 09:57:31</span>
+            <span class="mobile">2023-09-23 09:57:31</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -1118,7 +1118,7 @@
                 ><br>再次申请 0x90 大小的堆块，将会再次遍历 unsorted bin 。将 p1 切割，将 p3 放进 unsorted bin 。<br>放入过程中如果 p3_size &gt; p2_size 。将会执行如下代码:</p>
 <div class="highlight-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 源码 */</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">&#123;</span><br><span class="line">    victim-&gt;fd_nextsize = fwd;</span><br><span class="line">    victim-&gt;bk_nextsize = fwd-&gt;bk_nextsize;</span><br><span class="line">    fwd-&gt;bk_nextsize = victim;</span><br><span class="line">    victim-&gt;bk_nextsize-&gt;fd_nextsize = victim;    </span><br><span class="line">&#125;</span><br><span class="line">bck = fwd-&gt;bk;</span><br><span class="line"><span class="comment">/* “译”码 */</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">&#123;</span><br><span class="line">    P3-&gt;fd_nextsize = P2;</span><br><span class="line">    P3-&gt;bk_nextsize = P2-&gt;bk_nextsize; </span><br><span class="line">    P2-&gt;bk_nextsize = P3;</span><br><span class="line">    P3-&gt;bk_nextsize-&gt;fd_nextsize = P3; </span><br><span class="line">&#125;</span><br><span class="line">bck = P2-&gt;bk;</span><br></pre></td></tr></table></figure></div>
 <p>即 stack_var2 &#x3D; p3。</p>
-<div class="highlight-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 源码 */</span></span><br><span class="line"><span class="built_in">mark_bin</span> (av, victim_index);</span><br><span class="line">victim-&gt;bk = bck;</span><br><span class="line">victim-&gt;fd = fwd;</span><br><span class="line">fwd-&gt;bk = victim;</span><br><span class="line">bck-&gt;fd = victim;</span><br><span class="line"><span class="comment">/* “译”码 */</span></span><br><span class="line"><span class="built_in">mark_bin</span>(av, victim_index);</span><br><span class="line">P3-&gt;bk = p2-&gt;bk;</span><br><span class="line">P3-&gt;fd = P2;</span><br><span class="line">P2-&gt;bk = P3;</span><br><span class="line">P2-&gt;bk-&gt;fd = P3;</span><br></pre></td></tr></table></figure></div>
+<div class="highlight-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 源码 */</span></span><br><span class="line"><span class="built_in">mark_bin</span> (av, victim_index);</span><br><span class="line">victim-&gt;bk = bck;</span><br><span class="line">victim-&gt;fd = fwd;</span><br><span class="line">fwd-&gt;bk = victim;</span><br><span class="line">bck-&gt;fd = victim;</span><br><span class="line"><span class="comment">/* “译”码 */</span></span><br><span class="line"><span class="built_in">mark_bin</span>(av, victim_index);</span><br><span class="line">P3-&gt;bk = p2-&gt;bk;</span><br><span class="line">P3-&gt;fd = P2;</span><br><span class="line">P2-&gt;bk = P3;</span><br><span class="line">bck = P3;</span><br></pre></td></tr></table></figure></div>
 <p>即 stack_var1 &#x3D; p3，至此利用完成，具体如何利用可看例题。</p>
 
         </div>
@@ -1134,7 +1134,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2023-09-22 18:53:57
+                    :</strong> 2023-09-23 09:57:31
             </li>
         
         <li>
