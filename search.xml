@@ -2443,7 +2443,75 @@
 </ul>
 <div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line"></span><br><span class="line">if( isset( $_GET[ &#x27;Change&#x27; ] ) ) &#123;</span><br><span class="line">    // Checks to see where the request came from</span><br><span class="line">    if( stripos( $_SERVER[ &#x27;HTTP_REFERER&#x27; ] ,$_SERVER[ &#x27;SERVER_NAME&#x27; ]) !== false ) &#123;</span><br><span class="line">        // Get input</span><br><span class="line">        $pass_new  = $_GET[ &#x27;password_new&#x27; ];</span><br><span class="line">        $pass_conf = $_GET[ &#x27;password_conf&#x27; ];</span><br><span class="line"></span><br><span class="line">        // Do the passwords match?</span><br><span class="line">        if( $pass_new == $pass_conf ) &#123;</span><br><span class="line">            // They do!</span><br><span class="line">            $pass_new = ((isset($GLOBALS[&quot;___mysqli_ston&quot;]) &amp;&amp; is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_real_escape_string($GLOBALS[&quot;___mysqli_ston&quot;],  $pass_new ) : ((trigger_error(&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;, E_USER_ERROR)) ? &quot;&quot; : &quot;&quot;));</span><br><span class="line">            $pass_new = md5( $pass_new );</span><br><span class="line"></span><br><span class="line">            // Update the database</span><br><span class="line">            $current_user = dvwaCurrentUser();</span><br><span class="line">            $insert = &quot;UPDATE `users` SET password = &#x27;$pass_new&#x27; WHERE user = &#x27;&quot; . $current_user . &quot;&#x27;;&quot;;</span><br><span class="line">            $result = mysqli_query($GLOBALS[&quot;___mysqli_ston&quot;],  $insert ) or die( &#x27;&lt;pre&gt;&#x27; . ((is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_error($GLOBALS[&quot;___mysqli_ston&quot;]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#x27;&lt;/pre&gt;&#x27; );</span><br><span class="line"></span><br><span class="line">            // Feedback for the user</span><br><span class="line">            echo &quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">        else &#123;</span><br><span class="line">            // Issue with passwords matching</span><br><span class="line">            echo &quot;&lt;pre&gt;Passwords did not match.&lt;/pre&gt;&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        // Didn&#x27;t come from a trusted source</span><br><span class="line">        echo &quot;&lt;pre&gt;That request didn&#x27;t look correct.&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ((is_null($___mysqli_res = mysqli_close($GLOBALS[&quot;___mysqli_ston&quot;]))) ? false : $___mysqli_res);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">?&gt;</span><br></pre></td></tr></table></figure></div>
 
-]]></content>
+<p>检测机制：在修改密码等敏感操作时，会检测 <code>referer</code> 请求来源地址，里面是否存在主机 <code>ip</code> 或域名。我们可以构造一个有效的 <code>Referer</code>，可以在攻击服务器上创建一个新的 <code>html</code> 页面，命名时 要含有 <code>csrf</code> 网站主机 <code>ip</code> 地址。所以这对本地搭建的无影响。我们通过回环和局域网 <code>Ip</code> 的方式来进行测试。</p>
+<p>假如服务器地址为 <code>192.168.66.66</code>，即为 <code>SERVER_NAME</code>，我们只需要把我们构造的恶意页面文件名改为 <code>192.168.66.66.html</code>，<code>HTTP_REFERER</code>就会包含<code>192.168.66.66.html</code>,就可以绕过 <code>stripos</code>了。</p>
+<ul>
+<li>Attack</li>
+</ul>
+<ol>
+<li>通过本地 <code>IP</code> 访问 <code>dvwa</code> 页面，利用 <code>burp</code> 抓包，并制作 <code>CSRF PoC</code>。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012145844804.png"
+                      alt="image-20231012145844804"
+                ></p>
+<ol start="2">
+<li>复制 <code>HTML</code> 代码，并将其命名为<code>192.168.56.1</code> 放在 <code>WWW</code> 目录下。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012145945233.png"
+                      alt="image-20231012145945233"
+                ></p>
+<ol start="3">
+<li>放行原来的包将密码改回 <code>password</code>，通过回环访问本地的<code>192.168.56.1.html</code>文件并抓包。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012150205921.png"
+                      alt="image-20231012150205921"
+                ></p>
+<p>可以看见 <code>referer</code> 和 <code>host</code> 的地址并不相同，我们将 <code>referer</code> 指向 攻击者服务器地址即 <code>192.168.56.1.html</code>即可绕过。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012150452551.png"
+                      alt="image-20231012150452551"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012150521082.png"
+                      alt="image-20231012150521082"
+                ></p>
+<h3 id="High"><a href="#High" class="headerlink" title="High"></a>High</h3><ul>
+<li>源码</li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line"></span><br><span class="line">$change = false;</span><br><span class="line">$request_type = &quot;html&quot;;</span><br><span class="line">$return_message = &quot;Request Failed&quot;;</span><br><span class="line"></span><br><span class="line">if ($_SERVER[&#x27;REQUEST_METHOD&#x27;] == &quot;POST&quot; &amp;&amp; array_key_exists (&quot;CONTENT_TYPE&quot;, $_SERVER) &amp;&amp; $_SERVER[&#x27;CONTENT_TYPE&#x27;] == &quot;application/json&quot;) &#123;</span><br><span class="line">    $data = json_decode(file_get_contents(&#x27;php://input&#x27;), true);</span><br><span class="line">    $request_type = &quot;json&quot;;</span><br><span class="line">    if (array_key_exists(&quot;HTTP_USER_TOKEN&quot;, $_SERVER) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_new&quot;, $data) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_conf&quot;, $data) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;Change&quot;, $data)) &#123;</span><br><span class="line">        $token = $_SERVER[&#x27;HTTP_USER_TOKEN&#x27;];</span><br><span class="line">        $pass_new = $data[&quot;password_new&quot;];</span><br><span class="line">        $pass_conf = $data[&quot;password_conf&quot;];</span><br><span class="line">        $change = true;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    if (array_key_exists(&quot;user_token&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_new&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_conf&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;Change&quot;, $_REQUEST)) &#123;</span><br><span class="line">        $token = $_REQUEST[&quot;user_token&quot;];</span><br><span class="line">        $pass_new = $_REQUEST[&quot;password_new&quot;];</span><br><span class="line">        $pass_conf = $_REQUEST[&quot;password_conf&quot;];</span><br><span class="line">        $change = true;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if ($change) &#123;</span><br><span class="line">    // Check Anti-CSRF token</span><br><span class="line">    checkToken( $token, $_SESSION[ &#x27;session_token&#x27; ], &#x27;index.php&#x27; );</span><br><span class="line"></span><br><span class="line">    // Do the passwords match?</span><br><span class="line">    if( $pass_new == $pass_conf ) &#123;</span><br><span class="line">        // They do!</span><br><span class="line">        $pass_new = mysqli_real_escape_string ($GLOBALS[&quot;___mysqli_ston&quot;], $pass_new);</span><br><span class="line">        $pass_new = md5( $pass_new );</span><br><span class="line"></span><br><span class="line">        // Update the database</span><br><span class="line">        $current_user = dvwaCurrentUser();</span><br><span class="line">        $insert = &quot;UPDATE `users` SET password = &#x27;&quot; . $pass_new . &quot;&#x27; WHERE user = &#x27;&quot; . $current_user . &quot;&#x27;;&quot;;</span><br><span class="line">        $result = mysqli_query($GLOBALS[&quot;___mysqli_ston&quot;],  $insert );</span><br><span class="line"></span><br><span class="line">        // Feedback for the user</span><br><span class="line">        $return_message = &quot;Password Changed.&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        // Issue with passwords matching</span><br><span class="line">        $return_message = &quot;Passwords did not match.&quot;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    mysqli_close($GLOBALS[&quot;___mysqli_ston&quot;]);</span><br><span class="line"></span><br><span class="line">    if ($request_type == &quot;json&quot;) &#123;</span><br><span class="line">        generateSessionToken();</span><br><span class="line">        header (&quot;Content-Type: application/json&quot;);</span><br><span class="line">        print json_encode (array(&quot;Message&quot; =&gt;$return_message));</span><br><span class="line">        exit;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        echo &quot;&lt;pre&gt;&quot; . $return_message . &quot;&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Generate Anti-CSRF token</span><br><span class="line">generateSessionToken();</span><br><span class="line"></span><br><span class="line">?&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>checkToken</code>函数来实现 <code>Anti-csrf  token</code> 机制，用户每次访问更改密码页面时，服务器会返回一个随机的 <code>token</code>，之后每次向服务器发起请求，服务器会优先验证<code>token</code>，如果token正确，那么才会处理请求。所以我们在发起请求之前需要获取服务器返回的<code>user_token</code>，利用<code>user_token</code>绕过验证。这里我们可以使用<code>burpsuit</code>的<code>CSRF Token Tracker</code>插件可以直接绕过<code>user_token</code>验证。</p>
+<ul>
+<li>Attack</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012152409701.png"
+                      alt="image-20231012152409701"
+                ></p>
+<p>添加 <code>Host</code> 和 <code>Name</code>。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF%E4%B8%8ESSRF/image-20231012152829738.png"
+                      alt="image-20231012152829738"
+                ></p>
+<p>发送到 <code>repeater</code>，每次发送都会随机<code>token</code>的值，直接发送即可。</p>
+<h1 id="SSRF"><a href="#SSRF" class="headerlink" title="SSRF"></a>SSRF</h1>]]></content>
       <categories>
         <category>Web</category>
       </categories>
