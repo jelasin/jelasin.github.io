@@ -678,7 +678,7 @@
                      data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231010195052740.png"
                      
                 ></p>
-<p>这里判断 <code>alloc_size</code> 是否符合要求。与 <code>0x8(1000)</code> 取与运算不为 <code>0</code> 说明不是 <code>fast_chunk</code> 大小，不符合要求； 与 <code>0x4(0100)</code> 取与运算等于<code>0x4</code> 则说明 <code>NON_MAIN_ARENA </code> 位为 <code>1</code> ，不属于主线程，不符合要求；与 <code>0x2(0010)</code> 取与运算不等于 <code>0x2(0010)</code> 则说明 <code>IS_MAPPED</code> 位不等于为 <code>1</code> ，符合要求（绕个弯子）。</p>
+<p>这里判断 <code>alloc_size</code> 是否符合要求。与 <code>0x8(1000)</code> 取与运算不为 <code>0</code> 说明不是 <code>fast_chunk</code> 大小，不符合要求； 与 <code>0x4(0100)</code> 取与运算等于<code>0x4</code> 则说明 <code>NON_MAIN_ARENA </code> 位为 <code>1</code> ，不属于主堆区，不符合要求；与 <code>0x2(0010)</code> 取与运算不等于 <code>0x2(0010)</code> 则说明 <code>IS_MAPPED</code> 位不等于为 <code>1</code> ，符合要求（绕个弯子）。</p>
 <p> <img  
                      lazyload
                      src="/images/loading.svg"
@@ -816,6 +816,12 @@
                      data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013162104393.png"
                       alt="image-20231013162104393"
                 ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013171006999.png"
+                      alt="image-20231013171006999"
+                ></p>
 <p><code>target_loc</code> 位置在 <code>fake_arena_chunk + 0x30</code>  处，也就是 <code>fake_arena_fastbinY[4]</code> 处，因为我们要申请的 <code>fast_chunk</code> 大小为 <code>0x60</code>。</p>
 <p> <img  
                      lazyload
@@ -824,6 +830,73 @@
                       alt="image-20231013163308872"
                 ></p>
 <p> <code>system_mem</code> 标识这个 <code>arena</code> 管理的空间大小，请求的内存不能大于 <code>system_mem</code> 。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013170335971.png"
+                      alt="image-20231013170335971"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013172604185.png"
+                      alt="image-20231013172604185"
+                ></p>
+<p>在系统堆初始化之后，将堆的大小定为 <code>0x4000000</code>，因此后面申请的假 <code>arena</code> 管理的地址在这个堆之后，要计算这个堆的起始地址，程序中这个地址为 <code>0x4000000</code>。<code>MAX_SIZE</code> 大小为 <code>0x1ff00 &lt; 0x20000</code>  也就不会触发 <code>mmap</code> 申请机制。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013172858520.png"
+                      alt="image-20231013172858520"
+                ></p>
+<p>一直分配 <code>MAX_SIZE</code> 大小的 <code>chunk</code> 直到系统的 <code>main_heap</code> 被申请完。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013173848951.png"
+                      alt="image-20231013173848951"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013173951000.png"
+                      alt="image-20231013173951000"
+                ></p>
+<p>在新的堆区申请 <code>0x60</code> 大小的 <code>fast_chunk</code>。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013174809638.png"
+                      alt="image-20231013174809638"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013175009240.png"
+                      alt="image-20231013175009240"
+                ></p>
+<p><code>fake_heap_info[0]==ar_ptr -&gt; fake_arena</code> 将 <code>ar_ptr</code> 指针指向我们的 <code>fake_arena</code>  ，<code>ar_ptr</code> 指针指向一个为该堆服务的<code>arena</code>。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013175140816.png"
+                      alt="image-20231013175140816"
+                ></p>
+<p><code>fastbin_chunk_size = 0x60 | 0x4(0100B)</code> 将 <code>NON_MAIN_ARENA</code> 置为 <code>1</code> ，标明其不在主堆区。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013175714934.png"
+                      alt="image-20231013175714934"
+                ></p>
+<p><code>free(fastbin_chunk_fd)</code>  后，将会把它链接到 <code>fake_heap_info_ar_ptr</code> 指向 <code>fake_arena</code> 的 <code>fastbinY[4] (0x60)</code> 处，也就是 <code>0x603448</code> 处。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/%E8%AF%A6%E8%A7%A3how2heap_2_23/image-20231013175937769.png"
+                      alt="image-20231013175937769"
+                ></p>
+<p>此时完成利用成功将目标地址内容写为 <code>fastbin_chunk_prev_addr</code> 。</p>
 <h2 id="house-of-gods"><a href="#house-of-gods" class="headerlink" title="house_of_gods"></a>house_of_gods</h2><p><code>glibc &lt; 2.27</code></p>
 <h2 id="house-of-roman"><a href="#house-of-roman" class="headerlink" title="house_of_roman"></a>house_of_roman</h2><p><code>glibc &lt; 2.29</code></p>
 <p>编译选项: <code>gcc -g house_of_roman.c -fpie -pie -ldl -o house_of_roman</code></p>
