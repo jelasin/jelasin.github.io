@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2023/10/11/web安全(0x2)csrf/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="CSRF一般来说，攻击者通过伪造用户的浏览器的请求，向访问一个用户自己曾经认证访问过的网站发送出去，使目标网站接收并误以为是用户的真实操作而去执行命令。利用受害者尚未失效的身份认证信息（cookie、会话等），诱骗其点击恶意链接或者访问包含攻击代码的页面，在受害人不知情的情况下以受害者的身份向（身份认证信息所对应的）服务器发送请求，从而完成非法操作（如转账、改密等）。CSRF与XSS最大的区别就在">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Web安全-CSRF">
+<meta property="og:url" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="CSRF一般来说，攻击者通过伪造用户的浏览器的请求，向访问一个用户自己曾经认证访问过的网站发送出去，使目标网站接收并误以为是用户的真实操作而去执行命令。利用受害者尚未失效的身份认证信息（cookie、会话等），诱骗其点击恶意链接或者访问包含攻击代码的页面，在受害人不知情的情况下以受害者的身份向（身份认证信息所对应的）服务器发送请求，从而完成非法操作（如转账、改密等）。CSRF与XSS最大的区别就在">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011094240554.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011094451943.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011095446264.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011102256026.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103354780.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103421274.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103930091.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012145844804.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012145945233.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150205921.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150452551.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150521082.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012152409701.png">
+<meta property="og:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012152829738.png">
+<meta property="article:published_time" content="2023-10-11T01:25:42.000Z">
+<meta property="article:modified_time" content="2023-10-30T08:49:27.282Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="CSRF">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011094240554.png">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Web安全-CSRF -
+        
+        Jelasin
+    </title>
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Chillax/chillax.css">
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/anime.min.js"></script>
+    <h1 class="ml13">
+        Jelasin
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/build/styles.css">
+    
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/fonts.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Satoshi/satoshi.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Links":{"icon":"fa-regular fa-link","submenus":{"看雪":"https://bbs.kanxue.com/homepage-958172.htm","吾爱破解":"https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":{"Essays":{"path":"/essays","icon":"fa-regular fa-comment"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Binary":{"path":"/Binary","icon":"fa-solid fa-bug"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/favicon.ico">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-link fa-fw"></i>
+                                    LINKS
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    看雪
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">
+                                                    吾爱破解
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-Links"
+                        >
+                            <span>
+                                LINKS
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-Links">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">看雪</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">吾爱破解</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">15</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">21</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">Web安全-CSRF</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/touxiang.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2023-10-11 09:25:42</span>
+        <span class="mobile">2023-10-11 09:25:42</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2023-10-30 16:49:27</span>
+            <span class="mobile">2023-10-30 16:49:27</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Web/">Web</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/CSRF/">CSRF</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h1 id="CSRF"><a href="#CSRF" class="headerlink" title="CSRF"></a>CSRF</h1><p>一般来说，攻击者通过伪造用户的浏览器的请求，向访问一个用户自己曾经认证访问过的网站发送出去，使目标网站接收并误以为是用户的真实操作而去执行命令。利用受害者尚未失效的身份认证信息（cookie、会话等），诱骗其点击恶意链接或者访问包含攻击代码的页面，在受害人不知情的情况下以受害者的身份向（身份认证信息所对应的）服务器发送请求，从而完成非法操作（如转账、改密等）。CSRF与XSS最大的区别就在于，CSRF并没有盗取cookie而是直接利用。</p>
+<h2 id="DVWA"><a href="#DVWA" class="headerlink" title="DVWA"></a>DVWA</h2><h3 id="Low"><a href="#Low" class="headerlink" title="Low"></a>Low</h3><ul>
+<li>源码</li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line"></span><br><span class="line">if( isset( $_GET[ &#x27;Change&#x27; ] ) ) &#123;</span><br><span class="line">    // Get input</span><br><span class="line">    $pass_new  = $_GET[ &#x27;password_new&#x27; ];</span><br><span class="line">    $pass_conf = $_GET[ &#x27;password_conf&#x27; ];</span><br><span class="line"></span><br><span class="line">    // Do the passwords match?</span><br><span class="line">    if( $pass_new == $pass_conf ) &#123;</span><br><span class="line">        // They do!</span><br><span class="line">        $pass_new = ((isset($GLOBALS[&quot;___mysqli_ston&quot;]) &amp;&amp; is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_real_escape_string($GLOBALS[&quot;___mysqli_ston&quot;],  $pass_new ) : ((trigger_error(&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;, E_USER_ERROR)) ? &quot;&quot; : &quot;&quot;));</span><br><span class="line">        $pass_new = md5( $pass_new );</span><br><span class="line"></span><br><span class="line">        // Update the database</span><br><span class="line">        $current_user = dvwaCurrentUser();</span><br><span class="line">        $insert = &quot;UPDATE `users` SET password = &#x27;$pass_new&#x27; WHERE user = &#x27;&quot; . $current_user . &quot;&#x27;;&quot;;</span><br><span class="line">        $result = mysqli_query($GLOBALS[&quot;___mysqli_ston&quot;],  $insert ) or die( &#x27;&lt;pre&gt;&#x27; . ((is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_error($GLOBALS[&quot;___mysqli_ston&quot;]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#x27;&lt;/pre&gt;&#x27; );</span><br><span class="line"></span><br><span class="line">        // Feedback for the user</span><br><span class="line">        echo &quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        // Issue with passwords matching</span><br><span class="line">        echo &quot;&lt;pre&gt;Passwords did not match.&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ((is_null($___mysqli_res = mysqli_close($GLOBALS[&quot;___mysqli_ston&quot;]))) ? false : $___mysqli_res);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">?&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011094240554.png"
+                      alt="image-20231011094240554"
+                ></p>
+<p>没有做任何防护。直接输入新密码即可。</p>
+<ul>
+<li>抓包查看</li>
+</ul>
+<p>将密码修改为 <code>123456</code>。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011094451943.png"
+                      alt="image-20231011094451943"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011095446264.png"
+                      alt="image-20231011095446264"
+                ></p>
+<ul>
+<li>Attack</li>
+</ul>
+<p><code>URL</code> 就是一个 <code>GET</code> 请求。诱骗用户点击此链接即可就会在用户不知情的情况下修改密码为 <code>123456</code>。</p>
+<ol>
+<li>拦截请求后，右击请求界面，选择生成CSRF PoC</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011102256026.png"
+                      alt="image-20231011102256026"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103354780.png"
+                      alt="image-20231011103354780"
+                ></p>
+<ol start="2">
+<li>点击用浏览器中测试。</li>
+</ol>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103421274.png"
+                      alt="image-20231011103421274"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231011103930091.png"
+                      alt="image-20231011103930091"
+                ></p>
+<p>复制弹出来的 <code>URL</code> ，将<code>burpsuite</code> 改为 <code>ip:8080</code> 比如 <code>127.0.0.1:8080</code>，访问这个 <code>URL</code> 将会自动跳转到修改密码 <code>URL</code> ，并修改密码为 <code>123456</code>。</p>
+<h3 id="Medium"><a href="#Medium" class="headerlink" title="Medium"></a>Medium</h3><ul>
+<li>源码</li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line"></span><br><span class="line">if( isset( $_GET[ &#x27;Change&#x27; ] ) ) &#123;</span><br><span class="line">    // Checks to see where the request came from</span><br><span class="line">    if( stripos( $_SERVER[ &#x27;HTTP_REFERER&#x27; ] ,$_SERVER[ &#x27;SERVER_NAME&#x27; ]) !== false ) &#123;</span><br><span class="line">        // Get input</span><br><span class="line">        $pass_new  = $_GET[ &#x27;password_new&#x27; ];</span><br><span class="line">        $pass_conf = $_GET[ &#x27;password_conf&#x27; ];</span><br><span class="line"></span><br><span class="line">        // Do the passwords match?</span><br><span class="line">        if( $pass_new == $pass_conf ) &#123;</span><br><span class="line">            // They do!</span><br><span class="line">            $pass_new = ((isset($GLOBALS[&quot;___mysqli_ston&quot;]) &amp;&amp; is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_real_escape_string($GLOBALS[&quot;___mysqli_ston&quot;],  $pass_new ) : ((trigger_error(&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;, E_USER_ERROR)) ? &quot;&quot; : &quot;&quot;));</span><br><span class="line">            $pass_new = md5( $pass_new );</span><br><span class="line"></span><br><span class="line">            // Update the database</span><br><span class="line">            $current_user = dvwaCurrentUser();</span><br><span class="line">            $insert = &quot;UPDATE `users` SET password = &#x27;$pass_new&#x27; WHERE user = &#x27;&quot; . $current_user . &quot;&#x27;;&quot;;</span><br><span class="line">            $result = mysqli_query($GLOBALS[&quot;___mysqli_ston&quot;],  $insert ) or die( &#x27;&lt;pre&gt;&#x27; . ((is_object($GLOBALS[&quot;___mysqli_ston&quot;])) ? mysqli_error($GLOBALS[&quot;___mysqli_ston&quot;]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#x27;&lt;/pre&gt;&#x27; );</span><br><span class="line"></span><br><span class="line">            // Feedback for the user</span><br><span class="line">            echo &quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">        else &#123;</span><br><span class="line">            // Issue with passwords matching</span><br><span class="line">            echo &quot;&lt;pre&gt;Passwords did not match.&lt;/pre&gt;&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        // Didn&#x27;t come from a trusted source</span><br><span class="line">        echo &quot;&lt;pre&gt;That request didn&#x27;t look correct.&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ((is_null($___mysqli_res = mysqli_close($GLOBALS[&quot;___mysqli_ston&quot;]))) ? false : $___mysqli_res);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">?&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p>检测机制：在修改密码等敏感操作时，会检测 <code>referer</code> 请求来源地址，里面是否存在主机 <code>ip</code> 或域名。我们可以构造一个有效的 <code>Referer</code>，可以在攻击服务器上创建一个新的 <code>html</code> 页面，命名时 要含有 <code>csrf</code> 网站主机 <code>ip</code> 地址。所以这对本地搭建的无影响。我们通过回环和局域网 <code>Ip</code> 的方式来进行测试。</p>
+<p>假如服务器地址为 <code>192.168.66.66</code>，即为 <code>SERVER_NAME</code>，我们只需要把我们构造的恶意页面文件名改为 <code>192.168.66.66.html</code>，<code>HTTP_REFERER</code>就会包含<code>192.168.66.66.html</code>,就可以绕过 <code>stripos</code>了。</p>
+<ul>
+<li>Attack</li>
+</ul>
+<ol>
+<li>通过本地 <code>IP</code> 访问 <code>dvwa</code> 页面，利用 <code>burp</code> 抓包，并制作 <code>CSRF PoC</code>。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012145844804.png"
+                      alt="image-20231012145844804"
+                ></p>
+<ol start="2">
+<li>复制 <code>HTML</code> 代码，并将其命名为<code>192.168.56.1</code> 放在 <code>WWW</code> 目录下。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012145945233.png"
+                      alt="image-20231012145945233"
+                ></p>
+<ol start="3">
+<li>放行原来的包将密码改回 <code>password</code>，通过回环访问本地的<code>192.168.56.1.html</code>文件并抓包。</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150205921.png"
+                      alt="image-20231012150205921"
+                ></p>
+<p>可以看见 <code>referer</code> 和 <code>host</code> 的地址并不相同，我们将 <code>referer</code> 指向 攻击者服务器地址即 <code>192.168.56.1.html</code>即可绕过。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150452551.png"
+                      alt="image-20231012150452551"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012150521082.png"
+                      alt="image-20231012150521082"
+                ></p>
+<h3 id="High"><a href="#High" class="headerlink" title="High"></a>High</h3><ul>
+<li>源码</li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line"></span><br><span class="line">$change = false;</span><br><span class="line">$request_type = &quot;html&quot;;</span><br><span class="line">$return_message = &quot;Request Failed&quot;;</span><br><span class="line"></span><br><span class="line">if ($_SERVER[&#x27;REQUEST_METHOD&#x27;] == &quot;POST&quot; &amp;&amp; array_key_exists (&quot;CONTENT_TYPE&quot;, $_SERVER) &amp;&amp; $_SERVER[&#x27;CONTENT_TYPE&#x27;] == &quot;application/json&quot;) &#123;</span><br><span class="line">    $data = json_decode(file_get_contents(&#x27;php://input&#x27;), true);</span><br><span class="line">    $request_type = &quot;json&quot;;</span><br><span class="line">    if (array_key_exists(&quot;HTTP_USER_TOKEN&quot;, $_SERVER) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_new&quot;, $data) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_conf&quot;, $data) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;Change&quot;, $data)) &#123;</span><br><span class="line">        $token = $_SERVER[&#x27;HTTP_USER_TOKEN&#x27;];</span><br><span class="line">        $pass_new = $data[&quot;password_new&quot;];</span><br><span class="line">        $pass_conf = $data[&quot;password_conf&quot;];</span><br><span class="line">        $change = true;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    if (array_key_exists(&quot;user_token&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_new&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;password_conf&quot;, $_REQUEST) &amp;&amp;</span><br><span class="line">        array_key_exists(&quot;Change&quot;, $_REQUEST)) &#123;</span><br><span class="line">        $token = $_REQUEST[&quot;user_token&quot;];</span><br><span class="line">        $pass_new = $_REQUEST[&quot;password_new&quot;];</span><br><span class="line">        $pass_conf = $_REQUEST[&quot;password_conf&quot;];</span><br><span class="line">        $change = true;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if ($change) &#123;</span><br><span class="line">    // Check Anti-CSRF token</span><br><span class="line">    checkToken( $token, $_SESSION[ &#x27;session_token&#x27; ], &#x27;index.php&#x27; );</span><br><span class="line"></span><br><span class="line">    // Do the passwords match?</span><br><span class="line">    if( $pass_new == $pass_conf ) &#123;</span><br><span class="line">        // They do!</span><br><span class="line">        $pass_new = mysqli_real_escape_string ($GLOBALS[&quot;___mysqli_ston&quot;], $pass_new);</span><br><span class="line">        $pass_new = md5( $pass_new );</span><br><span class="line"></span><br><span class="line">        // Update the database</span><br><span class="line">        $current_user = dvwaCurrentUser();</span><br><span class="line">        $insert = &quot;UPDATE `users` SET password = &#x27;&quot; . $pass_new . &quot;&#x27; WHERE user = &#x27;&quot; . $current_user . &quot;&#x27;;&quot;;</span><br><span class="line">        $result = mysqli_query($GLOBALS[&quot;___mysqli_ston&quot;],  $insert );</span><br><span class="line"></span><br><span class="line">        // Feedback for the user</span><br><span class="line">        $return_message = &quot;Password Changed.&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        // Issue with passwords matching</span><br><span class="line">        $return_message = &quot;Passwords did not match.&quot;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    mysqli_close($GLOBALS[&quot;___mysqli_ston&quot;]);</span><br><span class="line"></span><br><span class="line">    if ($request_type == &quot;json&quot;) &#123;</span><br><span class="line">        generateSessionToken();</span><br><span class="line">        header (&quot;Content-Type: application/json&quot;);</span><br><span class="line">        print json_encode (array(&quot;Message&quot; =&gt;$return_message));</span><br><span class="line">        exit;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        echo &quot;&lt;pre&gt;&quot; . $return_message . &quot;&lt;/pre&gt;&quot;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Generate Anti-CSRF token</span><br><span class="line">generateSessionToken();</span><br><span class="line"></span><br><span class="line">?&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>checkToken</code>函数来实现 <code>Anti-csrf  token</code> 机制，用户每次访问更改密码页面时，服务器会返回一个随机的 <code>token</code>，之后每次向服务器发起请求，服务器会优先验证<code>token</code>，如果token正确，那么才会处理请求。所以我们在发起请求之前需要获取服务器返回的<code>user_token</code>，利用<code>user_token</code>绕过验证。这里我们可以使用<code>burpsuit</code>的<code>CSRF Token Tracker</code>插件可以直接绕过<code>user_token</code>验证。</p>
+<ul>
+<li>Attack</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012152409701.png"
+                      alt="image-20231012152409701"
+                ></p>
+<p>添加 <code>Host</code> 和 <code>Name</code>。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/10/11/Web%E5%AE%89%E5%85%A8(0x2)CSRF/image-20231012152829738.png"
+                      alt="image-20231012152829738"
+                ></p>
+<p>发送到 <code>repeater</code>，每次发送都会随机<code>token</code>的值，直接发送即可。</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Web安全-CSRF</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2023-10-11 09:25:42</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2023-10-30 16:49:27
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2023/10/11/Web安全(0x2)CSRF/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+                
+                    <li class="tag-item mx-0.5">
+                        <a href="/tags/CSRF/">#CSRF</a>&nbsp;
+                    </li>
+                
+            </ul>
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2023/10/16/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Pwn_Other%E5%8F%8A%E7%9B%B8%E5%85%B3%E4%BE%8B%E9%A2%98/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">深入理解Pwn_Other及相关例题</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2023/10/05/Netgear-CVE-2019-20760/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Netgear-CVE-2019-20760</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">Web安全-CSRF</div>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#CSRF"><span class="nav-text">CSRF</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#DVWA"><span class="nav-text">DVWA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Low"><span class="nav-text">Low</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Medium"><span class="nav-text">Medium</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#High"><span class="nav-text">High</span></a></li></ol></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fa-solid fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="Search..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fa-solid fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Swup.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupSlideTheme.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScriptsPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupProgressPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScrollPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupPreloadPlugin.min.js"></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+<script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/imageViewer.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/utils.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/main.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/navbarShrink.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/scrollTopBottom.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/lightDarkSwitch.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/categoryList.js"></script>
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/localSearch.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/codeBlock.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/lazyload.js"></script>
+
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/runtime.js"></script>
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/odometer.min.js"></script>
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Typed.min.js"></script>
+  <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/typed.js"></script>
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/tocToggle.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/toc.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/tabs.js"></script>
+    
+</div>
+
+
+</body>
+</html>

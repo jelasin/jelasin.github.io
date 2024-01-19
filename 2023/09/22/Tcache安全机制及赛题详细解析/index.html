@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2023/09/22/tcache安全机制及赛题详细解析/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="Tcache简介glibc 源码网址    ptmallloc2在libc2.26中引入了Tcache这种无需对arena上锁就可以使用的小堆块。tcache是单链表结构，每条链上最多可以有 7 个 chunk，free 的时候当对应的 tcache bin 满了才放入fastbin，unsorted bin，malloc的时候优先去tcache bin找。 其数据结构如下。 1234567891">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Tcache安全机制及赛题详细解析">
+<meta property="og:url" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="Tcache简介glibc 源码网址    ptmallloc2在libc2.26中引入了Tcache这种无需对arena上锁就可以使用的小堆块。tcache是单链表结构，每条链上最多可以有 7 个 chunk，free 的时候当对应的 tcache bin 满了才放入fastbin，unsorted bin，malloc的时候优先去tcache bin找。 其数据结构如下。 1234567891">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_3VXXSF45THTQ63W.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_J423U7BS3AVPUMN.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_GYTCUQJPMZ3ZT9S.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_5UPXC4BVAGDJUG8.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_7UJ686BG6C4DDVJ.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_YJXK6788EQ5JJG9.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_ZEASEE9NZU44C5S.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_79F5P5RSTUVS4CX.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_H876K6X845YEQTM.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_BMEDZ8WHXWHZ6GA.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_82AMDYGDZBJYGEX.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_R5CPWZN2CM9D8X6.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_5NNQRGXBK3K8GET.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_4FZWRZH9EK2D29U.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_XQ7DM265PKATFMY.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_AKAUSN3ZH6Q75K6.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VRCZDXZ7HZPPG3A.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_GBGYY98JXSD8Z27.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_DYS48TUVAJY4QZ2.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_YDCJ64QZPUGV3WK.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VRQR9A9XJBAS7JG.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SMCEP4CKXCCRSW4.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_PFF4YXVDNYUVCXK.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_JZEK39HH86HYX8Y.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_QWRKEKAF4E79ZBZ.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_JGNR9UDE89QPQV8.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_8PMV886RQEQ2XPB.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VQRTTYAUDKZ7CBK.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_P2K9PJJ3XY23DRF.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_4UUX9X9XCFV3P3S.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_AP5DUCCCSS6XNBH.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_X83SEQ6GBB7AAN8.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_9YWKZ4DXCQ5QRBT.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SH8FTTPY2M66RRC.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_HXUYZWCQP9QHCS3.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_QMVR2WYC2N9A88H.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_MN5N9AXJB8D5WK9.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_ANN46ZTE7FJ6HPR.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_6THJNUWWQWE2UDG.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_J5ETUWKBVKPC2GE.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SHPQPCWP6VZ5YXR.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_35RYCASC2VV4JFH.jpg">
+<meta property="article:published_time" content="2023-09-22T02:52:55.000Z">
+<meta property="article:modified_time" content="2023-10-23T02:12:53.873Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Pwn_Heap">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_3VXXSF45THTQ63W.jpg">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Tcache安全机制及赛题详细解析 -
+        
+        Jelasin
+    </title>
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Chillax/chillax.css">
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/anime.min.js"></script>
+    <h1 class="ml13">
+        Jelasin
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/build/styles.css">
+    
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/fonts.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Satoshi/satoshi.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Links":{"icon":"fa-regular fa-link","submenus":{"看雪":"https://bbs.kanxue.com/homepage-958172.htm","吾爱破解":"https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":{"Essays":{"path":"/essays","icon":"fa-regular fa-comment"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Binary":{"path":"/Binary","icon":"fa-solid fa-bug"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/favicon.ico">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-link fa-fw"></i>
+                                    LINKS
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    看雪
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">
+                                                    吾爱破解
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-Links"
+                        >
+                            <span>
+                                LINKS
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-Links">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">看雪</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">吾爱破解</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">15</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">21</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">Tcache安全机制及赛题详细解析</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/touxiang.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2023-09-22 10:52:55</span>
+        <span class="mobile">2023-09-22 10:52:55</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2023-10-23 10:12:53</span>
+            <span class="mobile">2023-10-23 10:12:53</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/CTF/">CTF</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Pwn-Heap/">Pwn_Heap</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h1 id="Tcache简介"><a href="#Tcache简介" class="headerlink" title="Tcache简介"></a>Tcache简介</h1><p><a class="link"   target="_blank" rel="noopener" href="https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c" >glibc 源码网址 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
+<p>  ptmallloc2在libc2.26中引入了Tcache这种无需对arena上锁就可以使用的小堆块。<strong>tcache是单链表结构</strong>，每条链上最多可以有 <strong>7</strong> 个 chunk，free 的时候当对应的 tcache bin 满了才放入fastbin，unsorted bin，malloc的时候优先去tcache bin找。</p>
+<p>其数据结构如下。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">#if USE_TCACHE</span><br><span class="line">/* 最大64个bins */</span><br><span class="line">#define TCACHE_MAX_BINS 64  </span><br><span class="line">#define MAX_TCACHE_SIZE tidx2usize (TCACHE_MAX_BINS-1)</span><br><span class="line">#define tidx2usize(idx)    (((size_t) idx) * MALLOC_ALIGNMENT + MINSIZE - SIZE_SZ)</span><br><span class="line">#define csize2tidx(x) (((x) - MINSIZE + MALLOC_ALIGNMENT - 1) / MALLOC_ALIGNMENT)</span><br><span class="line">#define usize2tidx(x) csize2tidx (request2size (x))</span><br><span class="line">/* 每个bins最多缓存7个chunk */</span><br><span class="line">#define TCACHE_FILL_COUNT 7</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">typedef struct tcache_entry &#123;</span><br><span class="line">  struct tcache_entry *next;</span><br><span class="line">&#125; tcache_entry;</span><br><span class="line"> /*</span><br><span class="line"> *  tcache_entry 用于链接空闲的 chunk 结构体，其中的 next 指针指向下一个大小相同的 chunk。</span><br><span class="line"> *  需要注意的是这里的 next 指向 chunk 的 user_data ，而 fastbin 的 fd 指向 chunk 开头(prev_size)的地址。</span><br><span class="line"> *  而且，tcache_entry 会复用空闲 chunk 的 user_data 部分。</span><br><span class="line"> */</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">// tcache_perthread_struct位于堆的开头，大小为0x250。  </span><br><span class="line">typedef struct tcache_perthread_struct &#123;</span><br><span class="line">  char counts[TCACHE_MAX_BINS];              //用于存放bins中的chunk数量。</span><br><span class="line">  tcache_entry *entries[TCACHE_MAX_BINS];    //用于存放64个bins地址</span><br><span class="line">&#125; tcache_perthread_struct;</span><br><span class="line"></span><br><span class="line">static __thread tcache_perthread_struct *tcache = NULL;</span><br><span class="line"> /* </span><br><span class="line"> *    每个 thread 都会维护一个 tcache_perthread_struct，一共有 TCACHE_MAX_BINS 个计数器和 TCACHE_MAX_BINS 项 tcache_entry,</span><br><span class="line"> *  ·tcache_entry 用单向链表的方式链接了相同大小的处于空闲状态（free后）的 chunk。</span><br><span class="line"> *  ·counts 记录了 tcache_entry 链上空闲 chunk 的数目，每条链上最多可以有 7 个 chunk。</span><br><span class="line"> */</span><br></pre></td></tr></table></figure></div>
+
+<p>  每个线程默认<strong>64</strong>个单链表结构的bins，每个bins最多存放<strong>7</strong>个chunk。chunk在64位机器以16字节递增，从24到1032字节。在32位机器上以8字节递增，从12到512字节。因此tcache只能存放<strong>non-large</strong>的chunk。</p>
+<p>图解</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_3VXXSF45THTQ63W.jpg"
+                      alt="img"
+                ></p>
+<h1 id="Tcache实现"><a href="#Tcache实现" class="headerlink" title="Tcache实现"></a>Tcache实现</h1><h2 id="Tcache初始化"><a href="#Tcache初始化" class="headerlink" title="Tcache初始化"></a>Tcache初始化</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">static void</span><br><span class="line">tcache_init(void)</span><br><span class="line">&#123;</span><br><span class="line">  mstate ar_ptr;</span><br><span class="line">  void *victim = 0;</span><br><span class="line">  const size_t bytes = sizeof (tcache_perthread_struct); //大小为0x240</span><br><span class="line"></span><br><span class="line">  if (tcache_shutting_down)</span><br><span class="line">    return;</span><br><span class="line"></span><br><span class="line">  arena_get (ar_ptr, bytes);</span><br><span class="line">  /* 使用_int_malloc为 tcache_perthread_struct 分配内存 */</span><br><span class="line">  victim = _int_malloc (ar_ptr, bytes);</span><br><span class="line">  /* 分配失败则再次尝试分配 */</span><br><span class="line">  if (!victim &amp;&amp; ar_ptr != NULL)</span><br><span class="line">    &#123;</span><br><span class="line">      ar_ptr = arena_get_retry (ar_ptr, bytes);</span><br><span class="line">      victim = _int_malloc (ar_ptr, bytes);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">  /* __libc_lock_unlock 是一个宏，用于释放一个互斥锁 */</span><br><span class="line">  if (ar_ptr != NULL)</span><br><span class="line">    __libc_lock_unlock (ar_ptr-&gt;mutex);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  if (victim)</span><br><span class="line">    &#123;</span><br><span class="line">      /* 转换为tcache_perthread_struce结构 */</span><br><span class="line">      tcache = (tcache_perthread_struct *) victim;</span><br><span class="line">      /* 初始为0 */</span><br><span class="line">      memset (tcache, 0, sizeof (tcache_perthread_struct));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="分配堆块时"><a href="#分配堆块时" class="headerlink" title="分配堆块时"></a>分配堆块时</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">/* glibc2.26没有对放入的chunk进行严格校验的，也没有把P位置零 */</span><br><span class="line">static __always_inline void</span><br><span class="line">tcache_put (mchunkptr chunk, size_t tc_idx)</span><br><span class="line">&#123;</span><br><span class="line">  tcache_entry *e = (tcache_entry *) chunk2mem (chunk);</span><br><span class="line">  assert (tc_idx &lt; TCACHE_MAX_BINS);</span><br><span class="line">  /* 放在头部，和插入fastbin的插入形式是一致的 */</span><br><span class="line">  e-&gt;next = tcache-&gt;entries[tc_idx];</span><br><span class="line">  tcache-&gt;entries[tc_idx] = e;</span><br><span class="line">  ++(tcache-&gt;counts[tc_idx]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/*</span><br><span class="line">*    malloc出来的chunk为fast chunk，</span><br><span class="line">*  那么fastbin中相应大小的chunk会被放入tcache相应大小的tcache bins中，</span><br><span class="line">*  直到相应的tcache bins满7个或者相应的fastbins为空。</span><br><span class="line">*  chunk在tcache bin中顺序与fastbin相反</span><br><span class="line">*/</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">      size_t tc_idx = csize2tidx (nb);</span><br><span class="line">      if (tcache &amp;&amp; tc_idx &lt; mp_.tcache_bins)</span><br><span class="line">        &#123;</span><br><span class="line">          mchunkptr tc_victim;</span><br><span class="line"></span><br><span class="line">          while (tcache-&gt;counts[tc_idx] &lt; mp_.tcache_count</span><br><span class="line">                 &amp;&amp; (pp = *fb) != NULL)</span><br><span class="line">            &#123;</span><br><span class="line">              REMOVE_FB (fb, tc_victim, pp);</span><br><span class="line">              if (tc_victim != 0)</span><br><span class="line">                &#123;</span><br><span class="line">                  tcache_put (tc_victim, tc_idx);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">/*</span><br><span class="line">*   malloc出来的chunk是small chunk。和fast chunk类似。</span><br><span class="line">*      但是会对每一个chunk的next_chunk的prev_inuse位设置为1。</span><br><span class="line">*   chunk在tcache bin中顺序与small bin中顺序相同。</span><br><span class="line">*/</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">      size_t tc_idx = csize2tidx (nb);</span><br><span class="line">      if (tcache &amp;&amp; tc_idx &lt; mp_.tcache_bins)</span><br><span class="line">        &#123;</span><br><span class="line">          mchunkptr tc_victim;</span><br><span class="line">          </span><br><span class="line">          while (tcache-&gt;counts[tc_idx] &lt; mp_.tcache_count</span><br><span class="line">             &amp;&amp; (tc_victim = last (bin)) != bin)</span><br><span class="line">            &#123;</span><br><span class="line">              if (tc_victim != 0)</span><br><span class="line">                &#123;</span><br><span class="line">                  bck = tc_victim-&gt;bk;</span><br><span class="line">                  /* 设置标志位 */</span><br><span class="line">                  set_inuse_bit_at_offset (tc_victim, nb);</span><br><span class="line">                  if (av != &amp;main_arena)</span><br><span class="line">                        set_non_main_arena (tc_victim);</span><br><span class="line">                  bin-&gt;bk = bck;</span><br><span class="line">                  bck-&gt;fd = bin;</span><br><span class="line">    </span><br><span class="line">                  tcache_put (tc_victim, tc_idx);</span><br><span class="line">                 &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">#endif</span><br><span class="line">/*  </span><br><span class="line">*    如果unsorted chunk跟要用户所需要chunk大小一致，那么会优先将该chunk挂入对应的tcache中，并不直接返回</span><br><span class="line">*/</span><br><span class="line">          if (size == nb)</span><br><span class="line">            &#123;</span><br><span class="line">              set_inuse_bit_at_offset (victim, size);</span><br><span class="line">              if (av != &amp;main_arena)</span><br><span class="line">                        set_non_main_arena (victim);</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">                  if (tcache_nb</span><br><span class="line">                      &amp;&amp; tcache-&gt;counts[tc_idx] &lt; mp_.tcache_count)</span><br><span class="line">                    &#123;</span><br><span class="line">                      tcache_put (victim, tc_idx);</span><br><span class="line">                      return_cached = 1;</span><br><span class="line">                      continue;</span><br><span class="line">                    &#125;</span><br><span class="line">                  else</span><br><span class="line">                    &#123;</span><br><span class="line">#endif</span><br><span class="line">                  check_malloced_chunk (av, victim, nb);</span><br><span class="line">                  void *p = chunk2mem (victim);</span><br><span class="line">                  alloc_perturb (p, bytes);</span><br><span class="line">                  return p;</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">                    &#125;</span><br><span class="line">#endif</span><br><span class="line">            &#125;</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="从Tcache取出堆块"><a href="#从Tcache取出堆块" class="headerlink" title="从Tcache取出堆块"></a>从Tcache取出堆块</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">/* glibc2.26取出chunk并没有严格的检查，由于tcache优先级很高，所以其他的检查机制并没有对tcache发挥过多作用 */</span><br><span class="line">static __always_inline void *</span><br><span class="line">tcache_get (size_t tc_idx)</span><br><span class="line">&#123;</span><br><span class="line">  tcache_entry *e = tcache-&gt;entries[tc_idx];</span><br><span class="line">  assert (tc_idx &lt; TCACHE_MAX_BINS);</span><br><span class="line">  assert (tcache-&gt;entries[tc_idx] &gt; 0);</span><br><span class="line">  /* 取出chunk */</span><br><span class="line">  tcache-&gt;entries[tc_idx] = e-&gt;next;</span><br><span class="line">  /* counts记录相应bins的chunk数量,取出时减一 */</span><br><span class="line">  --(tcache-&gt;counts[tc_idx]);</span><br><span class="line">  return (void *) e;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* </span><br><span class="line">* 如果用户需要的chunk size 属于 non-large chunk并且 tcache 已经初始化并且对应tcache bins中有符合chunk则取出</span><br><span class="line">* 注意从tcache中取出块是在进入_int_malloc()之前的</span><br><span class="line">*/</span><br><span class="line">if (tc_idx &lt; mp_.tcache_bins </span><br><span class="line">      &amp;&amp; tcache</span><br><span class="line">      &amp;&amp; tcache-&gt;entries[tc_idx] != NULL)</span><br><span class="line">&#123;</span><br><span class="line">  return tcache_get (tc_idx);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">/* </span><br><span class="line">*   在unsorted bin最后，如果找到了可以返回的块，</span><br><span class="line">*   并且mp_.tcache_unsorted_limit次数小于处理unsorted count(即tcache中装满了对应的chunk)</span><br><span class="line">*   那么就会从其中拉出一个chunk出来返回</span><br><span class="line">*/</span><br><span class="line">.tcache_unsorted_limit = 0 </span><br><span class="line">#if USE_TCACHE</span><br><span class="line">      /* If we&#x27;ve processed as many chunks as we&#x27;re allowed while</span><br><span class="line">     filling the cache, return one of the cached ones.  */</span><br><span class="line">      ++tcache_unsorted_count;</span><br><span class="line">      if (return_cached</span><br><span class="line">      &amp;&amp; mp_.tcache_unsorted_limit &gt; 0</span><br><span class="line">      &amp;&amp; tcache_unsorted_count &gt; mp_.tcache_unsorted_limit)</span><br><span class="line">    &#123;</span><br><span class="line">      return tcache_get (tc_idx);</span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">/*  </span><br><span class="line">*    在unsorted bin的遍历之后 如果unsorted bin中存在可以返回的chunk</span><br><span class="line">*    那么在遍历unsorted bin之后则调用一次tcache_get返回给用户使用 </span><br><span class="line">*/</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">    if (return_cached)</span><br><span class="line">    &#123;</span><br><span class="line">      return tcache_get (tc_idx);</span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="释放堆块时"><a href="#释放堆块时" class="headerlink" title="释放堆块时"></a>释放堆块时</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">/* </span><br><span class="line">*    如果tcache已经初始化</span><br><span class="line">*    并且free的chunk属于non-large chunk</span><br><span class="line">*    如果free的chunk对应的tcache链未满7个 </span><br><span class="line">*    那么就将chunk放入到tcahce中缓存</span><br><span class="line">*/</span><br><span class="line">#if USE_TCACHE</span><br><span class="line">  &#123;</span><br><span class="line">    size_t tc_idx = csize2tidx (size);</span><br><span class="line"></span><br><span class="line">    if (tcache</span><br><span class="line">        &amp;&amp; tc_idx &lt; mp_.tcache_bins</span><br><span class="line">        &amp;&amp; tcache-&gt;counts[tc_idx] &lt; mp_.tcache_count)</span><br><span class="line">      &#123;</span><br><span class="line">            tcache_put (p, tc_idx);</span><br><span class="line">            return;</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
+<li><p>释放堆块时：如果chunk是<strong>non-large chunk</strong>，并且对应bins未满7个，则放入对应bins。</p>
+</li>
+<li><p>分配堆块时：</p>
+<p>（1）如果fastbins或者small bins中成功返回一个需要的chunk，那么对应fastbins或者small bins中的剩余chunk会被放进相应的tcache  bin中，直到相应tcache bin填满7个或者对应的fastbins或者small bins为空。<strong>chunk在tcache bin中顺序与fastbin相反，与small bin中顺序相同。</strong></p>
+<p>（2）unsorted bin 中符合用户要求的的chunk取出时，chunk 合并等其他操作，每一个符合要求的chunk会<strong>优先放入tcache</strong>，然后从 tcache 中返回其中一个。如果tcache已满则直接返回。</p>
+</li>
+<li><p>从tcache中取出堆块。</p>
+<p>（1）<strong>在__libc_malloc()调用_int_malloc()前</strong>，如果tcache bin中有符合要求的chunk，则直接返回。</p>
+<p>（2）**(默认不执行)**。在unsorted bin最后如果找到了可以返回的块，并且 <strong>mp_.tcache_unsorted_limit(默认为0)</strong> 次数小于处理 unsorted count(即tcache中装满了对应的chunk)那么就会从其中拉出一个chunk出来返回。</p>
+<p>（3）在unsorted bin的遍历之后 如果unsorted bin中存在可以返回的chunk 那么在<strong>遍历unsorted bin</strong>之后，则调用一次<strong>tcache_get</strong>返回给用户使用。</p>
+</li>
+<li><p>tcache中的chunk不会合并。chunk的prev_inuse&#x3D;1。</p>
+</li>
+</ol>
+<h1 id="安全分析"><a href="#安全分析" class="headerlink" title="安全分析"></a>安全分析</h1><h2 id="cve-2017-17426"><a href="#cve-2017-17426" class="headerlink" title="cve-2017-17426"></a>cve-2017-17426</h2><p>  __libc_malloc()使用request2size()转换堆块为实际大小时，不会进行整数溢出检查。请求一个接近(SIZE_MAX)的堆块将导致溢出，使malloc错误返回tcache bin中的堆块。</p>
+<p>源码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;stdlib.h&gt;</span><br><span class="line">int main() &#123;</span><br><span class="line">    void *x = malloc(10);</span><br><span class="line">    printf(&quot;malloc(10): %p\n&quot;,x);</span><br><span class="line">    free(x);</span><br><span class="line">    </span><br><span class="line">    void *y = malloc(((size_t)~0) - 2);</span><br><span class="line">    printf(&quot;malloc(((size_t)~0) - 2): %p\n&quot;,y);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>使用glibc-2.26的输出，分配成功。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_J423U7BS3AVPUMN.jpg"
+                      alt="img"
+                ></p>
+<p>使用glibc-2.27的输出，nil说明漏洞已修复。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_GYTCUQJPMZ3ZT9S.jpg"
+                      alt="img"
+                ></p>
+<h2 id="double-free-check"><a href="#double-free-check" class="headerlink" title="double free check"></a>double free check</h2><p>glibc-2.29新增加double free检查，方法是在tcache_entry结构体中新增加标志位key来检查chunk是否在tcache bin中。当 free 掉一个堆块进入 tcache 时，假如堆块的 bk 位存放的<code>key == tcache_key</code>， 就会遍历这个大小的 Tcache ，假如发现同地址的堆块，则触发 double Free 报错。因为chunk的key保存在bk位置，只需将其修改即可绕过double free检查。</p>
+<h1 id="经典赛题（已提供相关附件）"><a href="#经典赛题（已提供相关附件）" class="headerlink" title="经典赛题（已提供相关附件）"></a>经典赛题（已提供相关附件）</h1><p>说明：附件中的赛题已经用patchelf改好环境。</p>
+<h2 id="HITB-CTF-2018-gundam"><a href="#HITB-CTF-2018-gundam" class="headerlink" title="HITB CTF 2018: gundam"></a>HITB CTF 2018: gundam</h2><p><strong>1.修改rpath。</strong></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_5UPXC4BVAGDJUG8.jpg"
+                      alt="img"
+                ></p>
+<p><strong>2.检查保护。</strong></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_7UJ686BG6C4DDVJ.jpg"
+                      alt="img"
+                ></p>
+<p><strong>3.试运行。</strong></p>
+<p>可见为菜单题。</p>
+<p>1-创建一个gundam机器人</p>
+<p>2-访问gundamu</p>
+<p>3-销毁一个gundam</p>
+<p>4-炸毁工厂</p>
+<p>5-退出</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_YJXK6788EQ5JJG9.jpg"
+                      alt="img"
+                ></p>
+<p><strong>4.逆向分析。</strong></p>
+<p>1-分析Build函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">__int64 Build()</span><br><span class="line">&#123;</span><br><span class="line">  unsigned int v1; // [rsp+0h] [rbp-20h] BYREF</span><br><span class="line">  unsigned int i; // [rsp+4h] [rbp-1Ch]</span><br><span class="line">  void *s; // [rsp+8h] [rbp-18h]</span><br><span class="line">  void *buf; // [rsp+10h] [rbp-10h]</span><br><span class="line">  unsigned __int64 v5; // [rsp+18h] [rbp-8h]</span><br><span class="line"></span><br><span class="line">  v5 = __readfsqword(0x28u);</span><br><span class="line">  s = 0LL;</span><br><span class="line">  buf = 0LL;</span><br><span class="line">  if ( (unsigned int)dword_20208C &lt;= 8 )</span><br><span class="line">  &#123;</span><br><span class="line">    s = malloc(0x28uLL);</span><br><span class="line">    memset(s, 0, 0x28uLL);</span><br><span class="line">    buf = malloc(0x100uLL);</span><br><span class="line">    if ( !buf )</span><br><span class="line">    &#123;</span><br><span class="line">      puts(&quot;error !&quot;);</span><br><span class="line">      exit(-1);</span><br><span class="line">    &#125;</span><br><span class="line">    printf(&quot;The name of gundam :&quot;);</span><br><span class="line">    //buf记录名字，没有&#x27;\x00&#x27;限制可能泄露</span><br><span class="line">    read(0, buf, 0x100uLL);</span><br><span class="line">    // (s+8)位置 -&gt; buf</span><br><span class="line">    *((_QWORD *)s + 1) = buf;</span><br><span class="line">    printf(&quot;The type of the gundam :&quot;);</span><br><span class="line">    __isoc99_scanf(&quot;%d&quot;, &amp;v1);</span><br><span class="line">    //type &lt; 3</span><br><span class="line">    if ( v1 &gt;= 3 )</span><br><span class="line">    &#123;</span><br><span class="line">      puts(&quot;Invalid.&quot;);</span><br><span class="line">      exit(0);</span><br><span class="line">    &#125;</span><br><span class="line">    // (s+16) -&gt; type</span><br><span class="line">    strcpy((char *)s + 16, &amp;aFreedom[20 * v1]);</span><br><span class="line">    // s-&gt;1 标记为在使用。</span><br><span class="line">    *(_DWORD *)s = 1;</span><br><span class="line">    for ( i = 0; i &lt;= 8; ++i )</span><br><span class="line">    &#123;</span><br><span class="line">      if ( !qword_2020A0[i] )</span><br><span class="line">      &#123;</span><br><span class="line">          //Factory[9]，工厂数组。</span><br><span class="line">        qword_2020A0[i] = s;</span><br><span class="line">        break;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    // 换原为NumOfGundam，记录gundam的数量</span><br><span class="line">    ++dword_20208C;</span><br><span class="line">  &#125;</span><br><span class="line">  return 0LL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>不难分析出gundam结构体</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct gundam&#123;</span><br><span class="line">    int flag;</span><br><span class="line">    char *buf;</span><br><span class="line">    char type[60];</span><br><span class="line">&#125;gundam;</span><br><span class="line">struct gundam *factory[9]</span><br></pre></td></tr></table></figure></div>
+
+<p>2-Visit函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">__int64 Visit()</span><br><span class="line">&#123;</span><br><span class="line">  unsigned int i; // [rsp+4h] [rbp-Ch]</span><br><span class="line"></span><br><span class="line">  if ( NumOfGundam )</span><br><span class="line">  &#123;</span><br><span class="line">    for ( i = 0; i &lt;= 8; ++i )</span><br><span class="line">    &#123;</span><br><span class="line">        //将每个gundma的buf和Type打印出来。</span><br><span class="line">      if ( factory[i] &amp;&amp; *(_DWORD *)factory[i] )</span><br><span class="line">      &#123;</span><br><span class="line">        printf(&quot;\nGundam[%u] :%s&quot;, i, *(const char **)(factory[i] + 8LL));</span><br><span class="line">        printf(&quot;Type[%u] :%s\n&quot;, i, (const char *)(factory[i] + 16LL));</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  else</span><br><span class="line">  &#123;</span><br><span class="line">    puts(&quot;No gundam produced!&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  return 0LL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>3-Destroy函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">__int64 Destroy()</span><br><span class="line">&#123;</span><br><span class="line">  unsigned int v1; // [rsp+4h] [rbp-Ch] BYREF</span><br><span class="line">  unsigned __int64 v2; // [rsp+8h] [rbp-8h]</span><br><span class="line"></span><br><span class="line">  v2 = __readfsqword(0x28u);</span><br><span class="line">  if ( NumOfGundam )</span><br><span class="line">  &#123;</span><br><span class="line">    printf(&quot;Which gundam do you want to Destory:&quot;);</span><br><span class="line">    __isoc99_scanf(&quot;%d&quot;, &amp;v1);</span><br><span class="line">    if ( v1 &gt; 8 || !factory[v1] )</span><br><span class="line">    &#123;</span><br><span class="line">      puts(&quot;Invalid choice&quot;);</span><br><span class="line">      return 0LL;</span><br><span class="line">    &#125;</span><br><span class="line">    // 使用标记置为0</span><br><span class="line">    *(_DWORD *)factory[v1] = 0;</span><br><span class="line">    // name存在UAF漏洞。</span><br><span class="line">    free(*(void **)(factory[v1] + 8LL));</span><br><span class="line">  &#125;</span><br><span class="line">  else</span><br><span class="line">  &#123;</span><br><span class="line">    puts(&quot;No gundam&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  // 并没有将NumOfGundam数量-1</span><br><span class="line">  return 0LL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>4-BlowUp函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">unsigned __int64 BlowUp()</span><br><span class="line">&#123;</span><br><span class="line">  unsigned int i; // [rsp+4h] [rbp-Ch]</span><br><span class="line">  unsigned __int64 v2; // [rsp+8h] [rbp-8h]</span><br><span class="line"></span><br><span class="line">  v2 = __readfsqword(0x28u);</span><br><span class="line">  for ( i = 0; i &lt;= 8; ++i )</span><br><span class="line">  &#123;</span><br><span class="line">    if ( factory[i] &amp;&amp; !*(_DWORD *)factory[i] )</span><br><span class="line">    &#123;</span><br><span class="line">      free((void *)factory[i]);</span><br><span class="line">      factory[i] = 0LL;</span><br><span class="line">      // 只把标记为置为0，存在uaf。</span><br><span class="line">      --NumOfGundam;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  puts(&quot;Done!&quot;);</span><br><span class="line">  return __readfsqword(0x28u) ^ v2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>5.漏洞利用</strong></p>
+<p>（1）利用unsorted bin attack泄露main_arean地址进而泄露libc基址。申请9个chunk，释放7个填满tcache，在释放一个进入unsorted bin，剩下一个阻隔top chunk防止合并。可以看到unsorted bin中的chunk的fd和bk指向了一个栈地址(main_arena+88)。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_ZEASEE9NZU44C5S.jpg"
+                      alt="img"
+                ></p>
+<p>blow up后</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_79F5P5RSTUVS4CX.jpg"
+                      alt="img"
+                ></p>
+<p>计算这个栈地址与libc基地址的偏移。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_H876K6X845YEQTM.jpg"
+                      alt="img"
+                ></p>
+<p>偏移为：0x3dac78</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_BMEDZ8WHXWHZ6GA.jpg"
+                      alt="img"
+                ></p>
+<p>在申请8个chunk，将unsorted bin中的chunk申请出来，再利用visit()函数泄露main_arena+88处的栈地址。</p>
+<p>此时需要注意，chunk优先从tcache取出，然后Type[7]才是unsorted bin中的chunk。由于第8个chunk的fd指向main_arena+88处的地址，</p>
+<p>所以此时只需要接收6个字节（因为64位栈地址前2字节为’\x00’,并且用%s打印地址）然后用’\x00’补齐即可。</p>
+<p>再用main_arena+88处的地址减去上面计算出的固定偏移即可得到栈的基地址。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_82AMDYGDZBJYGEX.jpg"
+                      alt="img"
+                ></p>
+<p>进而可以由libc-2.26.so得到system和__free_hook地址。</p>
+<p>（2）利用double free制造tcache poisoning到&amp;__free_hook</p>
+<p>依次释放2，1，0，0。此时tcache bin状态如下。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_R5CPWZN2CM9D8X6.jpg"
+                      alt="img"
+                ><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_5NNQRGXBK3K8GET.jpg"
+                      alt="img"
+                ><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_4FZWRZH9EK2D29U.jpg"
+                      alt="img"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_XQ7DM265PKATFMY.jpg"
+                      alt="img"
+                ></p>
+<p>blow up 后</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_AKAUSN3ZH6Q75K6.jpg"
+                      alt="img"
+                ></p>
+<p>已经形成了double free。此时在申请一个堆块将会把chunk0申请出来，将其内容改为__free_hook的地址。</p>
+<p>因为此时chunk0依然在tcache bin(0x110)的链上，所以__free_hook会被挂在tcache bins的链上。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VRCZDXZ7HZPPG3A.jpg"
+                      alt="img"
+                ></p>
+<p>（3）将物理堆块为chunk0，逻辑为chunk1的factory[1]_buf改写为’&#x2F;bin&#x2F;sh\x00’，修改__free_hook为system地址。</p>
+<p>修改factory[1]_buf为’&#x2F;bin&#x2F;sh\x00’</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_GBGYY98JXSD8Z27.jpg"
+                      alt="img"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_DYS48TUVAJY4QZ2.jpg"
+                      alt="img"
+                ></p>
+<p>此时tcache bin中还剩下__free_hook地址。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_YDCJ64QZPUGV3WK.jpg"
+                      alt="img"
+                ></p>
+<p>再次申请得到__free__hook+0x10处的堆块，此时修改__free_hook为system。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VRQR9A9XJBAS7JG.jpg"
+                      alt="img"
+                ></p>
+<p>（4）free(‘&#x2F;bin&#x2F;sh\x00’);</p>
+<p>最后 destory(1)，也就是free(‘&#x2F;bin&#x2F;sh\x00’)即可getshell</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SMCEP4CKXCCRSW4.jpg"
+                      alt="img"
+                ></p>
+<h2 id="BCTF2018-houseofatum"><a href="#BCTF2018-houseofatum" class="headerlink" title="BCTF2018-houseofatum"></a>BCTF2018-houseofatum</h2><p><strong>1.修改rpath</strong></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_PFF4YXVDNYUVCXK.jpg"
+                      alt="img"
+                ></p>
+<p><strong>2.检查保护</strong></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_JZEK39HH86HYX8Y.jpg"
+                      alt="img"
+                ></p>
+<p><strong>3.试运行</strong></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_QWRKEKAF4E79ZBZ.jpg"
+                      alt="img"
+                ></p>
+<p><strong>4.逆向分析</strong></p>
+<p>1-alloc函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">int alloc()</span><br><span class="line">&#123;</span><br><span class="line">  int i; // [rsp+Ch] [rbp-4h]</span><br><span class="line">  // 只允许两个堆块同时存在</span><br><span class="line">  for ( i = 0; i &lt;= 1 &amp;&amp; *((_QWORD *)&amp;notes + i); ++i );</span><br><span class="line">  if ( i == 2 )</span><br><span class="line">    return puts(&quot;Too many notes!&quot;);</span><br><span class="line">  printf(&quot;Input the content:&quot;);</span><br><span class="line">  //  利用notes[i]管理note，实际大小为0x50。</span><br><span class="line">  *((_QWORD *)&amp;notes + i) = malloc(0x48uLL);</span><br><span class="line">  readn(*((void **)&amp;notes + i), 0x48uLL);</span><br><span class="line">  return puts(&quot;Done!&quot;);</span><br><span class="line">&#125;</span><br><span class="line">ssize_t __fastcall readn(void *a1, size_t a2)</span><br><span class="line">&#123;</span><br><span class="line">  return read(0, a1, a2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>2-edit函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">int edit()</span><br><span class="line">&#123;</span><br><span class="line">  signed int v1; // [rsp+Ch] [rbp-4h]</span><br><span class="line"></span><br><span class="line">  printf(&quot;Input the idx:&quot;);</span><br><span class="line">  v1 = getint();</span><br><span class="line">  if ( (unsigned int)v1 &gt; 1 || !*((_QWORD *)&amp;notes + v1) )</span><br><span class="line">    return puts(&quot;No such note!&quot;);</span><br><span class="line">  printf(&quot;Input the content:&quot;);</span><br><span class="line">  // 读取0x48可能存在泄露</span><br><span class="line">  readn(*((void **)&amp;notes + v1), 0x48uLL);</span><br><span class="line">  return puts(&quot;Done!&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>3-del函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">unsigned __int64 del()</span><br><span class="line">&#123;</span><br><span class="line">  signed int v1; // [rsp+0h] [rbp-10h]</span><br><span class="line">  char v2[2]; // [rsp+6h] [rbp-Ah] BYREF</span><br><span class="line">  unsigned __int64 v3; // [rsp+8h] [rbp-8h]</span><br><span class="line"></span><br><span class="line">  v3 = __readfsqword(0x28u);</span><br><span class="line">  printf(&quot;Input the idx:&quot;);</span><br><span class="line">  v1 = getint();</span><br><span class="line">  if ( (unsigned int)v1 &lt;= 1 &amp;&amp; *((_QWORD *)&amp;notes + v1) )</span><br><span class="line">  &#123;</span><br><span class="line">    free(*((void **)&amp;notes + v1));</span><br><span class="line">    printf(&quot;Clear?(y/n):&quot;);</span><br><span class="line">    // 输入n，可以导致UAF漏洞。</span><br><span class="line">    readn(v2, 2uLL);</span><br><span class="line">    if ( v2[0] == &#x27;y&#x27; )</span><br><span class="line">      *((_QWORD *)&amp;notes + v1) = 0LL;</span><br><span class="line">    puts(&quot;Done!&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  else</span><br><span class="line">  &#123;</span><br><span class="line">    puts(&quot;No such note!&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  return __readfsqword(0x28u) ^ v3;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>4-show函数</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">int show()</span><br><span class="line">&#123;</span><br><span class="line">  signed int v1; // [rsp+Ch] [rbp-4h]</span><br><span class="line"></span><br><span class="line">  printf(&quot;Input the idx:&quot;);</span><br><span class="line">  v1 = getint();</span><br><span class="line">  if ( (unsigned int)v1 &gt; 1 || !*((_QWORD *)&amp;notes + v1) )</span><br><span class="line">    return puts(&quot;No such note!&quot;);</span><br><span class="line">  printf(&quot;Content:&quot;);</span><br><span class="line">  puts(*((const char **)&amp;notes + v1));</span><br><span class="line">  return puts(&quot;Done!&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>5.漏洞利用</strong></p>
+<p>（1）泄露堆地址。</p>
+<p>申请两个chunk分别记为chunk0，chunk1。把chunk1的第8个0x8处填写为0x11，防止与top chunk合并。</p>
+<p>此时 chunk1 结构如图：</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_JGNR9UDE89QPQV8.jpg"
+                      alt="img"
+                ></p>
+<p>此时heap结构。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_8PMV886RQEQ2XPB.jpg"
+                      alt="img"
+                ></p>
+<p>然后将chunk0释放6次，填满tcache，并选择’n’来构成UAF漏洞。</p>
+<p>此时heap和bins结构如下。chunk0的fd为自身地址，show(0)即可泄露堆地址。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_VQRTTYAUDKZ7CBK.jpg"
+                      alt="img"
+                ></p>
+<p>（2）泄露libc基址</p>
+<p>再次释放chunk0，并将其fd清空。因为tcache已满7个，所以此时chunk0会进入fast bin。</p>
+<p>tcache指向fd位置，而fast bin则指向prev_size，所以chunk0在fast bin中比tcache多0x10。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_P2K9PJJ3XY23DRF.jpg"
+                      alt="img"
+                ></p>
+<p>现在申请一个堆块将会从tcache中获取，将其fd改为(chunk0_fd-0x20)，那么fast bin 将会把(chunk0_fd-0x20)链接进来。</p>
+<p>因为将chunk0从tcache中取走，tcache为空，但实际只取走一个堆块，所以counts[0x50]计数为6。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_4UUX9X9XCFV3P3S.jpg"
+                      alt="img"
+                ></p>
+<p>再次申请一个堆块，由于tcache为空，那么会去fastbin中寻找，</p>
+<p>因为成功从fastbin中返回了堆块，会触发tcache存放机制，将fastbin剩余堆块加入tcache，</p>
+<p>又因为fast bin指向prev_size，tcache指向fd，所以将fastbin中堆块加入tcache时，地址会加0x10。</p>
+<p>取出的堆块在notes[1]，其用户地址在chunk0_fd(正常)，而tcache中的chunk则指向了chunk0_prev_size位置。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_AP5DUCCCSS6XNBH.jpg"
+                      alt="img"
+                ></p>
+<p>此时，free掉notes[1]，将chunk0放进fast bin中，</p>
+<p>然后再次申请一个堆块，此堆块由notes[1]管理，将chunk0的size修改为0x91，方便之后的unsorted bin attack。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_X83SEQ6GBB7AAN8.jpg"
+                      alt="img"
+                ></p>
+<p>此时，notes[0]的fake_chunk0大小已被修改为0x91，释放8次notes[0]即可将fake_chunk0放进unsorted bin。</p>
+<p>然后其fd和bk指针将被修改为一个栈上的地址(main_arena+88)</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_9YWKZ4DXCQ5QRBT.jpg"
+                      alt="img"
+                ></p>
+<p>计算其与libc基地址的偏移。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SH8FTTPY2M66RRC.jpg"
+                      alt="img"
+                ></p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_HXUYZWCQP9QHCS3.jpg"
+                      alt="img"
+                ></p>
+<p>因为输出用到puts函数，而这个栈地址在fake_chunk0_fd位置，</p>
+<p>所以需要利用notes[1]将fake_chunk0的的prev_size和size填满泄露libc地址时才能避免截断。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_QMVR2WYC2N9A88H.jpg"
+                      alt="img"
+                ></p>
+<p>将泄露出来的栈地址减去计算出来的偏移，即可得到libc基址。</p>
+<p>（3）将__free_hook替换为one_gadget。</p>
+<p>利用one_gadget工具获取one_gadget。</p>
+<p>因为已经得到了libc基址，那么可以根据给的libc-2.26.so得到__free_hook和one_gadget的运行时真实地址。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_MN5N9AXJB8D5WK9.jpg"
+                      alt="img"
+                ></p>
+<p>利用notes[1]可以将fake_chunk0_fd改为__free_hook-0x10的地址。</p>
+<p>此时fastbin将__free_hook链接进来了。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_ANN46ZTE7FJ6HPR.jpg"
+                      alt="img"
+                ></p>
+<p>再次申请一个堆块，会由notes[0]来管理。并且会触发tcache相关机制，将fastbin中剩余chunk（__free_hook）加入tcache。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_6THJNUWWQWE2UDG.jpg"
+                      alt="img"
+                ></p>
+<p>此时因为管理已满两个，需要将notes[0]释放并清0。由于tcache已满，其会进入fastbin。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_J5ETUWKBVKPC2GE.jpg"
+                      alt="img"
+                ></p>
+<p>此时在申请的堆块会由notes[0]管理，再次申请一个堆块则会从tcache中获取__free_hook的地址，将其修改为one_gadget。</p>
+<p> <img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_SHPQPCWP6VZ5YXR.jpg"
+                      alt="img"
+                ></p>
+<p>此时随便del一个notes[i]就会触发one_gadget，从而getshell；<img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2023/09/22/Tcache%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/958172_35RYCASC2VV4JFH.jpg"
+                      alt="img"
+                ></p>
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Tcache安全机制及赛题详细解析</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2023-09-22 10:52:55</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2023-10-23 10:12:53
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2023/09/22/Tcache安全机制及赛题详细解析/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+                
+                    <li class="tag-item mx-0.5">
+                        <a href="/tags/Pwn-Heap/">#Pwn_Heap</a>&nbsp;
+                    </li>
+                
+            </ul>
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2023/09/22/Web%E5%AE%89%E5%85%A8(0x0)SQL_injection/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Web安全-SQL_injection</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2023/09/22/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Pwn_heap%E5%8F%8A%E8%B5%9B%E9%A2%98%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">深入理解Pwn_heap及赛题详细解析</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">Tcache安全机制及赛题详细解析</div>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Tcache%E7%AE%80%E4%BB%8B"><span class="nav-text">Tcache简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Tcache%E5%AE%9E%E7%8E%B0"><span class="nav-text">Tcache实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Tcache%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">Tcache初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%86%E9%85%8D%E5%A0%86%E5%9D%97%E6%97%B6"><span class="nav-text">分配堆块时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8ETcache%E5%8F%96%E5%87%BA%E5%A0%86%E5%9D%97"><span class="nav-text">从Tcache取出堆块</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%87%8A%E6%94%BE%E5%A0%86%E5%9D%97%E6%97%B6"><span class="nav-text">释放堆块时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AE%89%E5%85%A8%E5%88%86%E6%9E%90"><span class="nav-text">安全分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#cve-2017-17426"><span class="nav-text">cve-2017-17426</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#double-free-check"><span class="nav-text">double free check</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BB%8F%E5%85%B8%E8%B5%9B%E9%A2%98%EF%BC%88%E5%B7%B2%E6%8F%90%E4%BE%9B%E7%9B%B8%E5%85%B3%E9%99%84%E4%BB%B6%EF%BC%89"><span class="nav-text">经典赛题（已提供相关附件）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#HITB-CTF-2018-gundam"><span class="nav-text">HITB CTF 2018: gundam</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BCTF2018-houseofatum"><span class="nav-text">BCTF2018-houseofatum</span></a></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fa-solid fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="Search..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fa-solid fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Swup.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupSlideTheme.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScriptsPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupProgressPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScrollPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupPreloadPlugin.min.js"></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+<script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/imageViewer.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/utils.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/main.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/navbarShrink.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/scrollTopBottom.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/lightDarkSwitch.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/categoryList.js"></script>
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/localSearch.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/codeBlock.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/lazyload.js"></script>
+
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/runtime.js"></script>
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/odometer.min.js"></script>
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Typed.min.js"></script>
+  <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/typed.js"></script>
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/tocToggle.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/toc.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/tabs.js"></script>
+    
+</div>
+
+
+</body>
+</html>
