@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2024/01/22/linux内核分析之文件io/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="内核文件表文件 Linux内核将一切视为文件，既可以是事实上的真正的物理文件，也可以是设备、管道，甚至还可以是一块内存。狭义的文件是指文件系统中的物理文件，而广义的文件则可以是Linux管理的所有对象。这些广义的文件利用VFS机制，以文件系统的形式挂载在Linux内核中，对外提供一致的文件操作接口。 文件描述符 文件描述符是一个非负整数，其本质就是一个句柄，所以也可以认为文件描述符就是一个文件句柄">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之文件IO">
+<meta property="og:url" content="https://jelasin.github.io/2024/01/22/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E6%96%87%E4%BB%B6IO/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="内核文件表文件 Linux内核将一切视为文件，既可以是事实上的真正的物理文件，也可以是设备、管道，甚至还可以是一块内存。狭义的文件是指文件系统中的物理文件，而广义的文件则可以是Linux管理的所有对象。这些广义的文件利用VFS机制，以文件系统的形式挂载在Linux内核中，对外提供一致的文件操作接口。 文件描述符 文件描述符是一个非负整数，其本质就是一个句柄，所以也可以认为文件描述符就是一个文件句柄">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/%E5%86%85%E6%A0%B8%E6%96%87%E4%BB%B6%E8%A1%A8.jpg">
+<meta property="article:published_time" content="2024-01-22T02:07:36.000Z">
+<meta property="article:modified_time" content="2024-01-22T05:01:05.871Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux的文件IO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/%E5%86%85%E6%A0%B8%E6%96%87%E4%BB%B6%E8%A1%A8.jpg">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之文件IO -
+        
+        Jelasin
+    </title>
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Chillax/chillax.css">
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/anime.min.js"></script>
+    <h1 class="ml13">
+        Jelasin
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/build/styles.css">
+    
+
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/fonts.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fonts/Satoshi/satoshi.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Links":{"icon":"fa-regular fa-link","submenus":{"看雪":"https://bbs.kanxue.com/homepage-958172.htm","吾爱破解":"https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":{"Essays":{"path":"/essays","icon":"fa-regular fa-comment"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Binary":{"path":"/Binary","icon":"fa-solid fa-bug"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/favicon.ico">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-link fa-fw"></i>
+                                    LINKS
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    看雪
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">
+                                                    吾爱破解
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-Links"
+                        >
+                            <span>
+                                LINKS
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-Links">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">看雪</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">吾爱破解</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">8</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">25</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之文件IO</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/touxiang.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2024-01-22 10:07:36</span>
+        <span class="mobile">2024-01-22 10:07:36</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2024-01-22 13:01:05</span>
+            <span class="mobile">2024-01-22 13:01:05</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Linux%E7%9A%84%E6%96%87%E4%BB%B6IO/">Linux的文件IO</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h1 id="内核文件表"><a href="#内核文件表" class="headerlink" title="内核文件表"></a>内核文件表</h1><p><strong>文件</strong></p>
+<p>Linux内核将一切视为文件，既可以是事实上的真正的物理文件，也可以是设备、管道，甚至还可以是一块内存。狭义的文件是指文件系统中的物理文件，而广义的文件则可以是Linux管理的所有对象。这些广义的文件利用<code>VFS</code>机制，以文件系统的形式挂载在Linux内核中，对外提供一致的文件操作接口。</p>
+<p><strong>文件描述符</strong></p>
+<p>文件描述符是一个非负整数，其本质就是一个句柄，所以也可以认为文件描述符就是一个文件句柄。一切对于用户透明的返回值，即可视为句柄。用户空间利用文件描述符与内核进行交互；而内核拿到文件描述符后，可以通过它得到用于管理文件的真正的数据结构。</p>
+<p><strong>文件表</strong></p>
+<p>Linux的每个进程都会维护一个文件表，以便维护该进程打开文件的信息，包括打开的文件个数、每个打开文件的偏移量等信息。</p>
+<h2 id="文件表的实现"><a href="#文件表的实现" class="headerlink" title="文件表的实现"></a>文件表的实现</h2><p>内核中进程对应的结构是<code>task_struct</code>，进程的文件表保存在<code>task_struct-&gt;files</code>中。其结构代码如下所示。</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> &#123;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">int</span> max_fds;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">file</span> __<span class="title">rcu</span> **<span class="title">fd</span>;</span>      <span class="comment">/* current fd array */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> *close_on_exec;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> *open_fds;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> *full_fds_bits;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">rcu</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* count为文件表files_struct的引用计数*/</span></span><br><span class="line">    <span class="type">atomic_t</span> count;</span><br><span class="line">    <span class="comment">/* 文件描述符表*/</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    *  为什么有两个fdtable呢？这是内核的一种优化策略。fdt为指针，而fdtab为普通变量。</span></span><br><span class="line"><span class="comment">    *  一般情况下，fdt是指向fdtab的，当需要它的时候，才会真正动态申请内存。</span></span><br><span class="line"><span class="comment">    *  因为默认大小的文件表足以应付大多数情况，因此这样就可以避免频繁的内存申请。</span></span><br><span class="line"><span class="comment">	*  这也是内核的常用技巧之一。在创建时，使用普通的变量或者数组，然后让指针指向它，作为默认情况使用。</span></span><br><span class="line"><span class="comment">	*  只有当进程使用量超过默认值时，才会动态申请内存。</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> __<span class="title">rcu</span> *<span class="title">fdt</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> <span class="title">fdtab</span>;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    * written part on a separate cache line in SMP</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="comment">/* 使用 ____cacheline_aligned_in_smp 可以保证file_lock是以cacheline对齐的，避免了false sharing */</span></span><br><span class="line">    <span class="type">spinlock_t</span> file_lock ____cacheline_aligned_in_smp;</span><br><span class="line">    <span class="comment">/* 用于查找下一个空闲的 fd */</span></span><br><span class="line">    <span class="type">int</span> next_fd;</span><br><span class="line">    <span class="comment">/* 保存执行exec需要关闭的文件描述符的位图*/</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">embedded_fd_set</span> <span class="title">close_on_exec_init</span>;</span></span><br><span class="line">    <span class="comment">/* 保存打开的文件描述符的位图 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">embedded_fd_set</span> <span class="title">open_fds_init</span>;</span></span><br><span class="line">    <span class="comment">/* fd_array为一个固定大小的file结构数组。</span></span><br><span class="line"><span class="comment">	*  struct file是内核用于文件管理的结构。这里使用默认大小的数组，就是为了可以涵盖大多数情况，避免动态分配</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> __<span class="title">rcu</span> * <span class="title">fd_array</span>[<span class="title">NR_OPEN_DEFAULT</span>];</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>下面看看<code>files_struct</code>是如何使用默认的<code>fdtab</code>和<code>fd_array</code>的，<code>init</code>是<code>Linux</code>的第一个进程，它的文件表是一个全局变量，代码如下：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> <span class="title">init_files</span> =</span> &#123;</span><br><span class="line">    .count      = ATOMIC_INIT(<span class="number">1</span>),</span><br><span class="line">    .fdt        = &amp;init_files.fdtab,</span><br><span class="line">    .fdtab      = &#123;</span><br><span class="line">        .max_fds    = NR_OPEN_DEFAULT,</span><br><span class="line">        .fd     = &amp;init_files.fd_array[<span class="number">0</span>],</span><br><span class="line">        .close_on_exec  = (fd_set *)&amp;init_files.close_on_exec_init,</span><br><span class="line">        .open_fds   = (fd_set *)&amp;init_files.open_fds_init,</span><br><span class="line">    &#125;,</span><br><span class="line">    .file_lock  = __SPIN_LOCK_UNLOCKED(init_task.file_lock),</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>init_files.fdt</code>和<code>init_files.fdtab.fd</code>都分别指向了自己已有的成员变量，并以此作为一个默认值。后面的进程都是从init进程fork出来的。fork的时候会调用<code>dup_fd</code>，而在<code>dup_fd</code>中其代码结构如下：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">newf = kmem_cache_alloc(files_cachep, GFP_KERNEL);</span><br><span class="line"><span class="keyword">if</span> (!newf)</span><br><span class="line">   <span class="keyword">goto</span> out;</span><br><span class="line"><span class="type">atomic_set</span>(&amp;newf-&gt;count, <span class="number">1</span>);</span><br><span class="line">spin_lock_init(&amp;newf-&gt;file_lock);</span><br><span class="line">newf-&gt;next_fd = <span class="number">0</span>;</span><br><span class="line">new_fdt = &amp;newf-&gt;fdtab;</span><br><span class="line">new_fdt-&gt;max_fds = NR_OPEN_DEFAULT;</span><br><span class="line">new_fdt-&gt;close_on_exec = (fd_set *)&amp;newf-&gt;close_on_exec_init;</span><br><span class="line">new_fdt-&gt;open_fds = (fd_set *)&amp;newf-&gt;open_fds_init;</span><br><span class="line">new_fdt-&gt;fd = &amp;newf-&gt;fd_array[<span class="number">0</span>];</span><br><span class="line">new_fdt-&gt;next = <span class="literal">NULL</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p>初始化new_fdt，同样是为了让new_fdt和new_fdt-&gt;fd指向其本身的成员变量fdtab和fd_array。</p>
+<hr>
+<p><code>/proc/pid/status</code>为对应pid的进程的当前运行状态，其中<code>FDSize</code>值即为当前进程<code>max_fds</code>的值。</p>
+<div class="highlight-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># cat /proc/3576/status </span></span><br><span class="line">Name:	su</span><br><span class="line">Umask:	0022</span><br><span class="line">State:	S (sleeping)</span><br><span class="line">Tgid:	3576</span><br><span class="line">Ngid:	0</span><br><span class="line">Pid:	3576</span><br><span class="line">PPid:	3447</span><br><span class="line">TracerPid:	0</span><br><span class="line">Uid:	1000	0	0	0</span><br><span class="line">Gid:	1000	1000	1000	1000</span><br><span class="line">FDSize:	64</span><br><span class="line">[...]</span><br></pre></td></tr></table></figure></div>
+
+<p>因此，初始状态下，<code>files_struct</code>，<code>fdtable</code>和<code>files</code>的关系如下图所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/%E5%86%85%E6%A0%B8%E6%96%87%E4%BB%B6%E8%A1%A8.jpg"
+                      alt="内核文件表"
+                ></p>
+<h1 id="打开文件"><a href="#打开文件" class="headerlink" title="打开文件"></a>打开文件</h1><h2 id="open函数简介"><a href="#open函数简介" class="headerlink" title="open函数简介"></a>open函数简介</h2><p>open在手册中有两个函数原型，如下所示：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">open</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *pathname, <span class="type">int</span> flags)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">open</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *pathname, <span class="type">int</span> flags, <span class="type">mode_t</span> mode)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p> 在Linux内核中，实际上只提供了一个系统调用，对应的是上述两个函数原型中的第二个。当我们调用open函数时，实际上调用的是glibc封装的函数，然后由glibc通过自陷指令，进行真正的系统调用。也就是说，所有的系统调用都要先经过glibc才会进入操作系统。这样的话，实际上是glibc提供了一个变参函数open来满足两个函数原型，然后通过glibc的变参函数open实现真正的系统调用来调用原型二。</p>
+</blockquote>
+<p>函数参数<code>pathname</code>：表示要打开的文件路径。<code>flags</code>：用于指示打开文件的选项，常用的有O_RDONLY、O_WRONLY和O_RDWR。这三个选项必须有且只能有一个被指定。O_RDWR！&#x3D;O_RDONLY|O_WRONLY，Linux环境中，O_RDONLY被定义为<code>0</code>，O_WRONLY被定义为<code>1</code>，而O_RDWR却被定义为<code>2</code>。之所以有这样违反常规的设计遗留至今，就是为了兼容以前的程序。当然还有很多其他选项这里不一一列举。</p>
+<h2 id="open内核源码追踪"><a href="#open内核源码追踪" class="headerlink" title="open内核源码追踪"></a>open内核源码追踪</h2><p>下面是open的内核源码：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">do_sys_open</span><span class="params">(<span class="type">int</span> dfd, <span class="type">const</span> <span class="type">char</span> __user *filename, <span class="type">int</span> flags, <span class="type">int</span> mode)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">open_flags</span> <span class="title">op</span>;</span></span><br><span class="line">    <span class="comment">/* flags为用户层传递的参数，内核会对flags进行合法性检查，并根据mode生成新的flags值赋给lookup */</span></span><br><span class="line">    <span class="type">int</span> lookup = build_open_flags(flags, mode, &amp;op);</span><br><span class="line">    <span class="comment">/* 将用户空间的文件名参数复制到内核空间 */</span></span><br><span class="line">    <span class="type">char</span> *tmp = getname(filename);</span><br><span class="line">    <span class="type">int</span> fd = PTR_ERR(tmp);</span><br><span class="line">    <span class="keyword">if</span> (!IS_ERR(tmp)) &#123;</span><br><span class="line">        <span class="comment">/* 未出错则申请新的文件描述符*/</span></span><br><span class="line">        fd = get_unused_fd_flags(flags);</span><br><span class="line">        <span class="keyword">if</span> (fd &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">/* 申请新的文件管理结构file */</span></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">f</span> =</span> do_filp_open(dfd, tmp, &amp;op, lookup);</span><br><span class="line">            <span class="keyword">if</span> (IS_ERR(f)) &#123;</span><br><span class="line">                put_unused_fd(fd);</span><br><span class="line">                fd = PTR_ERR(f);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">/* 产生文件打开的通知事件 */</span></span><br><span class="line">                fsnotify_open(f);</span><br><span class="line">                <span class="comment">/* 将文件描述符fd与文件管理结构file对应起来，即安装 */</span></span><br><span class="line">                fd_install(fd, f);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        putname(tmp);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>从do_sys_open可以看出，打开文件时，内核主要消耗了两种资源：文件描述符与内核管理文件结构file。</p>
+<p>特别的其在<code>linux kernel 6.0</code>以上版本代码如下：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">do_sys_open</span><span class="params">(<span class="type">int</span> dfd, <span class="type">const</span> <span class="type">char</span> __user *filename, <span class="type">int</span> flags, <span class="type">umode_t</span> mode)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">open_how</span> <span class="title">how</span> =</span> build_open_how(flags, mode);</span><br><span class="line">	<span class="keyword">return</span> do_sys_openat2(dfd, filename, &amp;how);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">struct</span> open_how <span class="title function_">build_open_how</span><span class="params">(<span class="type">int</span> flags, <span class="type">umode_t</span> mode)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">open_how</span> <span class="title">how</span> =</span> &#123;</span><br><span class="line">		.flags = flags &amp; VALID_OPEN_FLAGS,</span><br><span class="line">		.mode = mode &amp; S_IALLUGO,</span><br><span class="line">	&#125;;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* O_PATH beats everything else. */</span></span><br><span class="line">	<span class="keyword">if</span> (how.flags &amp; O_PATH)</span><br><span class="line">		how.flags &amp;= O_PATH_FLAGS;</span><br><span class="line">	<span class="comment">/* Modes should only be set for create-like flags. */</span></span><br><span class="line">	<span class="keyword">if</span> (!WILL_CREATE(how.flags))</span><br><span class="line">		how.mode = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">return</span> how;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">static</span> <span class="type">long</span> <span class="title function_">do_sys_openat2</span><span class="params">(<span class="type">int</span> dfd, <span class="type">const</span> <span class="type">char</span> __user *filename,</span></span><br><span class="line"><span class="params">			   <span class="keyword">struct</span> open_how *how)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">open_flags</span> <span class="title">op</span>;</span></span><br><span class="line">	<span class="type">int</span> fd = build_open_flags(how, &amp;op);</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">filename</span> *<span class="title">tmp</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (fd)</span><br><span class="line">		<span class="keyword">return</span> fd;</span><br><span class="line"></span><br><span class="line">	tmp = getname(filename);</span><br><span class="line">	<span class="keyword">if</span> (IS_ERR(tmp))</span><br><span class="line">		<span class="keyword">return</span> PTR_ERR(tmp);</span><br><span class="line"></span><br><span class="line">	fd = get_unused_fd_flags(how-&gt;flags);</span><br><span class="line">	<span class="keyword">if</span> (fd &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">f</span> =</span> do_filp_open(dfd, tmp, &amp;op);</span><br><span class="line">		<span class="keyword">if</span> (IS_ERR(f)) &#123;</span><br><span class="line">			put_unused_fd(fd);</span><br><span class="line">			fd = PTR_ERR(f);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			fd_install(fd, f);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	putname(tmp);</span><br><span class="line">	<span class="keyword">return</span> fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>多了一道检查，借此说明，<strong>我们分析的是内核的核心逻辑，后面有机会会做新内核的安全性分析，写此系列文章也只是做一下学习笔记</strong></p>
+<hr>
+<p>根据POSIX标准，当获取一个新的文件描述符时，要返回最低的未使用的文件描述符。在Linux中，通过<code>do_sys_open-&gt;get_unused_fd_flags-&gt;alloc_fd(0,(flags))</code>来选择文件描述符，代码如下：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">alloc_fd</span><span class="params">(<span class="type">unsigned</span> start, <span class="type">unsigned</span> flags)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> *<span class="title">files</span> =</span> current-&gt;files;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> fd;</span><br><span class="line">    <span class="type">int</span> error;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> *<span class="title">fdt</span>;</span></span><br><span class="line">    <span class="comment">/* files为进程的文件表，下面需要更改文件表，所以需要先锁文件表 */</span></span><br><span class="line">    spin_lock(&amp;files-&gt;file_lock);</span><br><span class="line">repeat:</span><br><span class="line">    <span class="comment">/* 得到文件描述符表*/</span></span><br><span class="line">    fdt = files_fdtable(files);</span><br><span class="line">    <span class="comment">/* 从start开始，查找未用的文件描述符。在打开文件时，start为 0 */</span></span><br><span class="line">    fd = start;</span><br><span class="line">    <span class="comment">/* files-&gt;next_fd为上一次成功找到的fd的下一个描述符。使用next_fd，可以快速找到未用的文件描述符；*/</span></span><br><span class="line">    <span class="keyword">if</span> (fd &lt; files-&gt;next_fd)</span><br><span class="line">        fd = files-&gt;next_fd;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    *  当小于当前文件表支持的最大文件描述符个数时，利用位图找到未用的文件描述符。</span></span><br><span class="line"><span class="comment">    *  如果大于max_fds，也就是大于当前支持的最大文件描述符，那它肯定是未用的，就不需要用位图来确认了。</span></span><br><span class="line"><span class="comment">	*/</span></span><br><span class="line">    <span class="keyword">if</span> (fd &lt; fdt-&gt;max_fds)</span><br><span class="line">        fd = find_next_zero_bit(fdt-&gt;open_fds-&gt;fds_bits,</span><br><span class="line">            fdt-&gt;max_fds, fd);</span><br><span class="line">    <span class="comment">/* expand_files用于在必要时扩展文件表。比如当前文件描述符已经超过了当前文件表支持的最大值的时候。*/</span></span><br><span class="line">    error = expand_files(files, fd);</span><br><span class="line">    <span class="keyword">if</span> (error &lt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    * If we needed to expand the fs array we</span></span><br><span class="line"><span class="comment">    * might have blocked - try again.</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">if</span> (error)</span><br><span class="line">        <span class="keyword">goto</span> repeat;</span><br><span class="line">    <span class="comment">/* 只有在start小于next_fd时，才需要更新next_fd，以尽量保证文件描述符的连续性。*/</span></span><br><span class="line">    <span class="keyword">if</span> (start &lt;= files-&gt;next_fd)</span><br><span class="line">        files-&gt;next_fd = fd + <span class="number">1</span>;</span><br><span class="line">    <span class="comment">/* 将打开文件位图open_fds对应fd的位置置位*/</span></span><br><span class="line">    FD_SET(fd, fdt-&gt;open_fds);</span><br><span class="line">    <span class="comment">/* 根据flags是否设置了O_CLOEXEC，设置或清除fdt-&gt;close_on_exec */</span></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; O_CLOEXEC)</span><br><span class="line">        FD_SET(fd, fdt-&gt;close_on_exec);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        FD_CLR(fd, fdt-&gt;close_on_exec);</span><br><span class="line">    error = fd;</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> 1</span></span><br><span class="line">    <span class="comment">/* Sanity check */</span></span><br><span class="line">    <span class="keyword">if</span> (rcu_dereference_raw(fdt-&gt;fd[fd]) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        printk(KERN_WARNING <span class="string">&quot;alloc_fd: slot %d not NULL!\n&quot;</span>, fd);</span><br><span class="line">        rcu_assign_pointer(fdt-&gt;fd[fd], <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">out:</span><br><span class="line">    spin_unlock(&amp;files-&gt;file_lock);</span><br><span class="line">    <span class="keyword">return</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p>前文已经说过，内核使用fd_install将文件管理结构file与fd组合起来，具体操作请看如下代码：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">fd_install</span><span class="params">(<span class="type">unsigned</span> <span class="type">int</span> fd, <span class="keyword">struct</span> file *file)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> *<span class="title">files</span> =</span> current-&gt;files;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> *<span class="title">fdt</span>;</span></span><br><span class="line">    spin_lock(&amp;files-&gt;file_lock);</span><br><span class="line">    <span class="comment">/* 得到文件描述符表*/</span></span><br><span class="line">    fdt = files_fdtable(files);</span><br><span class="line">    BUG_ON(fdt-&gt;fd[fd] != <span class="literal">NULL</span>);</span><br><span class="line">    <span class="comment">/* </span></span><br><span class="line"><span class="comment">    *  将文件描述符表中的file类型的指针数组中对应fd的项指向file。</span></span><br><span class="line"><span class="comment">	*  这样文件描述符fd与file就建立了对应关系</span></span><br><span class="line"><span class="comment">	*/</span></span><br><span class="line">    rcu_assign_pointer(fdt-&gt;fd[fd], file);</span><br><span class="line">    spin_unlock(&amp;files-&gt;file_lock);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></div>
+
+<p>当用户使用fd与内核交互时，内核可以用fd从<code>fdt-&gt;fd[fd]</code>中得到内部管理文件的结构struct file。</p>
+<h1 id="创建文件"><a href="#创建文件" class="headerlink" title="创建文件"></a>创建文件</h1><h2 id="creat函数简介"><a href="#creat函数简介" class="headerlink" title="creat函数简介"></a>creat函数简介</h2><p>creat函数用于创建一个新文件，其等价于open（pathname，O_WRONLY|O_CREAT|O_TRUNC，mode）。由于历史原因，早期的Unix版本中，open的第二个参数只能是0、1或者2。这样就没有办法打开一个不存在的文件。因此，一个独立系统调用creat被引入，用于创建新文件。现在的open函数，通过使用O_CREAT和O_TRUNC选项，可以实现creat的功能，因此creat已经不是必要的了。内核creat的实现代码如下所示：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE2(creat, <span class="type">const</span> <span class="type">char</span> __user *, pathname, <span class="type">int</span>, mode)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> sys_open(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h1 id="关闭文件"><a href="#关闭文件" class="headerlink" title="关闭文件"></a>关闭文件</h1><h2 id="close内核源码追踪"><a href="#close内核源码追踪" class="headerlink" title="close内核源码追踪"></a>close内核源码追踪</h2><p>close用于关闭文件描述符。而文件描述符可以是普通文件，也可以是设备，还可以是socket。在关闭时，VFS会根据不同的文件类型，执行不同的操作。下面将通过跟踪close的内核源码来了解内核如何针对不同的文件类型执行不同的操作。</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE1(close, <span class="type">unsigned</span> <span class="type">int</span>, fd)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> * <span class="title">filp</span>;</span></span><br><span class="line">    <span class="comment">/* 得到当前进程的文件表 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> *<span class="title">files</span> =</span> current-&gt;files;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> *<span class="title">fdt</span>;</span></span><br><span class="line">    <span class="type">int</span> retval;</span><br><span class="line">    spin_lock(&amp;files-&gt;file_lock);</span><br><span class="line">    <span class="comment">/* 通过文件表，取得文件描述符表 */</span></span><br><span class="line">    fdt = files_fdtable(files);</span><br><span class="line">    <span class="comment">/* 参数fd大于文件描述符表记录的最大描述符，那么它一定是非法的描述符 */</span></span><br><span class="line">    <span class="keyword">if</span> (fd &gt;= fdt-&gt;max_fds)</span><br><span class="line">        <span class="keyword">goto</span> out_unlock;</span><br><span class="line">    <span class="comment">/* 利用fd作为索引，得到file结构指针 */</span></span><br><span class="line">    filp = fdt-&gt;fd[fd];</span><br><span class="line">    <span class="comment">/* 检查filp是否为NULL。正常情况下，filp一定不为NULL。*/</span></span><br><span class="line">    <span class="keyword">if</span> (!filp)</span><br><span class="line">        <span class="keyword">goto</span> out_unlock;</span><br><span class="line">    <span class="comment">/* 将对应的filp置为0 */</span></span><br><span class="line">    rcu_assign_pointer(fdt-&gt;fd[fd], <span class="literal">NULL</span>);</span><br><span class="line">    <span class="comment">/* 清除fd在close_on_exec位图中的位*/</span></span><br><span class="line">    FD_CLR(fd, fdt-&gt;close_on_exec);</span><br><span class="line">    <span class="comment">/* 释放该fd，或者说将其置为unused。*/</span></span><br><span class="line">    __put_unused_fd(files, fd);</span><br><span class="line">    spin_unlock(&amp;files-&gt;file_lock);</span><br><span class="line">    <span class="comment">/* 关闭file结构 */</span></span><br><span class="line">    retval = filp_close(filp, files);</span><br><span class="line">    <span class="comment">/* can&#x27;t restart close syscall because file table entry was cleared */</span></span><br><span class="line">    <span class="keyword">if</span> (unlikely(retval == -ERESTARTSYS ||</span><br><span class="line">           retval == -ERESTARTNOINTR ||</span><br><span class="line">           retval == -ERESTARTNOHAND ||</span><br><span class="line">           retval == -ERESTART_RESTARTBLOCK))</span><br><span class="line">           retval = -EINTR;</span><br><span class="line">    <span class="keyword">return</span> retval;</span><br><span class="line">out_unlock:</span><br><span class="line">    spin_unlock(&amp;files-&gt;file_lock);</span><br><span class="line">    <span class="keyword">return</span> -EBADF;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL(sys_close);</span><br></pre></td></tr></table></figure></div>
+
+<p><code>__put_unused_fd</code>源码如下所示：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> __put_unused_fd(<span class="keyword">struct</span> files_struct *files, <span class="type">unsigned</span> <span class="type">int</span> fd)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 取得文件描述符表*/</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> *<span class="title">fdt</span> =</span> files_fdtable(files);</span><br><span class="line">    <span class="comment">/* 清除fd在open_fds位图的位*/</span></span><br><span class="line">    __FD_CLR(fd, fdt-&gt;open_fds);</span><br><span class="line">    <span class="comment">/* 如果fd小于next_fd，重置next_fd为释放的fd */</span></span><br><span class="line">    <span class="keyword">if</span> (fd &lt; files-&gt;next_fd)</span><br><span class="line">        files-&gt;next_fd = fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>结合之前的<code>alloc_fd()</code>可知，Linux文件描述符策略永远选择最小的可用的文件描述符。从<code>__put_unused_fd</code>退出后，close会接着调用filp_close，其调用路径为filp_close-&gt;fput。在fput中，会对当前文件struct file的引用计数减一并检查其值是否为0。当引用计数为0时，表示该struct file没有被其他人使用，则可以调用<code>__fput</code>执行真正的文件释放操作，然后调用要关闭文件所属文件系统的release函数，从而实现针对不同的文件类型来执行不同的关闭操作。</p>
+<hr>
+<p>这里选择<code>socket</code>文件系统作为示例，来说明Linux如何挂载文件系统指定的文件操作函数<code>files_operations</code>。socket.c中定义了其文件操作函数file_operations，代码如下：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_operations</span> <span class="title">socket_file_ops</span> =</span> &#123;</span><br><span class="line">    .owner =    THIS_MODULE,</span><br><span class="line">    .llseek =   no_llseek,</span><br><span class="line">    .aio_read = sock_aio_read,</span><br><span class="line">    .aio_write =    sock_aio_write,</span><br><span class="line">    .poll =     sock_poll,</span><br><span class="line">    .unlocked_ioctl = sock_ioctl,</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_COMPAT</span></span><br><span class="line">    .compat_ioctl = compat_sock_ioctl,</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    .mmap =     sock_mmap,</span><br><span class="line">    .open =     sock_no_open,   <span class="comment">/* special open code to disallow open via /proc */</span></span><br><span class="line">    .release =  sock_close,</span><br><span class="line">    .fasync =   sock_fasync,</span><br><span class="line">    .sendpage = sock_sendpage,</span><br><span class="line">    .splice_write = generic_splice_sendpage,</span><br><span class="line">    .splice_read =  sock_splice_read,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>函数<code>sock_alloc_file</code>用于申请socket文件描述符及文件管理结构file结构。它调用alloc_file来申请管理结构file，并将socket_file_ops作为参数，如下所示：</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">file = alloc_file(&amp;path, FMODE_READ | FMODE_WRITE, &amp;socket_file_ops);</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> file *<span class="title function_">alloc_file</span><span class="params">(<span class="keyword">struct</span> path *path, <span class="type">fmode_t</span> mode,</span></span><br><span class="line"><span class="params">        <span class="type">const</span> <span class="keyword">struct</span> file_operations *fop)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">file</span>;</span></span><br><span class="line">    <span class="comment">/* 申请一个file */</span></span><br><span class="line">    file = get_empty_filp();</span><br><span class="line">    <span class="keyword">if</span> (!file)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    file-&gt;f_path = *path;</span><br><span class="line">    file-&gt;f_mapping = path-&gt;dentry-&gt;d_inode-&gt;i_mapping;</span><br><span class="line">    file-&gt;f_mode = mode;</span><br><span class="line">    <span class="comment">/* 将自定义的文件操作函数赋给file-&gt;f_op */</span></span><br><span class="line">    file-&gt;f_op = fop;</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>在初始化file结构的时候，socket文件系统将其自定义的文件操作赋给了file-&gt;f_op，从而实现了在VFS中可以调用socket文件系统自定义的操作。</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之文件IO</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2024-01-22 10:07:36</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2024-01-22 13:01:05
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2024/01/22/Linux内核分析之文件IO/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+                
+                    <li class="tag-item mx-0.5">
+                        <a href="/tags/Linux%E7%9A%84%E6%96%87%E4%BB%B6IO/">#Linux的文件IO</a>&nbsp;
+                    </li>
+                
+            </ul>
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2024/01/22/%E6%B8%97%E9%80%8F%E6%89%8B%E6%9C%AD%E4%B9%8B%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">渗透手札之内网穿透</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2024/01/19/%E8%AF%BE%E7%A8%8B%E4%B8%8A%E6%9E%B6%E7%9C%8B%E9%9B%AA%E5%AD%A6%E8%8B%91/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">课程上架看雪学苑</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">Linux内核分析之文件IO</div>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E6%96%87%E4%BB%B6%E8%A1%A8"><span class="nav-text">内核文件表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E8%A1%A8%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-text">文件表的实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%89%93%E5%BC%80%E6%96%87%E4%BB%B6"><span class="nav-text">打开文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#open%E5%87%BD%E6%95%B0%E7%AE%80%E4%BB%8B"><span class="nav-text">open函数简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#open%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E8%BF%BD%E8%B8%AA"><span class="nav-text">open内核源码追踪</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E6%96%87%E4%BB%B6"><span class="nav-text">创建文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#creat%E5%87%BD%E6%95%B0%E7%AE%80%E4%BB%8B"><span class="nav-text">creat函数简介</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B3%E9%97%AD%E6%96%87%E4%BB%B6"><span class="nav-text">关闭文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#close%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E8%BF%BD%E8%B8%AA"><span class="nav-text">close内核源码追踪</span></a></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fa-solid fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="Search..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fa-solid fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Swup.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupSlideTheme.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScriptsPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupProgressPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupScrollPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/SwupPreloadPlugin.min.js"></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+<script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/imageViewer.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/utils.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/main.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/navbarShrink.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/scrollTopBottom.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/lightDarkSwitch.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/categoryList.js"></script>
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/localSearch.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/codeBlock.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/lazyload.js"></script>
+
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/runtime.js"></script>
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/odometer.min.js"></script>
+    <link rel="stylesheet" href="//evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/libs/Typed.min.js"></script>
+  <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/typed.js"></script>
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/tools/tocToggle.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/layouts/toc.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine@2.6.0/source/js/plugins/tabs.js"></script>
+    
+</div>
+
+
+</body>
+</html>
