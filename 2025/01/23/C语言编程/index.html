@@ -33,7 +33,7 @@
 <meta property="og:description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-01-23T06:44:14.000Z">
-<meta property="article:modified_time" content="2025-02-11T02:04:34.159Z">
+<meta property="article:modified_time" content="2025-02-14T03:45:21.654Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
     
@@ -427,7 +427,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">98</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">99</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -476,8 +476,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-11 10:04:34</span>
-            <span class="mobile">2025-02-11 10:04:34</span>
+            <span class="desktop">2025-02-14 11:45:21</span>
+            <span class="mobile">2025-02-14 11:45:21</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -505,9 +505,223 @@
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
 			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看 《Linux环境编程与内核》以及《Linux内核分析》系列文章。</p>
-<h2 id="Linux-C-标准库"><a href="#Linux-C-标准库" class="headerlink" title="Linux C 标准库"></a>Linux C 标准库</h2><h3 id="termios-h"><a href="#termios-h" class="headerlink" title="termios.h"></a>termios.h</h3><h3 id="time-h"><a href="#time-h" class="headerlink" title="time.h"></a>time.h</h3><h3 id="stdarg-h"><a href="#stdarg-h" class="headerlink" title="stdarg.h"></a>stdarg.h</h3><h2 id="Linux-C-系统库"><a href="#Linux-C-系统库" class="headerlink" title="Linux C 系统库"></a>Linux C 系统库</h2><h2 id="指针相关"><a href="#指针相关" class="headerlink" title="指针相关"></a>指针相关</h2><h3 id="指针数组和数组指针"><a href="#指针数组和数组指针" class="headerlink" title="指针数组和数组指针"></a>指针数组和数组指针</h3><h3 id="指针"><a href="#指针" class="headerlink" title="指针++"></a>指针++</h3><h3 id="和"><a href="#和" class="headerlink" title="[] 和 *"></a>[] 和 *</h3><p>其实<code>[]</code>数组符号就是<code>*</code>解引用符号的语法糖实现。</p>
-<h3 id="多级指针"><a href="#多级指针" class="headerlink" title="多级指针"></a>多级指针</h3><h2 id="IO-函数安全"><a href="#IO-函数安全" class="headerlink" title="IO 函数安全"></a>IO 函数安全</h2><h2 id="字符串操作函数安全"><a href="#字符串操作函数安全" class="headerlink" title="字符串操作函数安全"></a>字符串操作函数安全</h2><h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="异步编程"><a href="#异步编程" class="headerlink" title="异步编程"></a>异步编程</h2><h2 id="网络编程"><a href="#网络编程" class="headerlink" title="网络编程"></a>网络编程</h2><h2 id="无锁编程"><a href="#无锁编程" class="headerlink" title="无锁编程"></a>无锁编程</h2><h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
-<p><strong>1. 把右值放在条件判断的左边</strong></p>
+<p>本文只探讨在Linux环境下的C语言编程。</p>
+<h2 id="Linux-C-常用库"><a href="#Linux-C-常用库" class="headerlink" title="Linux C 常用库"></a>Linux C 常用库</h2><h2 id="GNU-C-扩展语法"><a href="#GNU-C-扩展语法" class="headerlink" title="GNU C 扩展语法"></a>GNU C 扩展语法</h2><h3 id="指定初始化"><a href="#指定初始化" class="headerlink" title="指定初始化"></a>指定初始化</h3><hr>
+<p><strong>数组初始化</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> arr[<span class="number">100</span>] = &#123;[<span class="number">10</span>] = <span class="number">1</span>, [<span class="number">30</span>] = <span class="number">1</span>&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>这样<code>arr[10]</code>和<code>arr[30]</code>便被初始化为<code>1</code>，数组内其他元素则是<code>0</code>。通过数组元素索引，我们可以直接给指定的数组元素赋值。除了数组，一个结构体变量的初始化，也可以通过指定某个结构体成员直接赋值。在早期C语言标准不支持指定初始化时，GCC编译器就已经支持指定初始化了，因此这个特性也被看作GCC编译器的一个扩展特性。</p>
+<hr>
+<p><strong>范围初始化</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> arr[<span class="number">100</span>] = &#123;[<span class="number">10</span> ... <span class="number">30</span>] = <span class="number">1</span>, [<span class="number">50</span> ... <span class="number">60</span>] = <span class="number">2</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">switch</span> score</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">1</span> ... <span class="number">5</span>:</span><br><span class="line">        <span class="built_in">puts</span>(<span class="string">&quot;???&quot;</span>);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">6</span> ... <span class="number">10</span>:</span><br><span class="line">        <span class="built_in">puts</span>(<span class="string">&quot;!!!&quot;</span>);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>GNU C支持使用<code>...</code>表示范围扩展，这个特性不仅可以使用在数组初始化中，也可以使用在<code>switch-case</code>语句中。</p>
+<hr>
+<p><strong>结构体初始化</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">hello_dev</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cdev</span> <span class="title">cdev</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> mem[MAX_SIZE];</span><br><span class="line">&#125; * hello_devp;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">hello_open</span><span class="params">(<span class="keyword">struct</span> inode *id, <span class="keyword">struct</span> file *filp)</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">hello_releace</span><span class="params">(<span class="keyword">struct</span> inode *id, <span class="keyword">struct</span> file *filp)</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">long</span> <span class="title function_">hello_ioctl</span><span class="params">(<span class="keyword">struct</span> file *filp, <span class="type">unsigned</span> <span class="type">int</span> cmd, <span class="type">unsigned</span> <span class="type">long</span> arg)</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">ssize_t</span> <span class="title function_">hello_read</span><span class="params">(<span class="keyword">struct</span> file *filp, <span class="type">char</span> __user *buf, <span class="type">size_t</span> size, <span class="type">loff_t</span> *pos)</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">ssize_t</span> <span class="title function_">hello_write</span><span class="params">(<span class="keyword">struct</span> file *filp, <span class="type">const</span> <span class="type">char</span> __user *buf, <span class="type">size_t</span> size, <span class="type">loff_t</span> *pos)</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">loff_t</span> <span class="title function_">hello_llseek</span><span class="params">(<span class="keyword">struct</span> file *filp, <span class="type">loff_t</span> offset, <span class="type">int</span> op)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_operations</span> <span class="title">hello_fops</span> =</span> &#123;</span><br><span class="line">        .owner = THIS_MODULE,</span><br><span class="line">        .llseek = hello_llseek,</span><br><span class="line">        .read = hello_read,</span><br><span class="line">        .write = hello_write,</span><br><span class="line">        .unlocked_ioctl = hello_ioctl,</span><br><span class="line">        .open = hello_open,</span><br><span class="line">        .release = hello_releace,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>在Linux内核驱动中，大量使用GNU C的这种指定初始化方式，通过结构体成员来初始化结构体变量。如在字符驱动程序中，我们经常见到这样的初始化。在驱动程序中，我们经常使用<code>file_operations</code>这个结构体来注册我们开发的驱动，然后系统会以回调的方式来执行驱动实现的具体功能。</p>
+<h3 id="语句表达式"><a href="#语句表达式" class="headerlink" title="语句表达式"></a>语句表达式</h3><hr>
+<p>GNU C对C语言标准作了扩展，允许在一个表达式里内嵌语句，允许在表达式内部使用局部变量、for循环和<code>goto</code>跳转语句。这种类型的表达式，我们称为语句表达式。语句表达式的格式如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(&#123;a; b; c;&#125;)</span><br></pre></td></tr></table></figure></div>
+
+<p>语句表达式最外面使用小括号()括起来，里面一对大括号{}包起来的是代码块，代码块里允许内嵌各种语句。语句的格式可以是一般表达式，也可以是循环、跳转语句。和一般表达式一样，语句表达式也有自己的值。语句表达式的值为内嵌语句中最后一个表达式的值。我们举个例子，使用语句表达式求值。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> sum = (&#123;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line">    <span class="keyword">for</span>(i = <span class="number">0</span>; i &lt; <span class="number">10</span>; ++i);</span><br><span class="line">    i;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure></div>
+
+<p>最后  <code>sum = 10;</code></p>
+<hr>
+<h3 id="宏定义中的语句表达式"><a href="#宏定义中的语句表达式" class="headerlink" title="宏定义中的语句表达式"></a>宏定义中的语句表达式</h3><hr>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> MAX(x, y) (&#123;     \</span></span><br><span class="line"><span class="meta">	typeof(x) _x = (x); \</span></span><br><span class="line"><span class="meta">	typeof(y) _y = (y); \</span></span><br><span class="line"><span class="meta">	(void) (&amp;_x == &amp;_y); \</span></span><br><span class="line"><span class="meta">	_x &gt; _y ? _x : _y;&#125;)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>比较难理解的是<code>(void)(&amp;x==&amp;y);</code>这句话，看起来很多余，仔细分析一下，你会发现这条语句很有意思。它的作用有两个：一是用来给用户提示一个警告，对于不同类型的指针比较，编译器会发出一个警告，提示两种数据的类型不同。二是两个数进行比较运算，运算的结果却没有用到，有些编译器可能会给出一个warning，加一个（void）后，就可以消除这个警告。</p>
+<hr>
+<h3 id="typeof与container-of宏"><a href="#typeof与container-of宏" class="headerlink" title="typeof与container_of宏"></a>typeof与container_of宏</h3><hr>
+<p><strong>typeof</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typeof (<span class="type">int</span>*) y <span class="comment">// int *y;</span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> z = <span class="number">4</span>;</span><br><span class="line"><span class="type">int</span> *x = z;</span><br><span class="line">typeof (*x) y  <span class="comment">// int y;</span></span><br><span class="line">    </span><br><span class="line">typeof(typeof(<span class="type">char</span>*)[<span class="number">4</span>]) y <span class="comment">//char *y[4]</span></span><br></pre></td></tr></table></figure></div>
+
+<p>GNU C扩展了一个关键字<code>typeof</code>，用来获取一个变量或表达式的类型。这里使用关键字可能不太合适，因为毕竟typeof现在还没有被纳入C标准，是GCC扩展的一个关键字。为了表述方便，我们就姑且把它叫作关键字吧。使用<code>typeof</code>可以获取一个变量或表达式的类型。typeof的参数有两种形式：表达式或类型。</p>
+<hr>
+<p><strong>container_of</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stddef.h&gt;</span> <span class="comment">//这个库包含了offsetof的定义</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> offsetof</span></span><br><span class="line"><span class="comment">// 获取结构体成员偏移，因为常量指针的值为0，即可以看作结构体首地址为0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> offsetof(TYPE,MEMBER)((size_t)&amp;((TYPE *)0)-&gt;MEMBER)</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"><span class="comment">/*ptr 成员指针</span></span><br><span class="line"><span class="comment">* type 结构体 比如struct Stu</span></span><br><span class="line"><span class="comment">* member 成员变量，跟指针对应</span></span><br><span class="line"><span class="comment">* */</span></span><br><span class="line"><span class="comment">// 最后一句的意义就是，取结构体某个成员member的地址，减去这个成员在结构体type中的偏移，运算结果就是结构体type的首地址</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> container_of(ptr, type, member) (&#123;          \</span></span><br><span class="line"><span class="meta">        const typeof( ((type *)0)-&gt;member ) *__mptr = (const typeof( ((type *)0)-&gt;member ) *)(ptr); \</span></span><br><span class="line"><span class="meta">        (type *)( (char *)__mptr - offsetof(type,member) );&#125;)</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">student</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">	<span class="type">int</span> num;</span><br><span class="line">	<span class="type">int</span> id;</span><br><span class="line">	<span class="type">int</span> score;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">student</span> <span class="title">stu</span> =</span>  &#123;</span><br><span class="line">		.num = <span class="number">1</span>,</span><br><span class="line">		.id = <span class="number">12345</span>,</span><br><span class="line">		.score = <span class="number">90</span>,</span><br><span class="line">	&#125;;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;%p %p %p\n&quot;</span>, &amp;stu.id, &amp;stu, container_of(&amp;stu.id, <span class="keyword">struct</span> student, id));</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个宏在Linux内核中应用甚广，会不会用这个宏，看不看得懂这个宏，也逐渐成为考察一个内核驱动开发者的C语言功底的不成文标准。它的主要作用就是，根据结构体某一成员的地址，获取这个结构体的首地址。</p>
+<hr>
+<h3 id="零长数组"><a href="#零长数组" class="headerlink" title="零长数组"></a>零长数组</h3><hr>
+<p><strong>Linux kernel 中的零长数组</strong></p>
+<p>零长度数组不占用内存存储空间。零长度数组一般单独使用的机会很少，它常常作为结构体的一个成员，构成一个变长结构体。在网卡驱动中，大家可能都比较熟悉一个名字：套接字缓冲区，即<code>Socket Buffer</code>，用来传输网络数据包。同样，在USB驱动中，也有一个类似的东西，叫作URB，其全名为<code>USB Request Block</code>，即USB请求块，用来传输USB数据包。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">urb</span> </span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">	<span class="comment">/* private: usb core and host controller only fields in the urb */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">kref</span> <span class="title">kref</span>;</span>		<span class="comment">/* reference count of the URB */</span></span><br><span class="line">	<span class="type">int</span> unlinked;			<span class="comment">/* unlink error code */</span></span><br><span class="line">	<span class="type">void</span> *hcpriv;			<span class="comment">/* private data for host controller */</span></span><br><span class="line">	<span class="type">atomic_t</span> use_count;		<span class="comment">/* concurrent submissions counter */</span></span><br><span class="line">	<span class="type">atomic_t</span> reject;		<span class="comment">/* submissions will fail */</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* public: documented fields in the urb that can be used by drivers */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">urb_list</span>;</span>	<span class="comment">/* list head for use by the urb&#x27;s</span></span><br><span class="line"><span class="comment">					 * current owner */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">anchor_list</span>;</span>	<span class="comment">/* the URB may be anchored */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">usb_anchor</span> *<span class="title">anchor</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">usb_device</span> *<span class="title">dev</span>;</span>		<span class="comment">/* (in) pointer to associated device */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">usb_host_endpoint</span> *<span class="title">ep</span>;</span>	<span class="comment">/* (internal) pointer to endpoint */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">int</span> pipe;		<span class="comment">/* (in) pipe information */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">int</span> stream_id;		<span class="comment">/* (in) stream ID */</span></span><br><span class="line">	<span class="type">int</span> status;			<span class="comment">/* (return) non-ISO status */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">int</span> transfer_flags;	<span class="comment">/* (in) URB_SHORT_NOT_OK | ...*/</span></span><br><span class="line">	<span class="type">void</span> *transfer_buffer;		<span class="comment">/* (in) associated data buffer */</span></span><br><span class="line">	<span class="type">dma_addr_t</span> transfer_dma;	<span class="comment">/* (in) dma addr for transfer_buffer */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">scatterlist</span> *<span class="title">sg</span>;</span>		<span class="comment">/* (in) scatter gather buffer list */</span></span><br><span class="line">	<span class="type">int</span> num_mapped_sgs;		<span class="comment">/* (internal) mapped sg entries */</span></span><br><span class="line">	<span class="type">int</span> num_sgs;			<span class="comment">/* (in) number of entries in the sg list */</span></span><br><span class="line">	u32 transfer_buffer_length;	<span class="comment">/* (in) data buffer length */</span></span><br><span class="line">	u32 actual_length;		<span class="comment">/* (return) actual transfer length */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">char</span> *setup_packet;	<span class="comment">/* (in) setup packet (control only) */</span></span><br><span class="line">	<span class="type">dma_addr_t</span> setup_dma;		<span class="comment">/* (in) dma addr for setup_packet */</span></span><br><span class="line">	<span class="type">int</span> start_frame;		<span class="comment">/* (modify) start frame (ISO) */</span></span><br><span class="line">	<span class="type">int</span> number_of_packets;		<span class="comment">/* (in) number of ISO packets */</span></span><br><span class="line">	<span class="type">int</span> interval;			<span class="comment">/* (modify) transfer interval</span></span><br><span class="line"><span class="comment">					 * (INT/ISO) */</span></span><br><span class="line">	<span class="type">int</span> error_count;		<span class="comment">/* (return) number of ISO errors */</span></span><br><span class="line">	<span class="type">void</span> *context;			<span class="comment">/* (in) context for completion */</span></span><br><span class="line">	<span class="type">usb_complete_t</span> complete;	<span class="comment">/* (in) completion routine */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">usb_iso_packet_descriptor</span> <span class="title">iso_frame_desc</span>[0];</span></span><br><span class="line">					<span class="comment">/* (in) ISO ONLY */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>在URB结构体的最后定义一个零长度数组，主要用于USB的同步传输。USB有4种传输模式：中断传输、控制传输、批量传输和同步传输。不同的USB设备对传输速度、传输数据安全性的要求不同，所采用的传输模式也不同。USB摄像头对视频或图像的传输实时性要求较高，对数据的丢帧不是很在意，丢一帧无所谓，接着往下传就可以了。所以USB摄像头采用的是USB同步传输模式。USB摄像头一般会支持多种分辨率，从16*16到高清720P多种格式。不同分辨率的视频传输，一帧图像数据的大小是不一样的，对USB传输数据包的大小和个数需求是不一样的。那么USB到底该如何设计，才能在不影响USB其他传输模式的前提下，适配这种不同大小的数据传输需求呢？答案就在结构体内的这个零长度数组上。</p>
+<p>当用户设置不同分辨率的视频格式时，USB就使用不同大小和个数的数据包来传输一帧视频数据。通过零长度数组构成的这个变长结构体就可以满足这个要求。USB驱动可以根据一帧图像数据的大小，灵活地申请内存空间，以满足不同大小的数据传输。而且这个零长度数组又不占用结构体的存储空间。当USB使用其他模式传输时，不受任何影响，完全可以当这个零长度数组不存在。</p>
+<hr>
+<p><strong>指针和零长数组</strong></p>
+<p>数组名和指针并不是一回事，数组名虽然在作为函数参数时，可以当作一个地址使用，但是两者不能画等号。变长结构体为什么不用指针？，原因很简单。如果使用指针，指针本身占用存储空间不说，根据上面的USB驱动的案例分析，你会发现，它远远没有零长度数组用得巧妙：零长度数组不会对结构体定义造成冗余，而且使用起来很方便。</p>
+<h3 id="属性声明"><a href="#属性声明" class="headerlink" title="属性声明"></a>属性声明</h3><hr>
+<p><strong><code>__attribute__</code></strong></p>
+<p>GNU C增加了一个<code>__attribute__</code>关键字用来声明一个函数、变量或类型的特殊属性。声明这个特殊属性有什么用呢？主要用途就是指导编译器在编译程序时进行特定方面的优化或代码检查。例如，我们可以通过属性声明来指定某个变量的数据对齐方式。<code>__attribute__</code>的使用非常简单，当我们定义一个函数、变量或类型时，直接在它们名字旁边添加下面的属性声明即可。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__attribute__((attribute))</span><br></pre></td></tr></table></figure></div>
+
+<p>需要注意的是，<code>__attribute__</code>后面是两对小括号，不能图方便只写一对，否则编译就会报错。括号里面的ATTRIBUTE表示要声明的属性。目前<code>__attribute__</code>支持十几种属性声明。</p>
+<table>
+<thead>
+<tr>
+<th>函数属性(Function Attribute)</th>
+<th>类型属性(Type Attributes)</th>
+<th>变量属性(Variable Attribute)</th>
+<th>Clang特有的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>noreturn</td>
+<td>aligned</td>
+<td>alias</td>
+<td>availability</td>
+</tr>
+<tr>
+<td>noinline</td>
+<td>packed</td>
+<td>at(address)</td>
+<td>overloadable</td>
+</tr>
+<tr>
+<td>always_inline</td>
+<td>bitband</td>
+<td>aligned</td>
+<td></td>
+</tr>
+<tr>
+<td>flatten</td>
+<td></td>
+<td>deprecated</td>
+<td></td>
+</tr>
+<tr>
+<td>pure</td>
+<td></td>
+<td>noinline</td>
+<td></td>
+</tr>
+<tr>
+<td>const</td>
+<td></td>
+<td>packed</td>
+<td></td>
+</tr>
+<tr>
+<td>constructor</td>
+<td></td>
+<td>weak</td>
+<td></td>
+</tr>
+<tr>
+<td>destructor</td>
+<td></td>
+<td>weakref(“target”)</td>
+<td></td>
+</tr>
+<tr>
+<td>sentinel</td>
+<td></td>
+<td>section(“name”)</td>
+<td></td>
+</tr>
+<tr>
+<td>format</td>
+<td></td>
+<td>unused</td>
+<td></td>
+</tr>
+<tr>
+<td>format_arg</td>
+<td></td>
+<td>used</td>
+<td></td>
+</tr>
+<tr>
+<td>section</td>
+<td></td>
+<td>visibility(“visibility_type”)</td>
+<td></td>
+</tr>
+<tr>
+<td>used</td>
+<td></td>
+<td>zero_init</td>
+<td></td>
+</tr>
+<tr>
+<td>unused</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>deprecated</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>weak</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>malloc</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>alias</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>warn_unused_result</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>nonnull</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>nothrow (不抛出C++ 异常)</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p><strong>常用如下：</strong></p>
+<ol>
+<li>aligned(n)：指定变量的对齐方式，n表示对齐字节数。</li>
+<li>packed：指定结构体或联合体的成员按照1字节对齐。</li>
+<li>section(“name”)：指定变量或函数所在的段名。</li>
+<li>unused：告诉编译器该变量或函数未被使用，避免编译器产生警告。</li>
+<li>deprecated：告诉编译器该变量或函数已经过时，避免编译器产生警告。</li>
+<li>noreturn：告诉编译器该函数不会返回，避免编译器产生警告。</li>
+<li>format：指定函数的参数格式，用于检查printf和scanf等函数的参数类型。</li>
+<li>constructor：指定函数为构造函数，在程序启动时自动执行。</li>
+<li>destructor：指定函数为析构函数，在程序结束时自动执行。</li>
+</ol>
+<hr>
+<p><strong>section</strong></p>
+<p>section属性的主要作用是：在程序编译时，将一个函数或变量放到指定的段，即放到指定的section中。一个可执行文件主要由代码段、数据段、BSS段构成。代码段主要存放编译生成的可执行指令代码，数据段和BSS段用来存放全局变量、未初始化的全局变量。代码段、数据段和BSS段构成了一个可执行文件的主要部分。除了这三个段，可执行文件中还包含其他一些段。用编译器的专业术语讲，还包含其他一些section，如只读数据段、符号表等。我们可以使用<code>__attribute__</code>来声明一个section属性，显式指定一个函数或变量，在编译时放到指定的section里面。通过上面的程序我们知道，未初始化的全局变量默认是放在.bss section中的，即默认放在BSS段中。现在我们就可以通过section属性声明，把这个未初始化的全局变量放到数据段.data中。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> global_val <span class="number">8</span>;</span><br><span class="line"><span class="type">int</span> uninit_val __attribute__((section(<span class="string">&quot;.data&quot;</span>)));</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p><strong>aligned</strong></p>
+<p>GNU C通过<code>__attribute__</code>来声明aligned和packed属性，指定一个变量或类型的对齐方式。这两个属性用来告诉编译器：在给变量分配存储空间时，要按指定的地址对齐方式给变量分配地址。</p>
+<h3 id="内联函数"><a href="#内联函数" class="headerlink" title="内联函数"></a>内联函数</h3><h3 id="内建函数"><a href="#内建函数" class="headerlink" title="内建函数"></a>内建函数</h3><h3 id="可变参数宏"><a href="#可变参数宏" class="headerlink" title="可变参数宏"></a>可变参数宏</h3><h2 id="现代-C-语言"><a href="#现代-C-语言" class="headerlink" title="现代 C 语言"></a>现代 C 语言</h2><h3 id="c99"><a href="#c99" class="headerlink" title="c99"></a>c99</h3><h3 id="c11"><a href="#c11" class="headerlink" title="c11"></a>c11</h3><h3 id="c17"><a href="#c17" class="headerlink" title="c17"></a>c17</h3><h3 id="c23"><a href="#c23" class="headerlink" title="c23"></a>c23</h3><p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/C23_(C_standard_revision)#Features" >c23新特性<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="异步编程"><a href="#异步编程" class="headerlink" title="异步编程"></a>异步编程</h2><h2 id="网络编程"><a href="#网络编程" class="headerlink" title="网络编程"></a>网络编程</h2><h2 id="无锁编程"><a href="#无锁编程" class="headerlink" title="无锁编程"></a>无锁编程</h2><h2 id="异步信号安全"><a href="#异步信号安全" class="headerlink" title="异步信号安全"></a>异步信号安全</h2><p>详见《Linux环境编程与内核之信号》。</p>
+<h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
+<p><strong>0. 把右值放在条件判断的左边</strong></p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">do_leap</span><span class="params">(<span class="type">const</span> <span class="type">int</span> y)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>((<span class="number">0</span> == y %<span class="number">4</span>  &amp;&amp; <span class="number">0</span> != y % <span class="number">100</span>) || <span class="number">0</span> == y % <span class="number">400</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
 
 <p>这样做的好处是在大型的项目中，不小心把<code>==</code>写成<code>=</code>编译就会报错。否则编译不会出错但是会有警告，对于一些轻视警告的程序员来说这样的<code>bug</code>调试起来是十分费力的。</p>
@@ -522,8 +736,9 @@
 <p><strong>9. 不要忽略任何一次小的单元测试</strong></p>
 <p><strong>10. 当不能使用简单点循环解决问题，再考虑递归函数，否则程序开销会很大</strong></p>
 <p><strong>11. 循环数组时，数组的大小要用宏定义定义好，或者使用<code>sizeof</code>来计算数组的大小，这样修改数组的大小</strong></p>
+<p><strong>12. 不要使用glibc的signal函数，它的历史负担太重，不同glibc版本和操作系统版本实现可能不同，语义模糊。Linux给出了语义更加精确的sigaction。</strong></p>
 <h1 id="C-语言项目"><a href="#C-语言项目" class="headerlink" title="C 语言项目"></a>C 语言项目</h1><p>学之前可以先看一下博客中《数据结构与算法》这篇文章。</p>
-<h2 id="基础项目"><a href="#基础项目" class="headerlink" title="基础项目"></a>基础项目</h2><h3 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h3><h3 id="进程池"><a href="#进程池" class="headerlink" title="进程池"></a>进程池</h3><h3 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h3>
+<h2 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h2><h2 id="进程池"><a href="#进程池" class="headerlink" title="进程池"></a>进程池</h2><h2 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h2><h2 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h2>
 		</div>
 
 		
@@ -537,7 +752,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-11 10:04:34
+                    :</strong> 2025-02-14 11:45:21
             </li>
         
         <li>
@@ -658,7 +873,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">C语言编程</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E6%A0%87%E5%87%86%E5%BA%93"><span class="nav-text">Linux C 标准库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#termios-h"><span class="nav-text">termios.h</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#time-h"><span class="nav-text">time.h</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stdarg-h"><span class="nav-text">stdarg.h</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E7%B3%BB%E7%BB%9F%E5%BA%93"><span class="nav-text">Linux C 系统库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E7%9B%B8%E5%85%B3"><span class="nav-text">指针相关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88%E6%95%B0%E7%BB%84%E5%92%8C%E6%95%B0%E7%BB%84%E6%8C%87%E9%92%88"><span class="nav-text">指针数组和数组指针</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E9%92%88"><span class="nav-text">指针++</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%92%8C"><span class="nav-text">[] 和 *</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E6%8C%87%E9%92%88"><span class="nav-text">多级指针</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">IO 函数安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E5%AE%89%E5%85%A8"><span class="nav-text">字符串操作函数安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B"><span class="nav-text">异步编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B"><span class="nav-text">网络编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B"><span class="nav-text">无锁编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%AF%AD%E8%A8%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">C 语言项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">基础项目</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-text">线程池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E6%B1%A0"><span class="nav-text">进程池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-text">内存池</span></a></li></ol></li></ol></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E5%B8%B8%E7%94%A8%E5%BA%93"><span class="nav-text">Linux C 常用库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GNU-C-%E6%89%A9%E5%B1%95%E8%AF%AD%E6%B3%95"><span class="nav-text">GNU C 扩展语法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E5%AE%9A%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">指定初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8F%E5%AE%9A%E4%B9%89%E4%B8%AD%E7%9A%84%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">宏定义中的语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#typeof%E4%B8%8Econtainer-of%E5%AE%8F"><span class="nav-text">typeof与container_of宏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9B%B6%E9%95%BF%E6%95%B0%E7%BB%84"><span class="nav-text">零长数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B1%9E%E6%80%A7%E5%A3%B0%E6%98%8E"><span class="nav-text">属性声明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0"><span class="nav-text">内联函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%BB%BA%E5%87%BD%E6%95%B0"><span class="nav-text">内建函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E5%AE%8F"><span class="nav-text">可变参数宏</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E4%BB%A3-C-%E8%AF%AD%E8%A8%80"><span class="nav-text">现代 C 语言</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#c99"><span class="nav-text">c99</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c11"><span class="nav-text">c11</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c17"><span class="nav-text">c17</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c23"><span class="nav-text">c23</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B"><span class="nav-text">异步编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B"><span class="nav-text">网络编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B"><span class="nav-text">无锁编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E4%BF%A1%E5%8F%B7%E5%AE%89%E5%85%A8"><span class="nav-text">异步信号安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%AF%AD%E8%A8%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">C 语言项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-text">线程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E6%B1%A0"><span class="nav-text">进程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-text">内存池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%8F%E7%A8%8B"><span class="nav-text">协程</span></a></li></ol></li></ol>
 
 	</div>
 </div>
@@ -687,7 +902,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        98 posts in total
+                        99 posts in total
                     </span>
                     
                 </p>
