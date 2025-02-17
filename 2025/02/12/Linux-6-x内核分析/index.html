@@ -25,18 +25,21 @@
     
     
         
-        <meta name="description" content="前言本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，比较简单适合内核&#x2F;驱动&#x2F;嵌入式初学者入门学习。 姜老师的另一本著作《精通Linux内核：智能设备开发核心技术》讲的较为深入，两本书结合相信能够帮很多小伙伴进一步熟悉Linux内核的原理。 本文将两本书结合起来，在原有基础上进行了一些扩展，后面也会加入linux系统加载相关部分。可惜老师并没有写网络相关的部分">
+        <meta name="description" content="前言本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，很适合简单适合内核&#x2F;驱动&#x2F;嵌入式初中级学者入门学习。 姜老师的另一本著作《精通Linux内核：智能设备开发核心技术》讲的较为深入，两本书结合相信能够帮很多小伙伴进一步熟悉Linux内核的原理。 本文将两本书结合起来，在原有基础上进行了一些扩展，后面也会加入linux系统加载相关部分。可惜老师并没有写网络相关">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux-6-x内核分析">
 <meta property="og:url" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/index.html">
 <meta property="og:site_name" content="Jelasin">
-<meta property="og:description" content="前言本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，比较简单适合内核&#x2F;驱动&#x2F;嵌入式初学者入门学习。 姜老师的另一本著作《精通Linux内核：智能设备开发核心技术》讲的较为深入，两本书结合相信能够帮很多小伙伴进一步熟悉Linux内核的原理。 本文将两本书结合起来，在原有基础上进行了一些扩展，后面也会加入linux系统加载相关部分。可惜老师并没有写网络相关的部分">
+<meta property="og:description" content="前言本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，很适合简单适合内核&#x2F;驱动&#x2F;嵌入式初中级学者入门学习。 姜老师的另一本著作《精通Linux内核：智能设备开发核心技术》讲的较为深入，两本书结合相信能够帮很多小伙伴进一步熟悉Linux内核的原理。 本文将两本书结合起来，在原有基础上进行了一些扩展，后面也会加入linux系统加载相关部分。可惜老师并没有写网络相关">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250212154421350.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250212145716098.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250212152747685.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_9.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_12.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_16.jpg">
 <meta property="article:published_time" content="2025-02-12T05:48:36.000Z">
-<meta property="article:modified_time" content="2025-02-12T08:45:06.978Z">
+<meta property="article:modified_time" content="2025-02-17T06:02:58.795Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250212154421350.png">
@@ -480,8 +483,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-12 16:45:06</span>
-            <span class="mobile">2025-02-12 16:45:06</span>
+            <span class="desktop">2025-02-17 14:02:58</span>
+            <span class="mobile">2025-02-17 14:02:58</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -508,10 +511,10 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，比较简单适合内核&#x2F;驱动&#x2F;嵌入式初学者入门学习。</p>
+			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本文主要参考姜老师的书《图解Linux内核》，还是，这本书图文结合，很适合简单适合内核&#x2F;驱动&#x2F;嵌入式初中级学者入门学习。</p>
 <p>姜老师的另一本著作《精通Linux内核：智能设备开发核心技术》讲的较为深入，两本书结合相信能够帮很多小伙伴进一步熟悉Linux内核的原理。</p>
 <p>本文将两本书结合起来，在原有基础上进行了一些扩展，后面也会加入linux系统加载相关部分。可惜老师并没有写网络相关的部分，笔者斗胆在结尾把网络管理部分也补充完整，尽可能和姜老师一样图文并茂的讲述Linux内核网络管理部分的原理。</p>
-<p>本文着重讲解原理，关于项目实例放在了其他内核分析和Linux驱动编程系列的文章里面。</p>
+<p>本文着重讲解原理，关于项目实例放在了其他内核分析和Linux&#x2F;Android驱动编程系列的文章里面。</p>
 <h1 id="基础篇"><a href="#基础篇" class="headerlink" title="基础篇"></a>基础篇</h1><h2 id="Linux内核概述"><a href="#Linux内核概述" class="headerlink" title="Linux内核概述"></a>Linux内核概述</h2><h3 id="CPU与操作系统"><a href="#CPU与操作系统" class="headerlink" title="CPU与操作系统"></a><strong>CPU与操作系统</strong></h3><p>处理器，也就是我们常说的中央处理器（Central Processing Unit, CPU），它是一台计算机的运算中心和控制中心，简单地说，它负责解释执行指令，并处理数据。但是仅仅一个处理器是无法运行的，必须有一套与处理器配合的硬件，它们与处理器一起构成一个平台。不同的处理器要求的硬件是不同的，比如x86处理器，一般配套的有南桥、北桥芯片和存储BIOS的芯片等。操作系统（Operating System, OS）是管理计算机硬件和软件资源的程序，是运行在平台上最基本的软件，其他软件以它为基础。</p>
 <p>处理器运行操作系统用于管理应用程序的执行，应用程序通过操作系统使用平台的硬件，达到预期的运行效果，满足用户的需求。内核是操作系统最基本的部分，也是操作系统与硬件关系最密切的一部分，控制系统对硬件的访问。同样，Linux内核是它的操作系统的基础，包含了内存管理、文件系统、进程管理和设备驱动等核心模块。</p>
 <p>一个基于<code>Linux</code>内核的操作系统一般包含以下几个部分：</p>
@@ -845,7 +848,107 @@
 <p>但是App需要的传感器是不同的，比如，激流快艇游戏，需要的是陀螺仪的数据；统计步数的App，需要的是加速度传感器的数据。这些传感器的精确度和采样频率对用户体验的影响较大，比如陀螺仪，高端手机必备，低端手机上可能并没有安装，这种情况下的陀螺仪数据是通过其他传感器的数据计算得到的，精确度不足，采样频率也达不到要求，操作会有明显的滞后和偏差。</p>
 <p>从流程角度看，传感器与触摸屏大同小异，同样是由芯片开始，经过操作系统的传递，数据到达应用，然后计算并刷新屏幕。不同的地方在于，系统可能会根据策略对数据做一定的处理，比如在低端手机上没有陀螺仪的情况下，根据加速度和磁力传感器的数据计算得到陀螺仪的数据。</p>
 <p>换作另外一个桌面操作系统，可能就不需要做类似的处理，因为它并不执着于得到陀螺仪的数据。触摸屏的例子也是如此，如果它不需要支持触控操作，也不需要实现中间的“辗转腾挪”。内核是操作系统的基础，是它们的通用部分，操作系统根据自身的定位决定它需要在此基础上实现的功能，定制它的特有算法和流程。</p>
-<h2 id="数据结构和设计模式"><a href="#数据结构和设计模式" class="headerlink" title="数据结构和设计模式"></a>数据结构和设计模式</h2>
+<h2 id="数据结构和设计模式"><a href="#数据结构和设计模式" class="headerlink" title="数据结构和设计模式"></a>数据结构和设计模式</h2><p>内核中有很多数据结构本身并没有实际意义，它们扮演的是辅助角色，为实现某些特殊目的“穿针引线”，比如下面介绍的几种，可以辅助实现数据结构之间关系。也有某些数据结构，特别适用于某些特定场景，实现某些特定功能，比如位图。</p>
+<h3 id="关系型数据结构"><a href="#关系型数据结构" class="headerlink" title="关系型数据结构"></a>关系型数据结构</h3><p>程序&#x3D;数据结构+算法，数据结构指的是数据与数据之间的逻辑关系，算法指的是解决特定问题的步骤和方法。逻辑关系本身就是现实的反映与抽象，理解逻辑关系是理解程序的关键，本节将讲述实现一对一、一对多和多对多关系的常用数据结构和方法。</p>
+<h4 id="一对一关系"><a href="#一对一关系" class="headerlink" title="一对一关系"></a>一对一关系</h4><p>一对一的关系随处可见，结构体与其成员、很多结构体与结构体之间都是这种关系。结构体与成员的一对一关系简单明了，两个结构体之间的一对一关系有指针和内嵌（包含）两种表达方式，代码如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//指针</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">a</span>&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">b</span> *<span class="title">b</span>;</span></span><br><span class="line">&#125;；</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">b</span>&#123;</span></span><br><span class="line">	(<span class="keyword">struct</span> entity a *a;)</span><br><span class="line">&#125;:</span><br><span class="line"><span class="comment">//内嵌（包含）</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">al</span>&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">bb</span>;</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
+
+<p>第二种方式的主要优点是对一对一关系体现得比较清晰，同时也方便管理，因为通过<code>container_of</code>宏（内核定义好的）可以由b计算出a的位置，而不再需要多一个指向a的指针。</p>
+<p>然而第二种方式并不一定是最好的，要视逻辑而定。比如男人和妻子，通常是一对一，如果采用内嵌的方式首先造成的是逻辑混乱，男人结构体中多了一些不属于男人的成员（即妻子）；其次，并不是每个男人都有妻子，有些是单身，用指针表示就是NULL，内嵌无疑浪费了空间。所以，要满足逻辑合理、有a就有b这两个条件，采用这种方式才是比较恰当的。</p>
+<p>安全性是程序的首要要求，而合理的逻辑是安全性重要的前提，违背逻辑的程序即使当前“安全”，在程序不断维护和更新的过程中，随着开发人员的变动，隐患迟早会爆发。</p>
+<h4 id="一对多关系"><a href="#一对多关系" class="headerlink" title="一对多关系"></a>一对多关系</h4><p>一对多关系在内核中一般由链表或树实现，由于数组的大小是固定的，除非在特殊情况下，才会采用数组。用链表实现有多种常用方式，包括<code>list_head、hlist_head/hlist_node、rb_root/rb_node</code>（红黑树）等数据结构。下面以<code>branch</code>（树枝）和<code>leaf</code>（树叶）为例进行分析。</p>
+<p>最简单的方式是单向链表，该方式直接明了，只需要<code>leaf</code>结构体内包含一个<code>leaf</code>类型的指针字段即可，代码如下。中断部分的<code>irq_desc</code>和<code>irqaction</code>结构体使用的就是这种方式。</p>
+<p>branch包含指向链接头的指针，leaf对象通过next串联起来，如下图所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_9.jpg"
+                      alt="epub_31251702_9"
+                ></p>
+<p>该方式的局限在于不能通过一个leaf访问前一个leaf对象，当然也不能方便地在某个元素前面插入新结点或删除当前结点，正因为缺乏灵活性，它一般用在只需要通过branch访问leaf的情况下。一般情况下，链表中所有的点都被称为结点，其中链表头被称为头结点。为了更好地区分头结点和其他结点，在本书中分别称之为链表头和链表的（普通）元素。</p>
+<p>在需要方便地进行遍历、插入和删除等操作的情况下，上面的方式过于笨拙，可以使用双向链表。<a class="link"   target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.7/source/scripts/kconfig/list.h#L24" >内核中<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>已经提供了<code>list_head</code>、<code>hlist_head</code>等数据结构来满足该需求。branch的head字段是该链表的头，每一个相关的leaf都通过node字段链接起来，<code>list_head</code>的使用如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">branch</span>&#123;</span></span><br><span class="line">    <span class="comment">//others</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">head</span></span></span><br><span class="line"><span class="class">&#125;</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">leaf</span>&#123;</span></span><br><span class="line">    <span class="comment">//others</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">node</span>;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>利用这个双向链表和<code>container_of</code>等宏，就可以方便地满足遍历、插入和删除等操作，<code>list_head</code>定义如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">next</span>,*<span class="title">prev</span>;</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_12.jpg"
+                      alt="epub_31251702_12"
+                ></p>
+<p>从上图可见，真正串联起来的是<code>list_head</code>，而不是branch或者leaf。不过有了list_head，通过container_of宏就可以得到branch和leaf了。内核提供了很多list_head相关的函数和宏，其中一部分如下表所示。</p>
+<table>
+<thead>
+<tr>
+<th>函数和宏</th>
+<th>描                         述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>LIST_HEAD(name)</strong></td>
+<td>定义并初始化一个名字为 name 的链表</td>
+</tr>
+<tr>
+<td><strong>INIT_LIST_HEAD(list)</strong></td>
+<td>初始化 list</td>
+</tr>
+<tr>
+<td><strong>list_add(new,node)</strong></td>
+<td>在 node 后面插入 new</td>
+</tr>
+<tr>
+<td><strong>list_add_tail(new,node)</strong></td>
+<td>在 node 前面插入 new , node&#x3D;&#x3D;head 时，插在尾部</td>
+</tr>
+<tr>
+<td><strong>list_empty(node)</strong></td>
+<td>链表是否为空，node 可以不等于 head</td>
+</tr>
+<tr>
+<td><strong>list_is_last(node,head)</strong></td>
+<td>node 是否为最后一个元素</td>
+</tr>
+<tr>
+<td><strong>list_delete(node)</strong></td>
+<td>删除 node</td>
+</tr>
+<tr>
+<td><strong>list_entry(ptr,type,member)</strong></td>
+<td>ptr 为 list_head 的地址，type为目标结构体名，member 是目标结构体内list_head对应的字段名，作用是获得包含该list_head的type对象。            例：struct leaf*leaf&#x3D;list entry(ptr,struct leaf,node)</td>
+</tr>
+<tr>
+<td><strong>list_first_entry(ptr,type,member)</strong></td>
+<td>参数同上，作用是获得包含下一个list_head结点的type对象</td>
+</tr>
+<tr>
+<td><strong>list_for_each_entry(pos,head,member)</strong></td>
+<td>遍历每一个type对象，pos是输出，表示当前循环中对象的地址，type 实际由typeof(*pos)实现</td>
+</tr>
+<tr>
+<td><strong>list_for_each_entry_safe(pos,n,head,member)</strong></td>
+<td>n 起到临时存储的作用，其他同上。区别在于，如果循环中删除了当前元素，xxx_safe是安全的</td>
+</tr>
+</tbody></table>
+<p>list_head链表的头与链表的元素是相同的结构，所以无论传递给各操作的参数是链表头还是元素编译器都不会报错。但它们代表的意义不同，有些操作对参数是有要求的，比如list_delete不能以链表头为参数，否则branch的list相关字段被置为<code>LIST_POISON1/LIST_POISON2</code>，整个链表将不复存在。</p>
+<p>另外，需要特别注意的是，也正是由于<code>list_delete</code>删除元素后会重置它的prev、next字段，所以不带safe后缀的操作（如list_for_each_entry），获得元素后不能进行删除当前元素的操作，否则无法完成遍历操作。有safe后缀的操作会使用n临时复制当前元素的链表关系，使用n继续遍历，所以不存在该问题。</p>
+<p>list_head有一个兄弟，即<code>hlist_head/hlist_node</code>。顾名思义，<code>hlist_head</code>表示链表头，<code>hlist_node</code>表示链表元素，它们的<a class="link"   target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.7/source/tools/include/linux/types.h#L93" >定义<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">hlist_head</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">hlist_node</span> *<span class="title">first</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">hlist_node</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">hlist_node</span> *<span class="title">next</span>, **<span class="title">pprev</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>hlist_head的first字段的值是链表第一个node的地址，hlist_node的next字段是指向下一个node的指针，pprev字段的值等于前一个node的next字段的地址。如果分别以curr、prev和next表示当前、前一个和下一个node的地址，那么<code>curr-&gt;next==next，curr-&gt;pprev==&amp;prev-&gt;next</code>都成立。</p>
+<p>与list_head相比，hlist的链表头与链表元素的数据结构是不同的，而且hlist_head占用内存与list_head相比小了一半。存在多个同质的双向链表的情况下，链表头占的空间就值得考虑节省了。内核中很多地方使用了它，这些链表头存于数组、哈希表、树结构中，节省的空间是比较可观的。</p>
+<p>另外，<code>hlist_head</code>不能直接访问链表的最后一个元素，必须遍历每一个元素才能达到目的，而list_head链表头的prev字段就指向链表最后一个元素。因此，hlist_head并不适用于FIFO（First In First Out）的需求中。</p>
+<p>内核也提供了hlist_head的相关操作，大多与list_head的操作相似，如下表所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_16.jpg"
+                      alt="epub_31251702_16"
+                ></p>
+<p>与<code>list_head</code>相同，不带safe后缀的操作（如hlist_for_each_entry）获得元素后，不能进行删除当前元素的操作，否则无法完成遍历操作。</p>
+<p>红黑树、基数（radix）树等结构也会用在一对多的关系中，它们涉及比较有趣的算法，在对查询与增删改等性能要求较高的地方使用较多，相关知识可参考算法方面的书籍，内核中提供的函数可参考rbtree.h和radix-tree.h等文件。</p>
+
 		</div>
 
 		
@@ -859,7 +962,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-12 16:45:06
+                    :</strong> 2025-02-17 14:02:58
             </li>
         
         <li>
@@ -968,7 +1071,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Linux-6-x内核分析</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%AF%87"><span class="nav-text">基础篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E6%A6%82%E8%BF%B0"><span class="nav-text">Linux内核概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU%E4%B8%8E%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">CPU与操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84"><span class="nav-text">Linux内核代码结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Android%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">Android操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E5%88%86%E6%9E%90"><span class="nav-text">实例分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">数据结构和设计模式</span></a></li></ol></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%AF%87"><span class="nav-text">基础篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E6%A6%82%E8%BF%B0"><span class="nav-text">Linux内核概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU%E4%B8%8E%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">CPU与操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84"><span class="nav-text">Linux内核代码结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Android%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">Android操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E5%88%86%E6%9E%90"><span class="nav-text">实例分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">数据结构和设计模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">关系型数据结构</span></a></li></ol></li></ol></li></ol>
 
 	</div>
 </div>

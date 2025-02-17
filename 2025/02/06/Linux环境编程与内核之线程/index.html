@@ -25,15 +25,26 @@
     
     
         
-        <meta property="og:type" content="article">
+        <meta name="description" content="线程和进程在Linux下，程序或可执行文件是一个静态的实体，它只是一组指令的集合，没有执行的含义。进程是一个动态的实体，有自己的生命周期。线程是操作系统进程调度器可以调度的最小执行单元。进程和线程的关系如图：  一个进程可能包含多个线程，传统意义上的进程，不过是多线程的一种特例，即该进程只包含一个线程。为什么要有多线程？举个生活中的例子，这就好比去银行办理业务。到达银行后，首先找到领导的机器领取一">
+<meta property="og:type" content="article">
 <meta property="og:title" content="Linux环境编程与内核之线程">
 <meta property="og:url" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/index.html">
 <meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="线程和进程在Linux下，程序或可执行文件是一个静态的实体，它只是一组指令的集合，没有执行的含义。进程是一个动态的实体，有自己的生命周期。线程是操作系统进程调度器可以调度的最小执行单元。进程和线程的关系如图：  一个进程可能包含多个线程，传统意义上的进程，不过是多线程的一种特例，即该进程只包含一个线程。为什么要有多线程？举个生活中的例子，这就好比去银行办理业务。到达银行后，首先找到领导的机器领取一">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217101916574.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217102103826.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217102432338.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217103346943.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217105301113.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217105554968.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217110329941.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217110840510.png">
 <meta property="article:published_time" content="2025-02-06T06:49:11.000Z">
-<meta property="article:modified_time" content="2025-02-06T06:49:11.857Z">
+<meta property="article:modified_time" content="2025-02-17T03:09:33.678Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217101916574.png">
     
     
         <!-- Google tag (gtag.js) -->
@@ -474,8 +485,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-06 14:49:11</span>
-            <span class="mobile">2025-02-06 14:49:11</span>
+            <span class="desktop">2025-02-17 11:09:33</span>
+            <span class="mobile">2025-02-17 11:09:33</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -502,7 +513,126 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			
+			<h1 id="线程和进程"><a href="#线程和进程" class="headerlink" title="线程和进程"></a>线程和进程</h1><p>在Linux下，程序或可执行文件是一个静态的实体，它只是一组指令的集合，没有执行的含义。进程是一个动态的实体，有自己的生命周期。线程是操作系统进程调度器可以调度的最小执行单元。进程和线程的关系如图：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217101916574.png"
+                      alt="image-20250217101916574"
+                ></p>
+<p>一个进程可能包含多个线程，传统意义上的进程，不过是多线程的一种特例，即该进程只包含一个线程。为什么要有多线程？举个生活中的例子，这就好比去银行办理业务。到达银行后，首先找到领导的机器领取一个号码，然后坐下来安心等待。这时候你一定希望，办理业务的窗口越多越好。如果把整个营业大厅当成一个进程的话，那么每一个窗口就是一个工作线程。这种场景在Linux中屡见不鲜。编程的思想和生活中解决问题的想法总是类似的。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217102103826.png"
+                      alt="image-20250217102103826"
+                ></p>
+<p>有人说不必非要使用线程，多个进程也能做到这点。的确如此。<code>Unix/Linux</code>原本的设计是没有线程的，类Unix系统包括Linux从设计上更倾向于使用进程，反倒是<code>Windows</code>因为创建进程的开销巨大，而更加钟爱线程。那么线程是不是一种设计上的冗余呢？其实不是这样的。进程之间，彼此的地址空间是独立的，但线程会共享内存地址空间。同一个进程的多个线程共享一份全局内存区域，包括初始化数据段、未初始化数据段和动态分配的堆内存段。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217102432338.png"
+                      alt="image-20250217102432338"
+                ></p>
+<p>这种共享给线程带来了很多的优势：</p>
+<ul>
+<li>创建线程花费的时间要少于创建进程花费的时间。</li>
+<li>终止线程花费的时间要少于终止进程花费的时间。</li>
+<li>线程之间上下文切换的开销，要小于进程之间的上下文切换。</li>
+<li>线程之间数据的共享比进程之间的共享要简单。</li>
+</ul>
+<p>线程间的上下文切换，指的是同一个进程里不同线程之间发生的上下文切换。由于线程原本属于同一个进程，它们会共享地址空间，大量资源共享，切换的代价小于进程之间的切换是自然而然的事情。线程之间通信的代价低于进程之间通信的代价。线程共享地址空间的设计，让多个线程之间的通信变得非常简单。进程之间的通信代价则要高很多。进程之间不得不采用一些进程间通信的手段（如管道、共享内存及信号量等）来协作。前面是从操作系统的角度来分析线程优势的，从用户或应用的视角来分析，多线程的程序也有很多的优势。</p>
+<p><strong>发挥多核优势，充分利用CPU资源</strong></p>
+<p>CPU是一种资源，如果一方面CPU资源大量闲置，处于IDLE的状态，另一方面很多任务得不到及时的处理，处于排队等待的状态，这就表明资源没有得到有效的利用，本质上是一种浪费。如果存在多个相同的任务，彼此之间并行不悖，互不依赖（或者依赖性很小），那么启动多个线程并发处理，是一个不错的选择。虽然对每个任务而言，处理的时间并没有缩短，但是在相同时间内，处理了更多的任务。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217103346943.png"
+                      alt="image-20250217103346943"
+                ></p>
+<p><strong>更自然的编程模型</strong></p>
+<p>有很多程序，天生就适合用多线程。将工作切分成多个模块，并为每个模块分配一个或多个执行单元，更符合人类解决问题的思路。以文本编辑程序为例，用户的输入需要及时响应，必须要有线程来监控鼠标和键盘；如果用户删除了第一页的某一行，后面很多页的格式都会受到影响，这时就需要有文本格式化线程在后台执行格式处理；很多文本编辑软件都有自动保存的功能，第三个线程会周期性地将文件内容写入磁盘；很多文本编辑软件都有检测拼写错误的功能，或许我们需要第四个线程……</p>
+<p>上述的分工是很自然的事情，想象一下如果将所有工作都放在一个单线程的进程里面，那么该进程是不是就不得不处理庞杂而又繁芜的事情？程序结构也就会变得异常复杂。没有银弹。多线程带来优势的同时，也存在一些弊端。</p>
+<p>（1）多线程的进程，因地址空间的共享让该进程变得更加脆弱</p>
+<p>多个线程之中，只要有一个线程不够健壮存在bug（如访问了非法地址引发的段错误），就会导致进程内的所有线程一起完蛋。进程的地址空间互相独立，彼此隔离得更加彻底。多个进程之间互相协同，一个进程存在bug导致异常退出，不会影响到其他进程。</p>
+<p>（2）线程模型作为一种并发的编程模型，效率并没有想象的那么高，会出现复杂度高、易出错、难以测试和定位的问题目前存在的并发编程，基本可以分成两类：</p>
+<ul>
+<li>共享状态式</li>
+<li>消息传递式线程模型采用的是第一种。</li>
+</ul>
+<blockquote>
+<p>从现在开始，停止幻想，欢迎来到真实的世界。一个程序员碰到了一个问题，他决定用多线程来解决。现在两个他问题了有。</p>
+<p>​	——关于线程的冷笑话</p>
+</blockquote>
+<p>在真实的场景中，多线程编程是很复杂的。前面所说的多个任务并行不悖，互不依赖，在大多数情况下只是一种美好的幻想。首先，多个线程之间，存在负载均衡的问题，现实中很难将全部任务等分给每个线程。想象一下，如果存在10个线程，一个线程承担了90%的任务，9个线程承担了10%的任务，整体的效率立刻就降了下来。</p>
+<p>有人说，怎么会有这么愚蠢的设计呢。试想如下场景：你需要用支持10个并发线程的服务器去计算<code>1~10^10</code>以内的所有素数，要怎么设计？首先进入脑海的第一反应是不是将<code>1~10^10</code>这个范围平均分成10份，每一份有109个数，10个线程分别查找范围内的素数？这就是糟糕的设计，尽管每个线程负责的范围是相同的，但是每个线程的负载并不均匀，因为判断一个较大的数是不是素数，通常要比判断较小的数所花费的时间更长。当然这个例子有比较妥善的解决方案，但是在很多情况下，很难将负载均匀地分配给各个线程。</p>
+<p>其次，多个线程的任务之间还可能存在顺序依赖的关系，一个线程未能完成某些操作之前，其他线程不能或不应该运行。</p>
+<p>多个线程之间需要同步。多个线程生活在进程地址空间这同一个屋檐下，若存在多个线程操作共享资源，则需要同步，否则可能会出现结果错误、数据结构遭到破坏甚至是程序崩溃等后果。因此多线程编程中存在临界区的概念，临界区的代码只允许一个线程执行，线程提供了锁机制来保护临界区。当其他线程来到临界区却无法申请到锁时，就可能陷入阻塞，不再处于可执行状态，线程可能不得不让出CPU资源。如果设计不合理，临界区非常多，线程之间的竞争异常激烈，频繁地上下文切换也会导致性能急剧恶化。</p>
+<p>上面两种情况的存在，决定了多线程并非总是处于并发的状态，加速也并非线性的。4个工作线程未必能带来4倍的效率，加速比取决于可以串行执行的部分在全部工作中所占的比例。有人曾经这样打比方：多进程属于立体交通系统，虽然造价高，上坡下坡比较耗油，但是堵车少；多线程属于平面交通系统，造价低，但是红绿灯太多，老堵车。</p>
+<p>多线程模型的复杂度更是不容小觑。很多人诟病多线程模型，就在于它不符合人的心智模型。俗语道，一心不可两用，人很难同时控制多条走走停停，彼此又有交互和同步的控制流。由于进程调度的无序性，严格来说多线程程序的每次执行其实并不一样，很难穷举所有的时序组合，所以我们永远无法宣称多线程的程序经过了充分的测试。在某些特殊时序的条件下，bug可能会出现，这种bug难以复现，而且难以排查。所以编程时，需要谨慎地设计，以确保程序能够在所有的时序条件下正常运行。对于多线程编程，还存在四大陷阱，一不小心就可能落入陷阱之中。这四个陷阱分别是：</p>
+<ul>
+<li>死锁（Dead Lock）</li>
+<li>饿死（Starvation）</li>
+<li>活锁（Live Lock）</li>
+<li>竞态条件（Race Condition）</li>
+</ul>
+<p>客观地说，多线程编程的难度要更大一些，需要程序员更加小心，更加谨慎。当你需要使用多线程的时候，一定要花费足够的时间小心地规划每个线程的分工，尽可能地减少线程之间的依赖。良好的设计，合理的分工是多线程编程至关重要的环节。若初期随意地设计线程的分工，那么在最后，你很有可能不得不花费大量的时间来优化性能，定位bug，甚至不得不推倒重来。</p>
+<h1 id="进程ID和线程ID"><a href="#进程ID和线程ID" class="headerlink" title="进程ID和线程ID"></a>进程ID和线程ID</h1><p>在Linux中，目前的线程实现是Native POSIX Thread Library，简称NPTL。在这种实现下，线程又被称为轻量级进程（Light Weighted Process），每一个用户态的线程，在内核之中都对应一个调度实体，也拥有自己的进程描述符（<code>task_struct</code>结构体）。</p>
+<p>没有线程之前，一个进程对应内核里的一个进程描述符，对应一个进程ID。但是引入了线程的概念之后，情况就发生了变化，一个用户进程下管辖N个用户态线程，每个线程作为一个独立的调度实体在内核态都有自己的进程描述符，进程和内核的进程描述符一下子就变成了1∶N的关系，POSIX标准又要求进程内的所有线程调用getpid函数时返回相同的进程ID。如何解决上述问题呢？</p>
+<p>内核引入了线程组（Thread Group）的概念。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span>...</span><br><span class="line">    <span class="type">pid_t</span> pid;</span><br><span class="line">    <span class="type">pid_t</span> tgid</span><br><span class="line">      ...</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">group_leader</span>;</span></span><br><span class="line">      ...</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">thread_group</span>;</span></span><br><span class="line">      ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>多线程的进程，又被称为线程组，线程组内的每一个线程在内核之中都存在一个进程描述符（task_struct）与之对应。进程描述符结构体中的pid，表面上看对应的是进程ID，其实不然，它对应的是线程ID；进程描述符中的tgid，含义是Thread Group ID，该值对应的是用户层面的进程ID。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217105301113.png"
+                      alt="image-20250217105301113"
+                ></p>
+<p>本节介绍的线程ID，不同于后面会讲到的pthread_t类型的线程ID，和进程ID一样，线程ID是pid_t类型的变量，而且是用来唯一标识线程的一个整型变量。那么如何查看一个线程的ID呢？</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">manu@manu-hacks:~$ ps –eLf</span><br><span class="line">...</span><br><span class="line">UID        PID  PPID   LWP  C NLWP STIME TTY          TIME CMD</span><br><span class="line">syslog     <span class="number">837</span>     <span class="number">1</span>   <span class="number">837</span>  <span class="number">0</span>    <span class="number">4</span> <span class="number">22</span>:<span class="number">20</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> rsyslogd</span><br><span class="line">syslog     <span class="number">837</span>     <span class="number">1</span>   <span class="number">838</span>  <span class="number">0</span>    <span class="number">4</span> <span class="number">22</span>:<span class="number">20</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> rsyslogd</span><br><span class="line">syslog     <span class="number">837</span>     <span class="number">1</span>   <span class="number">839</span>  <span class="number">0</span>    <span class="number">4</span> <span class="number">22</span>:<span class="number">20</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> rsyslogd</span><br><span class="line">syslog     <span class="number">837</span>     <span class="number">1</span>   <span class="number">840</span>  <span class="number">0</span>    <span class="number">4</span> <span class="number">22</span>:<span class="number">20</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> rsyslogd</span><br><span class="line">...</span><br><span class="line"><span class="comment">// ps命令中的-L选项，会显示出线程的如下信息。</span></span><br><span class="line"><span class="comment">// LWP：线程ID，即gettid（​）系统调用的返回值。</span></span><br><span class="line"><span class="comment">// NLWP：线程组内线程的个数。</span></span><br></pre></td></tr></table></figure></div>
+
+<p>所以从上面可以看出rsyslogd进程是多线程的，进程ID为837，进程内有4个线程，线程ID分别为837、838、839和840</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217105554968.png"
+                      alt="image-20250217105554968"
+                ></p>
+<p>已知某进程的进程ID，该如何查看该进程内线程的个数及其线程ID呢？其实可以通过<code>/proc/PID/task/</code>目录下的子目录来查看，如下。因为procfs在task下会给进程的每个线程建立一个子目录，目录名为线程ID。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">manu@manu-hacks:~$ ll /proc/<span class="number">837</span>/task/总用量 <span class="number">0</span></span><br><span class="line">dr-xr-xr-x <span class="number">6</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">32</span> ./</span><br><span class="line">dr-xr-xr-x <span class="number">9</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">20</span> ../</span><br><span class="line">dr-xr-xr-x <span class="number">6</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">32</span> <span class="number">837</span>/</span><br><span class="line">dr-xr-xr-x <span class="number">6</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">32</span> <span class="number">838</span>/</span><br><span class="line">dr-xr-xr-x <span class="number">6</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">32</span> <span class="number">839</span>/</span><br><span class="line">dr-xr-xr-x <span class="number">6</span> syslog syslog <span class="number">0</span>  <span class="number">4</span>月 <span class="number">16</span> <span class="number">22</span>:<span class="number">32</span> <span class="number">840</span>/</span><br></pre></td></tr></table></figure></div>
+
+<p>对于线程，Linux提供了gettid系统调用来返回其线程ID，可惜的是glibc并没有将该系统调用封装起来，再开放出接口来供程序员使用。如果确实需要获取线程ID，可以采用如下方法：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/syscall.h&gt;</span></span></span><br><span class="line"><span class="type">int</span> TID = syscall(SYS_gettid);</span><br></pre></td></tr></table></figure></div>
+
+<p>从上面的示例来看，rsyslogd是个多线程的进程，进程ID为837，下面有一个线程的ID也是837，这不是巧合。线程组内的第一个线程，在用户态被称为主线程（main thread），在内核中被称为Group Leader。内核在创建第一个线程时，会将线程组ID的值设置成第一个线程的线程ID，group_leader指针则指向自身，即主线程的进程描述符，如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*线程组ID等于主线程的ID，group_leader指向自身*/</span></span><br><span class="line">p-&gt;tgid = p-&gt;pid;</span><br><span class="line">p-&gt;group_leader = p;</span><br><span class="line">INIT_LIST_HEAD(&amp;p-&gt;thread_group);</span><br></pre></td></tr></table></figure></div>
+
+<p>所以可以看到，线程组内存在一个线程ID等于进程ID，而该线程即为线程组的主线程。至于线程组其他线程的ID则由内核负责分配，其线程组ID总是和主线程的线程组ID一致，无论是主线程直接创建的线程，还是创建出来的线程再次创建的线程，都是这样。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (clone_flags &amp; CLONE_THREAD)</span><br><span class="line">         p-&gt;tgid = current-&gt;tgid;</span><br><span class="line"><span class="keyword">if</span> (clone_flags &amp; CLONE_THREAD) &#123;</span><br><span class="line">     p-&gt;group_leader = current-&gt;group_leader;</span><br><span class="line">     list_add_tail_rcu(&amp;p-&gt;thread_group, &amp;p-&gt;group_leader-&gt;thread_group);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>通过<code>group_leader</code>指针，每个线程都能找到主线程。主线程存在一个链表头，后面创建的每一个线程都会链入到该双向链表中。利用上述的结构，每个线程都可以轻松地找到其线程组的主线程（通过<code>group_leader</code>指针），另一方面，通过线程组的主线程，也可以轻松地遍历其所有的组内线程（通过链表）。需要强调的一点是，线程和进程不一样，进程有父进程的概念，但在线程组里面，所有的线程都是对等的关系。</p>
+<ul>
+<li>并不是只有主线程才能创建线程，被创建出来的线程同样可以创建线程。</li>
+<li>不存在类似于fork函数那样的父子关系，大家都归属于同一个线程组，进程ID都相等，<code>group_leader</code>都指向主线程，而且各有各的线程ID。</li>
+<li>并非只有主线程才能调用<code>pthread_join</code>连接其他线程，同一线程组内的任意线程都可以对某线程执行<code>pthread_join</code>函数。</li>
+<li>并非只有主线程才能调用<code>pthread_detach</code>函数，其实任意线程都可以对同一线程组内的线程执行分离操作。</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217110329941.png"
+                      alt="image-20250217110329941"
+                ></p>
+<h1 id="pthread库接口介绍"><a href="#pthread库接口介绍" class="headerlink" title="pthread库接口介绍"></a>pthread库接口介绍</h1><p>后面详细介绍这些函数。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217110840510.png"
+                      alt="image-20250217110840510"
+                ></p>
+<h1 id="线程的创建和标识"><a href="#线程的创建和标识" class="headerlink" title="线程的创建和标识"></a>线程的创建和标识</h1><p>首先要介绍的接口是创建线程的接口，即pthread_create函数。程序开始启动的时候，产生的进程只有一个线程，我们称之为主线程或初始线程。对于单线程的进程而言，只存在主线程一个线程。如果想在主线程之外，再创建一个或多个线程，就需要用到这个接口了。</p>
+
 		</div>
 
 		
@@ -516,7 +646,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-06 14:49:11
+                    :</strong> 2025-02-17 11:09:33
             </li>
         
         <li>
@@ -637,7 +767,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Linux环境编程与内核之线程</div>
-		
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%92%8C%E8%BF%9B%E7%A8%8B"><span class="nav-text">线程和进程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8BID%E5%92%8C%E7%BA%BF%E7%A8%8BID"><span class="nav-text">进程ID和线程ID</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#pthread%E5%BA%93%E6%8E%A5%E5%8F%A3%E4%BB%8B%E7%BB%8D"><span class="nav-text">pthread库接口介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%88%9B%E5%BB%BA%E5%92%8C%E6%A0%87%E8%AF%86"><span class="nav-text">线程的创建和标识</span></a></li></ol>
 
 	</div>
 </div>
