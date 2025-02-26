@@ -25,15 +25,15 @@
     
     
         
-        <meta name="description" content="Linux shell 编程Linux 命令工具perf工程管理MakefileCMakeGitRepo">
+        <meta name="description" content="Linux shell 编程运维用到多一些，开发不是很常用，能看懂就行。 参考文献 ： 《Linux shell编程 第三版》 《Linux shell核心编程指南》 https:&#x2F;&#x2F;www.runoob.com&#x2F;linux&#x2F;linux-shell-variable.html 基本知识 $0 : 脚本名称； $1-$2-&gt;$... : 脚本的第一，二，…个参数； $*或者$@ : 脚本的全部">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Shell编程与工程管理">
 <meta property="og:url" content="https://jelasin.github.io/2025/02/01/Shell%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%B7%A5%E7%A8%8B%E7%AE%A1%E7%90%86/index.html">
 <meta property="og:site_name" content="Jelasin">
-<meta property="og:description" content="Linux shell 编程Linux 命令工具perf工程管理MakefileCMakeGitRepo">
+<meta property="og:description" content="Linux shell 编程运维用到多一些，开发不是很常用，能看懂就行。 参考文献 ： 《Linux shell编程 第三版》 《Linux shell核心编程指南》 https:&#x2F;&#x2F;www.runoob.com&#x2F;linux&#x2F;linux-shell-variable.html 基本知识 $0 : 脚本名称； $1-$2-&gt;$... : 脚本的第一，二，…个参数； $*或者$@ : 脚本的全部">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-02-01T07:11:31.000Z">
-<meta property="article:modified_time" content="2025-02-17T02:12:46.807Z">
+<meta property="article:modified_time" content="2025-02-26T09:50:21.050Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
     
@@ -427,7 +427,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">99</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">110</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -476,8 +476,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-17 10:12:46</span>
-            <span class="mobile">2025-02-17 10:12:46</span>
+            <span class="desktop">2025-02-26 17:50:21</span>
+            <span class="mobile">2025-02-26 17:50:21</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -504,7 +504,909 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			<h1 id="Linux-shell-编程"><a href="#Linux-shell-编程" class="headerlink" title="Linux shell 编程"></a>Linux shell 编程</h1><h1 id="Linux-命令工具"><a href="#Linux-命令工具" class="headerlink" title="Linux 命令工具"></a>Linux 命令工具</h1><h2 id="perf"><a href="#perf" class="headerlink" title="perf"></a>perf</h2><h1 id="工程管理"><a href="#工程管理" class="headerlink" title="工程管理"></a>工程管理</h1><h2 id="Makefile"><a href="#Makefile" class="headerlink" title="Makefile"></a>Makefile</h2><h2 id="CMake"><a href="#CMake" class="headerlink" title="CMake"></a>CMake</h2><h2 id="Git"><a href="#Git" class="headerlink" title="Git"></a>Git</h2><h2 id="Repo"><a href="#Repo" class="headerlink" title="Repo"></a>Repo</h2>
+			<h1 id="Linux-shell-编程"><a href="#Linux-shell-编程" class="headerlink" title="Linux shell 编程"></a>Linux shell 编程</h1><p>运维用到多一些，开发不是很常用，能看懂就行。</p>
+<p><strong>参考文献 ：</strong></p>
+<p>《Linux shell编程 第三版》</p>
+<p>《Linux shell核心编程指南》</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://www.runoob.com/linux/linux-shell-variable.html" >https://www.runoob.com/linux/linux-shell-variable.html<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<h2 id="基本知识"><a href="#基本知识" class="headerlink" title="基本知识"></a>基本知识</h2><ul>
+<li><strong><code>$0</code></strong> : 脚本名称；</li>
+<li><strong><code>$1-$2-&gt;$...</code></strong> : 脚本的第一，二，…个参数；</li>
+<li><strong><code>$*</code>或者<code>$@</code></strong> : 脚本的全部参数；</li>
+<li><ul>
+<li>相同点：都是引用所有参数。</li>
+<li>不同点：只有在双引号中体现出来。假设在脚本运行时写了三个参数 1、2、3，则 “ * “ 等价于 “1 2 3”（传递了一个参数），而 “@” 等价于 “1” “2” “3”（传递了三个参数）。</li>
+</ul>
+</li>
+<li><strong><code>$$</code></strong> ： 脚本进程号；</li>
+<li><strong><code>$#</code></strong> : 脚本参数个数；</li>
+<li><strong><code>$?</code></strong> : 上一条指令返回结果；</li>
+<li><strong><code>$-</code></strong> : 显示Shell使用的当前选项，与<a class="link"   target="_blank" rel="noopener" href="https://www.runoob.com/linux/linux-comm-set.html" >set命令<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>功能相同。</li>
+<li><strong><code>$!</code></strong> : 后台运行的最后一个进程的ID号。</li>
+<li><strong><code>#!</code></strong> : 一个约定的标记，它告诉系统这个脚本需要什么解释器来执行，即使用哪一种 Shell。</li>
+<li>函数与命令的执行结果可以作为条件语句使用。要注意的是，和 C 语言不同，shell 语言中 0 代表 true，0 以外的值代表 false。</li>
+</ul>
+<h2 id="变量定义"><a href="#变量定义" class="headerlink" title="变量定义"></a>变量定义</h2><p>**字符串变量: ** 在 Shell中，变量通常被视为字符串。你可以使用单引号 ‘ 或双引号 “ 来定义字符串，例如：</p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">my_string=<span class="string">&#x27;Hello, World!&#x27;</span></span><br><span class="line">my_string=<span class="string">&quot;Hello, World!&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 获取字符串长度 </span></span><br><span class="line"><span class="comment"># 变量为字符串时，$&#123;#string&#125; 等价于 $&#123;#string[0]&#125;:</span></span><br><span class="line">string=<span class="string">&quot;abcd&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#string&#125;</span>   		<span class="comment"># 输出 4</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;#string[0]&#125;</span>   	<span class="comment"># 输出 4</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 提取子字符串</span></span><br><span class="line"><span class="comment"># 实例从字符串第 2 个字符开始截取 4 个字符：</span></span><br><span class="line">string=<span class="string">&quot;runoob is a great site&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$&#123;string:1:4&#125;</span> <span class="comment"># 输出 unoo</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查找子字符串 </span></span><br><span class="line"><span class="comment"># 查找字符 i 或 o 的位置(哪个字母先出现就计算哪个)：</span></span><br><span class="line">string=<span class="string">&quot;runoob is a great site&quot;</span></span><br><span class="line"><span class="built_in">echo</span> `<span class="built_in">expr</span> index <span class="string">&quot;<span class="variable">$string</span>&quot;</span> io`  <span class="comment"># 输出 4</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>整数变量</strong>： 在一些Shell中，你可以使用 <strong>declare</strong> 或 <strong>typeset</strong> 命令来声明整数变量。</p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">declare</span> -i my_integer</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>数组变量：</strong> Shell 也支持数组，允许你在一个变量中存储多个值。</p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">my_array=(1 2 3 4 5)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 取得数组元素的个数</span></span><br><span class="line">length=<span class="variable">$&#123;#array_name[@]&#125;</span></span><br><span class="line"><span class="comment"># 或者</span></span><br><span class="line">length=<span class="variable">$&#123;#array_name[*]&#125;</span></span><br><span class="line"><span class="comment"># 取得数组单个元素的长度</span></span><br><span class="line">length=<span class="variable">$&#123;#array_name[n]&#125;</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关联数组：</strong></p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">declare</span> -A associative_array</span><br><span class="line">associative_array[<span class="string">&quot;name&quot;</span>]=<span class="string">&quot;John&quot;</span></span><br><span class="line">associative_array[<span class="string">&quot;age&quot;</span>]=30</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>只读变量</strong></p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">readonly</span> Url=<span class="string">&quot;https://jelasin.github.io&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>删除变量</strong></p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">unset</span> variable_name</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="功能语句"><a href="#功能语句" class="headerlink" title="功能语句"></a>功能语句</h2><h3 id="echo"><a href="#echo" class="headerlink" title="echo"></a>echo</h3><p>Shell 的 echo 指令与 PHP 的 echo 指令类似，都是用于字符串的输出。命令格式：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo string</span><br></pre></td></tr></table></figure></div>
+
+<p>您可以使用echo实现更复杂的输出格式控制。</p>
+<p><strong>显示普通字符串:</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;It is a test&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里的双引号完全可以省略，以下命令与上面实例效果一致：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo It is a test</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>显示转义字符</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;\&quot;It is a test\&quot;&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>结果将是:</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;It is a test&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>同样，双引号也可以省略</p>
+<p><strong>显示变量</strong></p>
+<p>read 命令从标准输入中读取一行,并把输入行的每个字段的值指定给 shell 变量</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/sh</span><br><span class="line">read name </span><br><span class="line">echo &quot;$name It is a test&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>以上代码保存为 test.sh，name 接收标准输入的变量，结果将是: </p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@www ~]# sh test.sh</span><br><span class="line">OK                     #标准输入</span><br><span class="line">OK It is a test        #输出</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>显示换行</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">echo -e &quot;OK! \n&quot; # -e 开启转义</span><br><span class="line">echo &quot;It is a test&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>输出结果：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">OK!</span><br><span class="line"></span><br><span class="line">It is a test</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>显示不换行</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/sh</span><br><span class="line">echo -e &quot;OK! \c&quot; # -e 开启转义 \c 不换行</span><br><span class="line">echo &quot;It is a test&quot;</span><br><span class="line"># 或者 </span><br><span class="line">echo -n &quot;It is a test&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>输出结果：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">OK! It is a test</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>显示结果定向至文件</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;It is a test&quot; &gt; myfile</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>原样输出字符串，不进行转义或取变量(用单引号)</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &#x27;$name\&quot;&#x27;</span><br></pre></td></tr></table></figure></div>
+
+<p>输出结果：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$name\&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>显示命令执行结果</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo `date`</span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p><strong>注意：</strong> 这里使用的是反引号 &#96;, 而不是单引号 ‘。</p>
+</blockquote>
+<p>结果将显示当前日期</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Thu Jul 24 10:08:46 CST 2014</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="print-printf"><a href="#print-printf" class="headerlink" title="print&#x2F;printf"></a>print&#x2F;printf</h3><p>printf 命令模仿 C 程序库（library）里的 printf() 程序。</p>
+<p>printf 由 POSIX 标准所定义，因此使用 printf 的脚本比使用 echo 移植性好。</p>
+<p>printf 使用引用文本或空格分隔的参数，外面可以在 <strong>printf</strong> 中使用格式化字符串，还可以制定字符串的宽度、左右对齐方式等。默认的 printf 不会像 echo 自动添加换行符，我们可以手动添加 \n。</p>
+<p>printf 命令的语法：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">printf  format-string  [arguments...]</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>参数说明：</strong></p>
+<ul>
+<li><strong>format-string:</strong> 一个格式字符串，它包含普通文本和格式说明符。</li>
+<li><strong>arguments:</strong> 用于填充格式说明符的参数列表。。</li>
+</ul>
+<p>格式说明符由 % 字符开始，后跟一个或多个字符，用于指定输出的格式。常用的格式说明符包括：</p>
+<ul>
+<li><code>%s</code>：字符串</li>
+<li><code>%d</code>：十进制整数</li>
+<li><code>%f</code>：浮点数</li>
+<li><code>%c</code>：字符</li>
+<li><code>%x</code>：十六进制数</li>
+<li><code>%o</code>：八进制数</li>
+<li><code>%b</code>：二进制数</li>
+<li><code>%e</code>：科学计数法表示的浮点数</li>
+</ul>
+<p><strong>print和printf的异同点</strong></p>
+<ol>
+<li><strong>自动换行与否</strong>:</li>
+</ol>
+<ul>
+<li><code>print</code> 命令会在输出内容后自动换行，即每打印一个输出项，行尾都会添加换行符<a class="link"   target="_blank" rel="noopener" href="https://zhidao.baidu.com/question/140325415839771325.html" >1<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a><a class="link"   target="_blank" rel="noopener" href="https://blog.csdn.net/qq_35696312/article/details/88169556" >2<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</li>
+<li>而 <code>printf</code> 命令，则不会自动换行，用户需要在格式字符串中手动指定换行符（例如使用 <code>\n</code>）<a class="link"   target="_blank" rel="noopener" href="https://www.runoob.com/linux/linux-shell-printf.html" >5<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</li>
+</ul>
+<ol start="2">
+<li><strong>输出格式</strong>:</li>
+</ol>
+<ul>
+<li><code>printf</code> 允许进行格式化输出，可以控制输出的格式，例如指定字段宽度、精度、数据类型等。这使得 <code>printf</code> 更加灵活，适合于复杂的输出需求<a class="link"   target="_blank" rel="noopener" href="https://zhidao.baidu.com/question/140325415839771325.html" >1<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a><a class="link"   target="_blank" rel="noopener" href="https://www.runoob.com/linux/linux-shell-printf.html" >5<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</li>
+<li>相比之下，<code>print</code> 则是按照默认分隔符打印变量或常量，输出相对简单，不支持格式化<a class="link"   target="_blank" rel="noopener" href="https://zhidao.baidu.com/question/140325415839771325.html" >1<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</li>
+</ul>
+<ol start="3">
+<li><strong>使用场景</strong>:</li>
+</ol>
+<ul>
+<li>通常，<code>printf</code> 更接近于 C 语言中的 <code>printf</code> 函数，适用于需要格式化的输出场景，能够提供更好的控制和清晰度<a class="link"   target="_blank" rel="noopener" href="https://www.runoob.com/linux/linux-shell-printf.html" >5<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</li>
+<li><code>print</code> 更适合于简单的输出任务，不需要复杂的格式化处理时使用。</li>
+</ul>
+<p>选择使用 <code>print</code> 还是 <code>printf</code> 主要取决于输出的复杂性和格式化需求。</p>
+<h3 id="read"><a href="#read" class="headerlink" title="read"></a>read</h3><p>在 Linux shell 编程中，<code>read</code> 命令是一个非常重要的内置命令，具有以下几个关键特点和用法：</p>
+<ol>
+<li><p><strong>功能</strong>:</p>
+<ul>
+<li><code>read</code> 命令用于从标准输入（通常是键盘）读取一行数据，并可以将其赋值给一个或多个变量。这使得 <code>read</code> 特别适用于数据处理和交互式程序。</li>
+</ul>
+</li>
+<li><p><strong>基本用法</strong>:</p>
+<ul>
+<li><code>read</code> 可以通过该命令读取用户的输入，通常在脚本中用于获取用户输入的数值或文本。用户输入后，数据将被存储到指定的变量中。</li>
+</ul>
+</li>
+<li><p><strong>读取文件的能力</strong>:</p>
+<ul>
+<li>除了从标准输入读取数据外，<code>read</code> 还可以用来读取文件中的数据。通过重定向或管道，可以将文件的每一行传递给 <code>read</code> 命令。例如，可以使用 <code>cat</code> 命令并通过管道将文件内容传输给 <code>read</code>。</li>
+</ul>
+</li>
+<li><p><strong>语法选项</strong>:</p>
+<ul>
+<li><p><strong>read</strong></p>
+<p>命令有多种参数选项，包括：</p>
+<ul>
+<li><code>-p</code>：定义提示符，用于在读取之前显示给用户。</li>
+<li><code>-t</code>：设置超时时间，若在指定时间内未输入则 <code>read</code> 会退出。</li>
+<li><code>-d</code>：定义分隔符，以控制输入数据的结束。</li>
+<li><code>-s</code>：静默读取。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>退出状态</strong>:</p>
+<ul>
+<li>当 <code>read</code> 命令读取时，如果没有可读的行，它将以非零状态退出。这在脚本中可以通过检查退出状态来判断输入的有效性。</li>
+</ul>
+</li>
+</ol>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="keyword">if</span> <span class="built_in">read</span> -t 5 -p <span class="string">&quot;请在5秒内输入一些内容: &quot;</span> input; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;你输入了: <span class="variable">$input</span>&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;超时了，你没有输入任何内容&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">read</span> -p <span class="string">&quot;请输入你的密码: &quot;</span> -s password</span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;密码已读取（但不会显示）&quot;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>避免在脚本中直接读取密码</strong>：虽然<code>read</code>命令的<code>-s</code>选项允许你静默地读取密码，但通常更好的做法是使用工具（如<code>expect</code>）来安全地处理密码。</li>
+<li><strong>确保输入验证</strong>：在使用<code>read</code>命令读取用户输入时，始终确保对输入进行验证，以防止潜在的安全风险或脚本错误。</li>
+<li><strong>使用<code>-r</code>选项来避免转义字符</strong>：如果你希望按原样读取输入（包括任何转义字符），请记得使用<code>-r</code>选项。</li>
+<li><strong>在脚本中提供清晰的提示</strong>：使用<code>-p</code>选项为用户提供清晰的输入提示，以提高脚本的可用性。</li>
+<li><strong>处理超时和错误</strong>：当使用<code>-t</code>选项设置超时时，确保你的脚本能够优雅地处理超时和错误情况。</li>
+</ul>
+<h3 id="test"><a href="#test" class="headerlink" title="test"></a>test</h3><p>在 Linux shell 编程中，<code>test</code> 是一个用于评估条件表达式的命令，常用于脚本中的条件判断。<code>test</code> 的功能非常强大，它可以用来比较数字、字符串、文件属性等。以下是对 <code>test</code> 的详细解释，包括它的用法和一些例子。</p>
+<p><strong>基本语法</strong></p>
+<p><code>test</code> 的基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">test</span> expression</span><br></pre></td></tr></table></figure></div>
+<p>或者可以使用简洁的方括号表示法：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[ expression ]</span><br></pre></td></tr></table></figure></div>
+<p>在使用方括号时，必须在方括号和表达式之间留有空格。</p>
+<p><strong>数字比较</strong></p>
+<p><code>test</code> 命令提供了一组用于数字比较的操作符：</p>
+<table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-eq</code></td>
+<td>等于</td>
+</tr>
+<tr>
+<td><code>-ne</code></td>
+<td>不等于</td>
+</tr>
+<tr>
+<td><code>-lt</code></td>
+<td>小于</td>
+</tr>
+<tr>
+<td><code>-le</code></td>
+<td>小于或等于</td>
+</tr>
+<tr>
+<td><code>-gt</code></td>
+<td>大于</td>
+</tr>
+<tr>
+<td><code>-ge</code></td>
+<td>大于或等于</td>
+</tr>
+</tbody></table>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a=5</span><br><span class="line">b=10</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> <span class="built_in">test</span> <span class="variable">$a</span> -lt <span class="variable">$b</span>; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$a</span> is less than <span class="variable">$b</span>&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+<p>或者</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ <span class="variable">$a</span> -lt <span class="variable">$b</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$a</span> is less than <span class="variable">$b</span>&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>字符串比较</strong></p>
+<p><code>test</code> 命令也支持字符串比较：</p>
+<table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>=</code></td>
+<td>等于</td>
+</tr>
+<tr>
+<td><code>!=</code></td>
+<td>不等于</td>
+</tr>
+<tr>
+<td><code>-z</code></td>
+<td>字符串长度为零</td>
+</tr>
+<tr>
+<td><code>-n</code></td>
+<td>字符串长度非零</td>
+</tr>
+</tbody></table>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">str1=<span class="string">&quot;hello&quot;</span></span><br><span class="line">str2=<span class="string">&quot;world&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ <span class="string">&quot;<span class="variable">$str1</span>&quot;</span> != <span class="string">&quot;<span class="variable">$str2</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$str1</span> is not equal to <span class="variable">$str2</span>&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>文件测试</strong></p>
+<p><code>test</code> 命令可以用来检查文件的属性，例如：</p>
+<table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-e</code></td>
+<td>文件存在</td>
+</tr>
+<tr>
+<td><code>-f</code></td>
+<td>是否为常规文件</td>
+</tr>
+<tr>
+<td><code>-d</code></td>
+<td>是否为目录</td>
+</tr>
+<tr>
+<td><code>-r</code></td>
+<td>是否可读</td>
+</tr>
+<tr>
+<td><code>-w</code></td>
+<td>是否可写</td>
+</tr>
+<tr>
+<td><code>-x</code></td>
+<td>是否可执行</td>
+</tr>
+</tbody></table>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">file=<span class="string">&quot;/path/to/file&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ -e <span class="string">&quot;<span class="variable">$file</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$file</span> exists&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$file</span> does not exist&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>布尔逻辑</strong></p>
+<p><code>test</code> 支持逻辑运算符，可以将条件组合在一起：</p>
+<ul>
+<li><code>-a</code>：与操作（逻辑与）</li>
+<li><code>-o</code>：或操作（逻辑或）</li>
+</ul>
+<p>在使用方括号时，可以使用双括号来更清晰地表示逻辑操作：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ -f <span class="string">&quot;<span class="variable">$file</span>&quot;</span> -a -r <span class="string">&quot;<span class="variable">$file</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$file</span> exists and is readable&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>退出状态</strong></p>
+<p><code>test</code> 的退出状态码很重要：</p>
+<ul>
+<li>返回 0 表示条件为真。</li>
+<li>返回非零状态码表示条件为假。</li>
+</ul>
+<p>可以用 <code>$?</code> 来获取上一个命令的退出状态，例如：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">test</span> -e <span class="string">&quot;<span class="variable">$file</span>&quot;</span></span><br><span class="line"><span class="keyword">if</span> [ $? -eq 0 ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$file</span> exists&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="expr"><a href="#expr" class="headerlink" title="expr"></a>expr</h3><p>在 Linux shell 编程中，<code>expr</code> 是一个用于计算表达式的命令。它支持算术运算、逻辑运算和字符串操作。</p>
+<p><strong>基本功能</strong></p>
+<ul>
+<li><p><strong>算术计算</strong>: <code>expr</code> 可以执行基本的算术运算，包括加法、减法、乘法、除法和取余。例如：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">expr</span> 5 + 3  <span class="comment"># 结果是 8</span></span><br><span class="line"><span class="built_in">expr</span> 10 - 2  <span class="comment"># 结果是 8</span></span><br><span class="line"><span class="built_in">expr</span> 4 \* 2  <span class="comment"># 结果是 8（乘法需要使用反斜杠转义）</span></span><br><span class="line"><span class="built_in">expr</span> 9 / 3  <span class="comment"># 结果是 3</span></span><br><span class="line"><span class="built_in">expr</span> 5 % 2  <span class="comment"># 结果是 1</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>字符串操作</strong></p>
+<ul>
+<li><code>expr</code> 还可以用于字符串操作，如字符串长度和子串提取：<ul>
+<li><strong>长度</strong>: 获取字符串的长度<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">expr</span> length <span class="string">&quot;hello&quot;</span>  <span class="comment"># 结果是 5</span></span><br></pre></td></tr></table></figure></div></li>
+<li><strong>子串提取</strong>: 提取字符串中的子串<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">expr</span> substr <span class="string">&quot;hello&quot;</span> 2 3  <span class="comment"># 从第二个字符开始提取3个字符，结果是 &quot;ell&quot;</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+</li>
+</ul>
+<p><strong>比较操作</strong></p>
+<ul>
+<li><code>expr</code> 还可以做数值比较，返回 1（真）或 0（假）：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">expr</span> 5 = 5      <span class="comment"># 结果是 1</span></span><br><span class="line"><span class="built_in">expr</span> 5 != 3     <span class="comment"># 结果是 1</span></span><br><span class="line"><span class="built_in">expr</span> 5 \&gt; 3     <span class="comment"># 结果是 1</span></span><br><span class="line"><span class="built_in">expr</span> 3 \&lt; 5     <span class="comment"># 结果是 1</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>逻辑运算</strong></p>
+<ul>
+<li><code>expr</code> 支持逻辑运算符，例如并且（<code>&amp;</code>）和或者（<code>|</code>）：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">expr</span> 1 \&amp; 1     <span class="comment"># 结果是 1</span></span><br><span class="line"><span class="built_in">expr</span> 1 \| 0     <span class="comment"># 结果是 1</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>注意事项</strong></p>
+<ul>
+<li>在使用 <code>expr</code> 时，建议使用反斜杠（<code>\</code>）对某些符号（如 <code>*</code>、<code>&amp;</code>、<code>|</code>）进行转义，因为它们在 shell 中有特殊含义。</li>
+<li>在现代脚本中，许多功能可以用更强大的工具（如 <code>bc</code>、<code>awk</code> 或者 bash 内置的算术扩展 <code>$(( ... ))</code>）来替代，<code>expr</code> 的使用相对较少。</li>
+</ul>
+<p><strong>示例</strong></p>
+<p>一个简单的示例，计算两个数的和并输出：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">a=5</span><br><span class="line">b=10</span><br><span class="line"><span class="built_in">sum</span>=$(<span class="built_in">expr</span> <span class="variable">$a</span> + <span class="variable">$b</span>)</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Sum is: <span class="variable">$sum</span>&quot;</span>  <span class="comment"># 输出: Sum is: 15</span></span><br></pre></td></tr></table></figure></div>
+
+<p>总之，<code>expr</code> 是一个功能强大的工具，适用于在 shell 脚本中进行简单的数学计算和字符串处理。然而，随着编程的复杂性增加，程序员往往会选择更现代及灵活的工具来完成复杂的任务。</p>
+<h3 id="sed"><a href="#sed" class="headerlink" title="sed"></a>sed</h3><p>在 Linux shell 编程中，<code>sed</code>（stream editor）是一个非常强大的流编辑器，它用于对文本进行基本的转换和处理。它可以直接从标准输入读取数据，或者处理文件中的内容，支持正则表达式及各种替换、删除、插入等操作。以下是对 <code>sed</code> 的详解：</p>
+<p><strong>基本功能</strong></p>
+<ul>
+<li><p><strong>文本替换</strong>:<br><code>sed</code> 最常用的功能是替换文本。基本语法为 <code>s/pattern/replacement/</code>，表示将匹配 <code>pattern</code> 的部分替换为 <code>replacement</code>。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;s/old-text/new-text/&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+<p>该命令会将文件中的第一个 <code>old-text</code> 替换为 <code>new-text</code>。</p>
+</li>
+<li><p><strong>全局替换</strong>:<br>如果需要在一行中替换所有匹配的文本，可以使用 <code>g</code> 选项：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;s/old-text/new-text/g&#x27;</span> filename</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>删除操作</strong></p>
+<ul>
+<li><strong>删除行</strong>:<br>使用 <code>d</code> 命令可以删除匹配特定模式的行：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;/pattern/d&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+该命令会删除文件中所有匹配 <code>pattern</code> 的行。</li>
+</ul>
+<p><strong>插入和追加文本</strong></p>
+<ul>
+<li><p><strong>插入文本</strong>:<br>使用 <code>i</code> 命令可以在匹配行的前面插入文本：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;/pattern/i text-to-insert&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>追加文本</strong>:<br>使用 <code>a</code> 命令可以在匹配行的后面追加文本：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;/pattern/a text-to-append&#x27;</span> filename</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>选择行</strong></p>
+<ul>
+<li><strong>打印特定行</strong>:<br>使用 <code>p</code> 命令可以打印匹配特定模式的行：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -n <span class="string">&#x27;/pattern/p&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+<code>-n</code> 选项用于禁止默认输出，只有显式指定的行会被输出。</li>
+</ul>
+<p><strong>使用正则表达式</strong></p>
+<ul>
+<li><code>sed</code> 支持使用基本和扩展正则表达式进行模式匹配，这使得复杂的文本处理成为可能。</li>
+</ul>
+<p><strong>处理多个命令</strong></p>
+<ul>
+<li>可以使用 <code>-e</code> 选项来指定多个 <code>sed</code> 命令：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -e <span class="string">&#x27;s/old-text/new-text/&#x27;</span> -e <span class="string">&#x27;/pattern/d&#x27;</span> filename</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>备份与修改文件</strong></p>
+<ul>
+<li>使用 <code>-i</code> 选项可以直接修改文件，并可选择创建备份：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i.bak <span class="string">&#x27;s/old-text/new-text/g&#x27;</span> filename  <span class="comment"># 备份为 filename.bak</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>示例</strong></p>
+<p>一个简单示例，替换文件中的所有 <code>hello</code> 为 <code>world</code>，并打印输出：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;s/hello/world/g&#x27;</span> input.txt</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="awk"><a href="#awk" class="headerlink" title="awk"></a>awk</h3><p>在 Linux shell 编程中，<code>awk</code> 是一种强大的文本处理工具，用于扫描和处理文本文件，特别擅长处理结构化数据（如 CSV 或其他分隔符分隔的数据）。它的名称来源于其三位创始人的姓氏（Alfred Aho, Peter Weinberger 和 Brian Kernighan）。以下是 <code>awk</code> 的详解：</p>
+<p><strong>基本功能</strong></p>
+<ul>
+<li><p><strong>字段分隔</strong>:<br>默认情况下，<code>awk</code> 将每一行视为一个记录（record），并按空格或制表符分隔每个字段（field）。可以使用 <code>FS</code> 变量自定义字段分隔符，例如：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk -F <span class="string">&#x27;,&#x27;</span> <span class="string">&#x27;&#123;print $1&#125;&#x27;</span> filename  <span class="comment"># 使用逗号作为分隔符</span></span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>打印字段</strong>:<br><code>awk</code> 使用 <code>$</code> 符号引用每一行的字段。<code>$1</code> 表示第一字段，<code>$2</code> 表示第二字段，以此类推。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;print $1, $2&#125;&#x27;</span> filename  <span class="comment"># 打印每行的第一个和第二个字段</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>条件处理</strong></p>
+<ul>
+<li><p><strong>使用条件进行筛选</strong>:<br>可以在 <code>awk</code> 中使用条件语句进行行选择。例如，打印第二字段大于 100 的行：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;$2 &gt; 100&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>结合打印与条件</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;$2 &gt; 100 &#123;print $1, $2&#125;&#x27;</span> filename  <span class="comment"># 只打印第二字段大于100的第一和第二字段</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>计算与聚合</strong></p>
+<ul>
+<li><p><strong>算术运算</strong>:<br><code>awk</code> 允许进行算术运算：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;sum += $2&#125; END &#123;print sum&#125;&#x27;</span> filename  <span class="comment"># 计算第二字段的总和</span></span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>平均值计算</strong>:<br>计算某字段的平均值：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;sum += $2; count++&#125; END &#123;print sum/count&#125;&#x27;</span> filename</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>模式与动作</strong></p>
+<ul>
+<li><code>awk</code> 中的基本语法是 <code>pattern &#123; action &#125;</code>。当输入行匹配模式时，就执行相应的动作。</li>
+</ul>
+<p><strong>内置变量</strong></p>
+<ul>
+<li><code>awk</code> 提供了一些内置变量，如：<ul>
+<li><code>NR</code>：当前记录的行号。</li>
+<li><code>NF</code>：当前记录的字段数量。</li>
+<li><code>$0</code>：当前记录的整行内容。</li>
+</ul>
+</li>
+</ul>
+<p>例如：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;print NR, NF, $0&#125;&#x27;</span> filename  <span class="comment"># 打印行号、字段数和整行内容</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>使用函数</strong></p>
+<ul>
+<li><code>awk</code> 具有许多内置函数，如字符串处理、数学计算等。例如，使用 <code>length</code> 函数获取字符串长度：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;print length($1)&#125;&#x27;</span> filename  <span class="comment"># 打印每行第一个字段的长度</span></span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>脚本方式</strong></p>
+<ul>
+<li><code>awk</code> 可以在命令行中使用，也可以写成脚本文件。例如：<div class="code-container" data-rel="Awk"><figure class="iseeu highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># myscript.awk</span></span><br><span class="line">&#123;</span><br><span class="line">  print <span class="variable">$1</span>, <span class="variable">$2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+执行方式：<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk -f myscript.awk filename</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<p><strong>示例</strong></p>
+<p>简单示例，计算文件中第二列的和：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;sum += $2&#125; END &#123;print sum&#125;&#x27;</span> filename</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="I-O-重定向"><a href="#I-O-重定向" class="headerlink" title="I&#x2F;O 重定向"></a>I&#x2F;O 重定向</h3><p>大多数 UNIX 系统命令从你的终端接受输入并将所产生的输出发送回到您的终端。一个命令通常从一个叫标准输入的地方读取输入，默认情况下，这恰好是你的终端。同样，一个命令通常将其输出写入到标准输出，默认情况下，这也是你的终端。</p>
+<p>重定向命令列表如下：</p>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>command &gt; file</td>
+<td>将输出重定向到 file。</td>
+</tr>
+<tr>
+<td>command &lt; file</td>
+<td>将输入重定向到 file。</td>
+</tr>
+<tr>
+<td>command &gt;&gt; file</td>
+<td>将输出以追加的方式重定向到 file。</td>
+</tr>
+<tr>
+<td>n &gt; file</td>
+<td>将文件描述符为 n 的文件重定向到 file。</td>
+</tr>
+<tr>
+<td>n &gt;&gt; file</td>
+<td>将文件描述符为 n 的文件以追加的方式重定向到 file。</td>
+</tr>
+<tr>
+<td>n &gt;&amp; m</td>
+<td>将输出文件 m 和 n 合并。</td>
+</tr>
+<tr>
+<td>n &lt;&amp; m</td>
+<td>将输入文件 m 和 n 合并。</td>
+</tr>
+<tr>
+<td>&lt;&lt; tag</td>
+<td>将开始标记 tag 和结束标记 tag 之间的内容作为输入。</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>需要注意的是文件描述符 0 通常是标准输入（STDIN），1 是标准输出（STDOUT），2 是标准错误输出（STDERR）。</p>
+</blockquote>
+<h2 id="控制语句"><a href="#控制语句" class="headerlink" title="控制语句"></a>控制语句</h2><h3 id="if"><a href="#if" class="headerlink" title="if"></a>if</h3><p><code>if</code> 语句用于根据条件执行代码块。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ condition ]; <span class="keyword">then</span></span><br><span class="line">    <span class="comment"># commands if condition is true</span></span><br><span class="line"><span class="keyword">elif</span> [ another_condition ]; <span class="keyword">then</span></span><br><span class="line">    <span class="comment"># commands if another condition is true</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="comment"># commands if all conditions are false</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ <span class="variable">$age</span> -ge 18 ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Adult&quot;</span></span><br><span class="line"><span class="keyword">elif</span> [ <span class="variable">$age</span> -ge 13 ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Teenager&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Child&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="while"><a href="#while" class="headerlink" title="while"></a>while</h3><p><code>while</code> 语句在条件为真时重复执行代码块。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> [ condition ]; <span class="keyword">do</span></span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">count=1</span><br><span class="line"><span class="keyword">while</span> [ <span class="variable">$count</span> -le 5 ]; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Count is <span class="variable">$count</span>&quot;</span></span><br><span class="line">    ((count++))</span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="for"><a href="#for" class="headerlink" title="for"></a>for</h3><p><code>for</code> 语句用于遍历列表中的每个元素。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> variable <span class="keyword">in</span> list; <span class="keyword">do</span></span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> fruit <span class="keyword">in</span> apple banana cherry; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;I like <span class="variable">$fruit</span>&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<p>也可以使用 C 样式的 <code>for</code> 循环：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (( i=<span class="number">1</span>; i&lt;=<span class="number">5</span>; i++ )); <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Number <span class="variable">$i</span>&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="case"><a href="#case" class="headerlink" title="case"></a>case</h3><p><code>case</code> 语句用于根据变量的值匹配多个模式。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> variable <span class="keyword">in</span></span><br><span class="line">    pattern1)</span><br><span class="line">        <span class="comment"># commands for pattern1</span></span><br><span class="line">        ;;</span><br><span class="line">    pattern2)</span><br><span class="line">        <span class="comment"># commands for pattern2</span></span><br><span class="line">        ;;</span><br><span class="line">    *)</span><br><span class="line">        <span class="comment"># commands for unmatched patterns</span></span><br><span class="line">        ;;</span><br><span class="line"><span class="keyword">esac</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="variable">$day</span> <span class="keyword">in</span></span><br><span class="line">    1)</span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;Monday&quot;</span></span><br><span class="line">        ;;</span><br><span class="line">    2)</span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;Tuesday&quot;</span></span><br><span class="line">        ;;</span><br><span class="line">    3)</span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;Wednesday&quot;</span></span><br><span class="line">        ;;</span><br><span class="line">    *)</span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;Other day&quot;</span></span><br><span class="line">        ;;</span><br><span class="line"><span class="keyword">esac</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="until"><a href="#until" class="headerlink" title="until"></a>until</h3><p><code>until</code> 语句与 <code>while</code> 相反，它在条件为假时重复执行代码块。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">until</span> [ condition ]; <span class="keyword">do</span></span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">count=1</span><br><span class="line"><span class="keyword">until</span> [ <span class="variable">$count</span> -gt 5 ]; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Count is <span class="variable">$count</span>&quot;</span></span><br><span class="line">    ((count++))</span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="select"><a href="#select" class="headerlink" title="select"></a>select</h3><p><code>select</code> 语句用于生成菜单，让用户选择。基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> variable <span class="keyword">in</span> list; <span class="keyword">do</span></span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>示例</strong>:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> color <span class="keyword">in</span> red green blue; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;You selected <span class="variable">$color</span>&quot;</span></span><br><span class="line">    <span class="built_in">break</span>  <span class="comment"># 使用 break 退出 select 循环</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure></div>
+
+<h2 id="函数"><a href="#函数" class="headerlink" title="函数"></a>函数</h2><p>在 Linux shell 编程中，函数是一种将一组命令封装在一起的机制，允许你在脚本中重复调用这些命令。使用函数可以使脚本更结构化、可读性更强，并且可以避免代码重复。以下是对 Shell 函数的详解，包括定义、调用、参数、返回值和作用域等内容。</p>
+<h3 id="定义函数"><a href="#定义函数" class="headerlink" title="定义函数"></a><strong>定义函数</strong></h3><p>在 Bash 中，定义函数的基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">function_name</span></span> () &#123;</span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>或者使用 <code>function</code> 关键字：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> function_name &#123;</span><br><span class="line">    <span class="comment"># commands to be executed</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数示例"><a href="#函数示例" class="headerlink" title="函数示例"></a><strong>函数示例</strong></h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">greet</span></span>() &#123;</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Hello, <span class="variable">$1</span>!&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greet <span class="string">&quot;Alice&quot;</span>  <span class="comment"># 输出: Hello, Alice!</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数参数"><a href="#函数参数" class="headerlink" title="函数参数"></a><strong>函数参数</strong></h3><p>在函数内部，可以使用 <code>$1</code>、<code>$2</code> 等来访问传递给函数的参数。<code>$1</code> 代表第一个参数，<code>$2</code> 代表第二个参数，以此类推。<code>$@</code> 和 <code>$*</code> 用于访问所有参数。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">add</span></span>() &#123;</span><br><span class="line">    <span class="built_in">sum</span>=$(( <span class="variable">$1</span> + <span class="variable">$2</span> ))</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Sum is: <span class="variable">$sum</span>&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">add 3 5  <span class="comment"># 输出: Sum is: 8</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="返回值"><a href="#返回值" class="headerlink" title="返回值"></a><strong>返回值</strong></h3><p>函数的返回值使用<code>return</code>命令，通常返回值是一个整数，范围从 0 到 255。也可以通过 <code>echo</code> 命令返回输出。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">multiply</span></span>() &#123;</span><br><span class="line">    <span class="built_in">return</span> $(( <span class="variable">$1</span> * <span class="variable">$2</span> ))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">multiply 4 5</span><br><span class="line">result=$?</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Return value is: <span class="variable">$result</span>&quot;</span>  <span class="comment"># 输出: Return value is: 20</span></span><br></pre></td></tr></table></figure></div>
+
+<p>通过 <code>echo</code> 返回输出的示例：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">get_date</span></span>() &#123;</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="subst">$(date)</span>&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">current_date=$(get_date)  <span class="comment"># 通过命令替换获取当前日期</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Current date is: <span class="variable">$current_date</span>&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="本地变量与全局变量"><a href="#本地变量与全局变量" class="headerlink" title="本地变量与全局变量"></a><strong>本地变量与全局变量</strong></h3><ul>
+<li><strong>全局变量</strong>：在函数外部定义的变量在函数内部也是可访问的。</li>
+<li><strong>局部变量</strong>：使用 <code>local</code> 关键字定义的变量只在该函数内部可见。</li>
+</ul>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">counter=0</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">increment</span></span>() &#123;</span><br><span class="line">    <span class="built_in">local</span> counter=5  <span class="comment"># 局部变量</span></span><br><span class="line">    ((counter++))</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Counter inside function: <span class="variable">$counter</span>&quot;</span>  <span class="comment"># 输出: Counter inside function: 5</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">increment</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Counter outside function: <span class="variable">$counter</span>&quot;</span>  <span class="comment"># 输出: Counter outside function: 0</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数的调用"><a href="#函数的调用" class="headerlink" title="函数的调用"></a><strong>函数的调用</strong></h3><p>函数可以在定义后随时调用。可以在脚本的任何位置调用已定义的函数。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">say_hello</span></span>() &#123;</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Hello!&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">say_hello  <span class="comment"># 输出: Hello!</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数的作用域"><a href="#函数的作用域" class="headerlink" title="函数的作用域"></a><strong>函数的作用域</strong></h3><p>函数的作用域通常存在以下几种情况：</p>
+<ul>
+<li>在同一脚本中的任意位置都可以调用已经定义的函数。</li>
+<li>如果在当前 shell 中定义的函数，也可以在子 shell 中调用，但局部变量不被共享。</li>
+</ul>
+<h3 id="递归函数"><a href="#递归函数" class="headerlink" title="递归函数"></a><strong>递归函数</strong></h3><p>函数也可以调用自身，形成递归。这在某些算法（如计算阶乘）中非常有用。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">factorial</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> [ <span class="variable">$1</span> -le 1 ]; <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">echo</span> 1</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="built_in">echo</span> $(( <span class="variable">$1</span> * $(factorial $(( <span class="variable">$1</span> - <span class="number">1</span> )) ) ))</span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">result=$(factorial 5)</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Factorial of 5 is: <span class="variable">$result</span>&quot;</span>  <span class="comment"># 输出: Factorial of 5 is: 120</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数的文档和帮助"><a href="#函数的文档和帮助" class="headerlink" title="函数的文档和帮助"></a><strong>函数的文档和帮助</strong></h3><p>为了使脚本更易于维护，可以在函数内部添加注释，或者使用 <code>help</code> 命令输出帮助信息。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">my_function</span></span>() &#123;</span><br><span class="line">    <span class="comment"># This function does something</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Doing something&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">help</span> my_function</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="shell-扩展"><a href="#shell-扩展" class="headerlink" title="shell 扩展"></a>shell 扩展</h2><h3 id="shell-中各种括号"><a href="#shell-中各种括号" class="headerlink" title="shell 中各种括号"></a>shell 中各种括号</h3><p><strong>单小括号 ()</strong></p>
+<ul>
+<li><strong>命令组</strong>。括号中的命令将会新开一个子shell顺序执行，所以括号中的变量不能够被脚本余下的部分使用。括号中多个命令之间用分号隔开，最后一个命令可以没有分号，各命令和括号之间不必有空格。</li>
+<li><strong>命令替换</strong>。等同于<code>cmd</code>，shell扫描一遍命令行，发现了<code>$(cmd)</code>结构，便将<code>$(cmd)</code>中的cmd执行一次，得到其标准输出，再将此输出放到原来命令。有些shell不支持，如tcsh。</li>
+<li><strong>用于初始化数组</strong>。如：array&#x3D;(a b c d)</li>
+</ul>
+<p><strong>双小括号 (( ))</strong></p>
+<ul>
+<li>整数扩展。这种扩展计算是整数型的计算，不支持浮点型。((exp))结构扩展并计算一个算术表达式的值，如果表达式的结果为0，那么返回的退出状态码为1，或者 是”假”，而一个非零值的表达式所返回的退出状态码将为0，或者是”true”。若是逻辑判断，表达式exp为真则为1,假则为0。</li>
+<li>只要括号中的运算符、表达式符合C语言运算规则，都可用在<code>$((exp))</code>中，甚至是三目运算符。作不同进位(如二进制、八进制、十六进制)运算时，输出结果全都自动转化成了十进制。如：<code>echo $((16#5f))</code> 结果为95 (16进位转十进制)</li>
+<li>单纯用 <code>(( ))</code> 也可重定义变量值，比如 <code>a=5; ((a++)) </code>可将 <code>$a</code> 重定义为 <code>6</code></li>
+<li>常用于算术运算比较，双括号中的变量可以不使用<code>$</code>符号前缀。括号内支持多个表达式用逗号分开。  只要括号中的表达式符合C语言运算规则,比如可以直接使用<code>for((i=0;i&lt;5;i++))</code>, 如果不使用双括号, 则为 for i in  `seq 0 4` 或者<code>for i in &#123;0..4&#125;</code>。再如可以直接使用<code>if (($i&lt;5))</code>, 如果不使用双括号, 则为<code>if [ $i  -lt 5 ]</code>。</li>
+</ul>
+<p><strong>单中括号 []</strong></p>
+<ul>
+<li>bash  的内部命令，[和test是等同的。如果我们不用绝对路径指明，通常我们用的都是bash自带的命令。if&#x2F;test结构中的左中括号是调用test的命令标识，右中括号是关闭条件判断的。这个命令把它的参数作为比较表达式或者作为文件测试，并且根据比较的结果来返回一个退出状态码。if&#x2F;test结构中并不是必须右中括号，但是新版的Bash中要求必须这样。</li>
+<li>Test和[]中可用的比较运算符只有&#x3D;&#x3D;和!&#x3D;，两者都是用于字符串比较的，不可用于整数比较，整数比较只能使用-eq，-gt这种形式。无论是字符串比较还是整数比较都不支持大于号小于号。如果实在想用，对于字符串比较可以使用转义形式，如果比较”ab”和”bc”：[ ab &lt; bc ]，结果为真，也就是返回状态为0。[ ]中的逻辑与和逻辑或使用-a 和-o 表示。</li>
+<li>字符范围。用作正则表达式的一部分，描述一个匹配的字符范围。作为test用途的中括号内不能使用正则。</li>
+<li>在一个array 结构的上下文中，中括号用来引用数组中每个元素的编号。</li>
+</ul>
+<p><strong>双中括号[[ ]]</strong></p>
+<ul>
+<li>[[是 bash 程序语言的关键字。并不是一个命令，[[ ]] 结构比[ ]结构更加通用。在[[和]]之间所有的字符都不会发生文件名扩展或者单词分割，但是会发生参数扩展和命令替换。</li>
+<li>支持字符串的模式匹配，使用&#x3D;~操作符时甚至支持shell的正则表达式。字符串比较时可以把右边的作为一个模式，而不仅仅是一个字符串，比如[[ hello &#x3D;&#x3D; hell? ]]，结果为真。[[ ]] 中匹配字符串或通配符，不需要引号。</li>
+<li>使用[[ … ]]条件判断结构，而不是[ …  ]，能够防止脚本中的许多逻辑错误。比如，&amp;&amp;、||、&lt;和&gt; 操作符能够正常存在于[[  ]]条件判断结构中，但是如果出现在[ ]结构中的话，会报错。比如可以直接使用<code>if [[ $a != 1 &amp;&amp; $a != 2  ]]</code>, 如果不适用双括号, 则为<code>if [ $a -ne 1] &amp;&amp; [ $a != 2 ]</code>或者<code>if [ $a -ne 1 -a  $a != 2 ]</code>。</li>
+<li>bash 把双中括号中的表达式看作一个单独的元素，并返回一个退出状态码。。</li>
+</ul>
+<h3 id="文件包含"><a href="#文件包含" class="headerlink" title="文件包含"></a>文件包含</h3><p>在 Linux shell 编程中，文件包含是一种将一个脚本文件的内容嵌入到另一个脚本中的方法。这有助于代码的重用和模块化。这样可以更容易地维护和组织代码，尤其是在处理大型脚本时。</p>
+<h4 id="包含文件的基本方法"><a href="#包含文件的基本方法" class="headerlink" title="包含文件的基本方法"></a>包含文件的基本方法</h4><p>在 Bash 中，有两种主要的方法来包含文件的内容：<code>source</code> 命令和点命令（<code>.</code>）。</p>
+<p><strong>source 命令</strong></p>
+<p><code>source</code> 命令用于在当前 shell 环境中执行指定文件中的命令。其基本语法如下：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> filename</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>点命令</strong></p>
+<p>也可以使用一个点（<code>.</code>）来包含文件，效果等同于 <code>source</code> 命令。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">. filename</span><br></pre></td></tr></table></figure></div>
+
+<p><em>示例</em></p>
+<p>假设我们有一个包含函数的文件 <code>my_functions.sh</code>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># my_functions.sh</span></span><br><span class="line"><span class="function"><span class="title">greet</span></span>() &#123;</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Hello, <span class="variable">$1</span>!&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">farewell</span></span>() &#123;</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Goodbye, <span class="variable">$1</span>!&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们可以在另一个脚本 <code>main.sh</code> 中包含这个文件，并使用这些函数：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># main.sh</span></span><br><span class="line"><span class="comment">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 包含自定义函数文件</span></span><br><span class="line"><span class="built_in">source</span> my_functions.sh</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用函数</span></span><br><span class="line">greet <span class="string">&quot;Alice&quot;</span></span><br><span class="line">farewell <span class="string">&quot;Bob&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>当你运行 <code>main.sh</code> 时，输出将是：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Hello, Alice!</span><br><span class="line">Goodbye, Bob!</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>条件包含</strong></p>
+<p>有时，您可能希望仅在某个条件下包含某个文件。这可以使用 <code>if</code> 语句结合 <code>[ -f filename ]</code> 来实现，以确保文件存在。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ -f <span class="string">&quot;my_functions.sh&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">source</span> my_functions.sh</span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<h4 id="变量的作用域"><a href="#变量的作用域" class="headerlink" title="变量的作用域"></a><strong>变量的作用域</strong></h4><p>通过 <code>source</code> 或点命令包含的文件中的变量将保留在当前的 shell 环境中。这意味着，您可以在包含的脚本中定义变量，并在主脚本中访问这些变量。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># my_variables.sh</span></span><br><span class="line">my_var=<span class="string">&quot;Hello, World!&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># main.sh</span></span><br><span class="line"><span class="built_in">source</span> my_variables.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$my_var</span>  <span class="comment"># 输出: Hello, World!</span></span><br></pre></td></tr></table></figure></div>
+
+<h4 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><strong>错误处理</strong></h4><p>如果您尝试包含一个不存在的文件，<code>source</code> 命令将不会抛出错误，但上面的代码将继续执行。这可能会导致难以跟踪的错误。您可以在包含文件之前检查文件是否存在。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ -f <span class="string">&quot;my_functions.sh&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">source</span> my_functions.sh</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;Error: my_functions.sh not found.&quot;</span></span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure></div>
+
+<h1 id="项目构建工具"><a href="#项目构建工具" class="headerlink" title="项目构建工具"></a>项目构建工具</h1><h2 id="Makefile"><a href="#Makefile" class="headerlink" title="Makefile"></a>Makefile</h2><p><strong>参考链接</strong></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://liaoxuefeng.com/books/makefile/makefile-basic/index.html" >https://liaoxuefeng.com/books/makefile/makefile-basic/index.html<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="http://makefiletutorial.foofun.cn/" >http://makefiletutorial.foofun.cn/<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/" >https://www.gnu.org/software/make/<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p><strong>安装</strong></p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install build-essential make gcc g++ clang</span><br></pre></td></tr></table></figure></div>
+
+<p>在Linux环境下，当我们输入<code>make</code>命令时，它就在当前目录查找一个名为<code>Makefile</code>的文件，然后，根据这个文件定义的规则，自动化地执行任意命令，包括编译命令。</p>
+<h3 id="规则"><a href="#规则" class="headerlink" title="规则"></a>规则</h3><p><code>Makefile</code>由若干条规则（Rule）构成，每一条规则指出一个目标文件（Target），若干依赖文件（prerequisites），以及生成目标文件的命令。</p>
+<p>Makefile由一组 <em>rules</em> 组成。 rule通常如下所示：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">targets: prerequisites</span><br><span class="line">	command</span><br><span class="line">	command</span><br><span class="line">	command</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><em>targets</em> （目标） 是文件名，用空格分隔。 通常，每个rule只有一个。</li>
+<li><em>commands</em> （命令） 是通常用于创建目标的一系列步骤。 这些 <em>需要以制表符</em> 开头，不可以是空格。</li>
+<li><em>prerequisites</em>（先决条件） 也是文件名，用空格分隔。 在运行目标的命令之前，这些文件需要存在。 这些也称为 <em>dependencies</em>（依赖项）</li>
+</ul>
+<hr>
+<p>例如，要生成<code>m.txt</code>，依赖<code>a.txt</code>与<code>b.txt</code>，规则如下：</p>
+<p>我们举个例子：在当前目录下，有3个文本文件：<code>a.txt</code>，<code>b.txt</code>和<code>c.txt</code>。</p>
+<p>现在，我们要合并<code>a.txt</code>与<code>b.txt</code>，生成中间文件<code>m.txt</code>，再用中间文件<code>m.txt</code>与<code>c.txt</code>合并，生成最终的目标文件<code>x.txt</code>，整个逻辑如下图所示：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">┌─────┐ ┌─────┐ ┌─────┐</span><br><span class="line">│a.txt│ │b.txt│ │c.txt│</span><br><span class="line">└─────┘ └─────┘ └─────┘</span><br><span class="line">   │       │       │</span><br><span class="line">   └───┬───┘       │</span><br><span class="line">       │           │</span><br><span class="line">       ▼           │</span><br><span class="line">    ┌─────┐        │</span><br><span class="line">    │m.txt│        │</span><br><span class="line">    └─────┘        │</span><br><span class="line">       │           │</span><br><span class="line">       └─────┬─────┘</span><br><span class="line">             │</span><br><span class="line">             ▼</span><br><span class="line">          ┌─────┐</span><br><span class="line">          │x.txt│</span><br><span class="line">          └─────┘</span><br></pre></td></tr></table></figure></div>
+
+<p>根据上述逻辑，我们来编写<code>Makefile</code>。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 目标文件: 依赖文件1 依赖文件2</span></span><br><span class="line"><span class="section">m.txt: a.txt b.txt</span></span><br><span class="line">	cat a.txt b.txt &gt; m.txt</span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p><strong>注意：Makefile的规则中，命令必须以Tab开头，不能是空格。</strong></p>
+</blockquote>
+<p>一条规则的格式为<code>目标文件: 依赖文件1 依赖文件2 ...</code>，紧接着，以Tab开头的是命令，用来生成目标文件。上述第一条规则使用<code>cat</code>命令合并了<code>a.txt</code>与<code>b.txt</code>，并写入到<code>m.txt</code>，第二条规则。用什么方式生成目标文件<code>make</code>并不关心，因为命令完全是我们自己写的，可以是编译命令，也可以是<code>cp</code>、<code>mv</code>等任何命令。</p>
+<p>以<code>#</code>开头的是注释，会被<code>make</code>命令忽略。</p>
+<p>然后我们运行 <code>make m.txt</code>。 只要<code>m.txt</code>文件不存在，命令就会运行。 如果 <code>m.txt</code> 已存在，则不会运行任何命令。</p>
+<p>需要注意的是，我所说的<code>m.txt</code>既是一个目标，也是一个文件。 那是因为两者直接绑在一起。 通常，当目标运行时(也就是运行目标的命令时)，这些命令将创建一个与目标同名的文件(也就是 <code>cat a.txt b.txt &gt; m.txt</code>)。</p>
+<p><code>make</code>使用文件的创建和修改时间来判断是否应该更新一个目标文件。</p>
+<hr>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">x.txt: m.txt c.txt</span></span><br><span class="line">	cat m.txt c.txt &gt; x.txt</span><br><span class="line"></span><br><span class="line"><span class="section">m.txt: a.txt b.txt</span></span><br><span class="line">	cat a.txt b.txt &gt; m.txt</span><br></pre></td></tr></table></figure></div>
+
+<p>当我们执行<code>make</code>时，由于没有将目标作为参数提供给<code>make</code>命令，因此会运行第一个目标，也就是创建<code>x.txt</code>，但是由于<code>x.txt</code>依赖的文件<code>m.txt</code>不存在（另一个依赖<code>c.txt</code>已存在），故需要先执行规则<code>m.txt</code>创建出<code>m.txt</code>文件，再执行规则<code>x.txt</code>。执行完成后，当前目录下生成了两个文件<code>m.txt</code>和<code>x.txt</code>。</p>
+<p><code>Makefile</code>定义了一系列规则，每个规则在满足依赖文件的前提下执行命令，就能创建出一个目标文件。把默认执行的规则放第一条，其他规则的顺序是无关紧要的，因为<code>make</code>执行时自动判断依赖。此外，<code>make</code>会打印出执行的每一条命令，便于我们观察执行顺序以便调试。</p>
+<h3 id="伪目标"><a href="#伪目标" class="headerlink" title="伪目标"></a>伪目标</h3><p><code>clean</code>通常用作删除其他目标的输出的目标，但它在make中并不是一个专有的词。 你可以在此运行 <code>make</code> 和 <code>make clean</code> 来创建和删除 <code>some_file</code>。</p>
+<p>请注意，<code>clean</code>在这里做了两件新的事情：</p>
+<ul>
+<li>它不是第一个目标 (默认目标)，也不是先决条件。 这意味着除非显式调用<code>make clean</code>，否则它永远不会运行</li>
+<li>它不是一个文件名。 如果你碰巧有一个名为 <code>“clean”</code> 的文件，则此目标将无法运行，这不是我们想要的。</li>
+</ul>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">some_file: </span></span><br><span class="line">	touch some_file</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f some_file</span><br></pre></td></tr></table></figure></div>
+
+<p>将 <code>.PHONY</code> 添加到目标将防止Make将phony（假）目标与文件名混淆。 在此示例中，如果创建了文件 “clean”，则仍将运行 make clean。 从技术上讲，我应该在每个带有<code>all</code>或<code>clean</code>的示例中使用它。 此外，”phony” 目标通常具有很少是文件名的名称，实际上，许多人忽略了它。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">some_file:</span></span><br><span class="line">	touch some_file</span><br><span class="line">	touch clean</span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: clean</span></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f some_file</span><br><span class="line">	rm -f clean</span><br></pre></td></tr></table></figure></div>
+
+<p>大型项目通常会提供<code>clean</code>、<code>install</code>这些约定俗成的伪目标名称，方便用户快速执行特定任务。</p>
+<p>一般来说，并不需要用<code>.PHONY</code>标识<code>clean</code>等约定俗成的伪目标名称，除非有人故意搞破坏，手动创建名字叫<code>clean</code>的文件。</p>
+<h3 id="命令和执行"><a href="#命令和执行" class="headerlink" title="命令和执行"></a>命令和执行</h3><p><strong>命令回显&#x2F;静默</strong></p>
+<p>在命令之前添加 <code>@</code> 以阻止其打印<br>你还可以运行带有<code>-s</code>的make命令，等同于在每行前面添加一个<code>@</code></p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="string">&quot;This make line will not be printed&quot;</span></span><br><span class="line">	echo <span class="string">&quot;But this will&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>命令执行</strong></p>
+<p>每个命令都在一个新的shell中运行(或者至少效果是这样的)</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: </span></span><br><span class="line">	cd ..</span><br><span class="line">	<span class="comment"># 上面的cd不会影响该行，因为每个命令都有效地在新的shell中运行</span></span><br><span class="line">	echo `pwd`</span><br><span class="line"></span><br><span class="line">	<span class="comment"># 此cd命令会影响下一个命令，因为它们在同一行上</span></span><br><span class="line">	cd ..;echo `pwd`</span><br><span class="line"></span><br><span class="line">	<span class="comment"># 同上</span></span><br><span class="line">	cd ..; \</span><br><span class="line">	echo `pwd`</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>默认Shell</strong></p>
+<p>默认Shell是 ‘&#x2F;bin&#x2F;sh’。你可以通过更改变量SHELL来更改此设置:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SHELL=/bin/bash</span><br><span class="line"></span><br><span class="line"><span class="section">cool:</span></span><br><span class="line">	echo <span class="string">&quot;Hello from bash&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong><code>-k</code>、<code>-i</code>、<code>-</code>错误处理</strong></p>
+<p>在运行时添加 <code>-k</code>，即使面对错误也要继续运行。 如果你想一次查看Make的所有错误，这将非常有用。<br>在命令前添加 <code>-</code> 以抑制错误<br>添加<code>-i</code>以使每个命令都会发生这种情况。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">one:</span></span><br><span class="line">	<span class="comment"># 此错误将被打印但被忽略，并且make将继续运行</span></span><br><span class="line">	-false</span><br><span class="line">	touch one</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>中断或杀死Make</strong></p>
+<p>备注：如果你对make按下<code>ctrl+c</code>，它将删除它刚刚创建的较新的目标。</p>
+<p><strong>Make的递归使用</strong></p>
+<p>要递归调用makefile，请使用特殊的 <code>$(MAKE)</code> 而不是 <code>make</code>，因为这样它才能为你传递make标志，并且本身不会受到它们的影响。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">new_contents = <span class="string">&quot;hello:\n\ttouch inside_file&quot;</span></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	mkdir -p subdir</span><br><span class="line">	printf <span class="variable">$(new_contents)</span> | sed -e &#x27;s/^ //&#x27; &gt; subdir/makefile</span><br><span class="line">	cd subdir &amp;&amp; <span class="variable">$(MAKE)</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf subdir</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>使用export进行递归make</strong></p>
+<p>export指令采用一个变量，并使sub-make命令可以访问它。 在本例中，导出了<code>cooly</code>，以便subdir中的Makefile可以使用它。</p>
+<p>注意: export具有与sh相同的语法，但它们不相关 (尽管在功能上相似)</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">new_contents = <span class="string">&quot;hello:\n\techo \$<span class="variable">$(cooly)</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	mkdir -p subdir</span><br><span class="line">	printf <span class="variable">$(new_contents)</span> | sed -e &#x27;s/^ //&#x27; &gt; subdir/makefile</span><br><span class="line">	@echo <span class="string">&quot;---MAKEFILE CONTENTS---&quot;</span></span><br><span class="line">	@cd subdir &amp;&amp; cat makefile</span><br><span class="line">	@echo <span class="string">&quot;---END MAKEFILE CONTENTS---&quot;</span></span><br><span class="line">	cd subdir &amp;&amp; <span class="variable">$(MAKE)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 请注意，变量和导出。 它们在全局范围内被设置/影响。</span></span><br><span class="line">cooly = <span class="string">&quot;The subdirectory can see me!&quot;</span></span><br><span class="line"><span class="keyword">export</span> cooly</span><br><span class="line"><span class="comment"># 这将使上面的行无效: 取消导出cooly</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf subdir</span><br></pre></td></tr></table></figure></div>
+
+<p>你需要导出变量，以便让它们也在shell中运行。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">one=this will only work locally</span><br><span class="line"><span class="keyword">export</span> two=we can run subcommands with this</span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="variable">$(one)</span></span><br><span class="line">	@echo $$one</span><br><span class="line">	@echo <span class="variable">$(two)</span></span><br><span class="line">	@echo $$two</span><br></pre></td></tr></table></figure></div>
+
+<p><code>.EXPORT_ALL_VARIABLES</code> 为你导出所有变量。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">.EXPORT_ALL_VARIABLES:</span></span><br><span class="line">new_contents = <span class="string">&quot;hello:\n\techo \$<span class="variable">$(cooly)</span>&quot;</span></span><br><span class="line"></span><br><span class="line">cooly = <span class="string">&quot;The subdirectory can see me!&quot;</span></span><br><span class="line"><span class="comment"># 这将使上面一行无效：取消导出cooly</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	mkdir -p subdir</span><br><span class="line">	printf <span class="variable">$(new_contents)</span> | sed -e &#x27;s/^ //&#x27; &gt; subdir/makefile</span><br><span class="line">	@echo <span class="string">&quot;---MAKEFILE CONTENTS---&quot;</span></span><br><span class="line">	@cd subdir &amp;&amp; cat makefile</span><br><span class="line">	@echo <span class="string">&quot;---END MAKEFILE CONTENTS---&quot;</span></span><br><span class="line">	cd subdir &amp;&amp; <span class="variable">$(MAKE)</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf subdir</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>make的参数</strong></p>
+<p>有一个很好的可以从Make运行的 <a class="link"   target="_blank" rel="noopener" href="http://www.gnu.org/software/make/manual/make.html#Options-Summary" >options<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 列表。 查看 <code>--dry-run</code>，<code>--touch</code>，<code>--old-file</code>。</p>
+<p>你可以有多个目标来make，例如 <code>make clean run test</code>，运行<code>clean</code>，然后<code>run</code>，然后<code>test</code>。</p>
+<h3 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h3><p><strong>all目标</strong></p>
+<p>要制作多个目标，而你想让所有目标都运行？ 你可以制作一个<code>all</code>目标。 由于这是列出的第一个规则，因此如果调用 <code>make</code> 而未指定目标，则默认情况下它将运行。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">all: one two three</span><br><span class="line"></span><br><span class="line">one:</span><br><span class="line">	touch one</span><br><span class="line">two:</span><br><span class="line">	touch two</span><br><span class="line">three:</span><br><span class="line">	touch three</span><br><span class="line"></span><br><span class="line">clean:</span><br><span class="line">	rm -f one two three</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>多目标</strong></p>
+<p>当一个规则有多个目标时，将为每个目标运行命令。 <code>$@</code> 是包含目标名称的自动变量。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: f1.o f2.o</span></span><br><span class="line"></span><br><span class="line">f1.o f2.o:</span><br><span class="line">	echo <span class="variable">$@</span></span><br><span class="line"><span class="comment"># 相当于：</span></span><br><span class="line"><span class="comment"># f1.o:</span></span><br><span class="line"><span class="comment">#	 echo f1.o</span></span><br><span class="line"><span class="comment"># f2.o:</span></span><br><span class="line"><span class="comment">#	 echo f2.o</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="自动变量和通配符"><a href="#自动变量和通配符" class="headerlink" title="自动变量和通配符"></a>自动变量和通配符</h3><p><strong><code>*</code> 通配符</strong></p>
+<p><code>*</code> 和 <code>%</code> 在 Make中都被称为通配符，但它们的含义完全不同。 <code>*</code>会在你的文件系统中搜索匹配的文件名。 我建议你始终将其包装在<code>wildcard</code> 函数中，因为否则你可能会陷入下面描述的常见陷阱。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 打印出每个.c文件的文件信息</span></span><br><span class="line"><span class="section">print: $(wildcard *.c)</span></span><br><span class="line">	ls -la  <span class="variable">$?</span></span><br></pre></td></tr></table></figure></div>
+
+<p><code>“*” </code>可以在目标，先决条件或 <code>wildcard</code> 函数中使用。</p>
+<p>危险：<code>*</code>不能在变量定义中直接使用</p>
+<p>危险: 当 <code>*</code> 不匹配任何文件时，它将维持原样 (除非在<code>wildcard</code> 函数中运行)</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">thing_wrong := *.o <span class="comment"># 不要这样做！‘*’不会展开</span></span><br><span class="line">thing_right := <span class="variable">$(<span class="built_in">wildcard</span> *.o)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: one two three four</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 失败，因为$(thing_wrong)是字符串“*.o”</span></span><br><span class="line"><span class="section">one: <span class="variable">$(thing_wrong)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果没有与此模式匹配的文件，则保持为 *.o :(</span></span><br><span class="line"><span class="section">two: *.o </span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 如你所料！在这种情况下，它什么也不做。</span></span><br><span class="line"><span class="section">three: <span class="variable">$(thing_right)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 与规则three相同</span></span><br><span class="line"><span class="section">four: $(wildcard *.o)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong><code>%</code> 通配符</strong></p>
+<p><code>%</code>确实很有用，但由于它可以在多种情况下使用，所以有点令人困惑。</p>
+<ul>
+<li>在“匹配”模式下使用时，匹配字符串中的一个或多个字符。 这种匹配被称为词干（stem）。</li>
+<li>在“替换”模式下使用时，它会获取匹配的词干，并替换字符串中的词干。</li>
+<li><code>%</code> 最常用于规则定义和某些特定函数中。</li>
+</ul>
+<p><strong>自动变量</strong></p>
+<p>有很多个 <a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html" >自动变量<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> ，但通常只有几个出现：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">hey: one two</span></span><br><span class="line">	<span class="comment"># 输出 “hey”，因为这是目标名称</span></span><br><span class="line">	echo <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line">	<span class="comment"># 输出比目标更新的所有先决条件</span></span><br><span class="line">	echo <span class="variable">$?</span></span><br><span class="line"></span><br><span class="line">	<span class="comment"># 输出所有先决条件</span></span><br><span class="line">	echo <span class="variable">$^</span></span><br><span class="line"></span><br><span class="line">	<span class="comment"># 表示第一个依赖文件，也就是这里的 $^ 的第一个元素。</span></span><br><span class="line">	echo <span class="variable">$&lt;</span></span><br><span class="line">	</span><br><span class="line">	touch hey</span><br><span class="line"></span><br><span class="line"><span class="section">one:</span></span><br><span class="line">	touch one</span><br><span class="line"></span><br><span class="line"><span class="section">two:</span></span><br><span class="line">	touch two</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f hey one two</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="其它规则"><a href="#其它规则" class="headerlink" title="其它规则"></a>其它规则</h3><p><strong>隐式规则</strong></p>
+<p>Make偏爱c编译。 而每次它出现这种偏爱的时候，事情就会变得混乱。 也许Make中最令人困惑的部分是Make的魔术&#x2F;自动规则（<code>magic/automatic rules</code>）。 Make会调用这些“隐含的”规则。 我个人不同意这个设计决定，也不建议使用它们，但是它们经常被使用，因此很有用。 以下是隐含规则的列表：</p>
+<ul>
+<li>编译C程序: 从 <code>n.c</code> 自动生成 <code>n.o</code>，命令形式为 <code>$(CC) -c $(CPPFLAGS) $(CFLAGS)</code></li>
+<li>编译C++程序：<code>n.o</code>由<code>n.cc</code>或<code>n.cpp</code>自动生成，命令形式为<code>$(CXX) -c $(CPPFLAGS) $(CXXFLAGS)</code></li>
+<li>链接单个目标文件: 自动从<code>n.o</code>构造<code>n</code>， 通过运行命令<code>$(CC) $(LDFLAGS) n.o $(LOADLIBES) $(LDLIBS)</code></li>
+</ul>
+<p>隐式规则使用的重要变量包括：</p>
+<ul>
+<li><code>CC</code>: 编译C程序的程序；默认<code>cc</code></li>
+<li><code>CXX</code>: 编译C++程序的程序; 默认 <code>g++</code></li>
+<li><code>CFLAGS</code>: 要提供给C编译器的额外标志</li>
+<li><code>CXXFLAGS</code>: 给C++编译器的额外标志</li>
+<li><code>CPPFLAGS</code>: 要提供给C预处理器的额外标志</li>
+<li><code>LDFLAGS</code>: 当编译器应该调用链接器时，会给他们额外的标志</li>
+</ul>
+<p>让我们看看我们现在如何构建一个C程序，而无需明确地告诉制造如何进行编译:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">CC = gcc <span class="comment"># 隐式规则标志</span></span><br><span class="line">CFLAGS = -g <span class="comment"># 隐式规则的标志。打开调试信息</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 隐式规则 #1：blah是通过C链接器隐式规则构建的</span></span><br><span class="line"><span class="comment"># 隐式规则 #2: blah.o是通过C编译隐式规则构建的，因为blah.c存在</span></span><br><span class="line"><span class="section">blah: blah.o</span></span><br><span class="line"></span><br><span class="line"><span class="section">blah.c:</span></span><br><span class="line">	echo <span class="string">&quot;int main() &#123; return 0; &#125;&quot;</span> &gt; blah.c</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f blah*</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>静态模式规则</strong></p>
+<p>静态模式规则是在Makefile中减少编写量的另一种方式，但我会说更有用，并且 “魔术” 技巧更少。 它们的语法如下：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">targets...: target-pattern: prereq-patterns ...</span></span><br><span class="line">   commands</span><br></pre></td></tr></table></figure></div>
+
+<p>本质是给定的 <code>target</code> 与 <code>target-pattern</code> 匹配 (通过 <code>%</code> 通配符)。 任何匹配的东西都被称为 <em>词干</em>。 然后将词干替换为 “prereq-pattern”，以生成目标的prereq。</p>
+<p>一个典型的用例是将<code>.c</code>文件编译成<code>.o</code>文件。 这里是手动方式:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">objects = foo.o bar.o all.o</span><br><span class="line"><span class="section">all: <span class="variable">$(objects)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 这些文件通过上面隐式规则进行编译</span></span><br><span class="line"><span class="section">foo.o: foo.c</span></span><br><span class="line"><span class="section">bar.o: bar.c</span></span><br><span class="line"><span class="section">all.o: all.c</span></span><br><span class="line"></span><br><span class="line"><span class="section">all.c:</span></span><br><span class="line">	echo <span class="string">&quot;int main() &#123; return 0; &#125;&quot;</span> &gt; all.c</span><br><span class="line"></span><br><span class="line"><span class="section">%.c:</span></span><br><span class="line">	touch <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f *.c *.o all</span><br></pre></td></tr></table></figure></div>
+
+<p>这是使用静态模式规则的更高效的方式:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">objects = foo.o bar.o all.o</span><br><span class="line"><span class="section">all: <span class="variable">$(objects)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 这些文件通过隐式规则进行编译</span></span><br><span class="line"><span class="comment"># 语法 - targets ...: target-pattern: prereq-patterns ...</span></span><br><span class="line"><span class="comment"># 在第一个目标foo.o的情况下，目标模式与foo.o匹配，并将“词干”设置为“foo”。</span></span><br><span class="line"><span class="comment"># 然后用该词干替换prereq模式中的 “%”</span></span><br><span class="line"><span class="variable">$(objects)</span>: %.o: %.c</span><br><span class="line"></span><br><span class="line"><span class="section">all.c:</span></span><br><span class="line">	echo <span class="string">&quot;int main() &#123; return 0; &#125;&quot;</span> &gt; all.c</span><br><span class="line"></span><br><span class="line"><span class="section">%.c:</span></span><br><span class="line">	touch <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f *.c *.o all</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>静态模式规则和过滤器</strong></p>
+<p>当我稍后介绍函数时，我将预示你可以使用它们来做什么。 <code>filter</code> 过滤器函数可以在静态模式规则中使用，以匹配正确的文件。 在本例中，我编造了<code>.raw</code>和<code>.result</code>扩展名。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">obj_files = foo.result bar.o lose.o</span><br><span class="line">src_files = foo.raw bar.c lose.c</span><br><span class="line"></span><br><span class="line"><span class="section">all: <span class="variable">$(obj_files)</span></span></span><br><span class="line"></span><br><span class="line"><span class="variable">$(<span class="built_in">filter</span> %.o,<span class="variable">$(obj_files)</span>)</span>: %.o: %.c</span><br><span class="line">	echo <span class="string">&quot;target: <span class="variable">$@</span> prereq: <span class="variable">$&lt;</span>&quot;</span></span><br><span class="line"><span class="variable">$(<span class="built_in">filter</span> %.result,<span class="variable">$(obj_files)</span>)</span>: %.result: %.raw</span><br><span class="line">	echo <span class="string">&quot;target: <span class="variable">$@</span> prereq: <span class="variable">$&lt;</span>&quot;</span> </span><br><span class="line"></span><br><span class="line">%.c %.raw:</span><br><span class="line">	touch <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f <span class="variable">$(src_files)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>模式规则</strong></p>
+<p>模式规则经常被使用，但非常令人困惑。你可以从两个方面来看待它们：</p>
+<ul>
+<li>定义自己的隐含规则的方法</li>
+<li>静态模式规则的更简单形式</li>
+</ul>
+<p>让我们首先从一个例子开始:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 定义将每个.c文件编译为.o文件的模式规则</span></span><br><span class="line">%.o : %.c</span><br><span class="line">		<span class="variable">$(CC)</span> -c <span class="variable">$(CFLAGS)</span> <span class="variable">$(CPPFLAGS)</span> <span class="variable">$&lt;</span> -o <span class="variable">$@</span></span><br></pre></td></tr></table></figure></div>
+
+<p>模式规则在目标中包含<code>%</code>。 此 <code>%</code> 匹配任何非空字符串，其他字符匹配自己。 模式规则先决条件中的<code>%</code>代表与目标中的<code>%</code>匹配的同一词干。</p>
+<p>这里是另一个例子:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 定义一个在先决条件中没有模式的模式规则。</span></span><br><span class="line"><span class="comment"># 这只会在需要时创建空的.c文件。</span></span><br><span class="line"><span class="section">%.c:</span></span><br><span class="line">   touch <span class="variable">$@</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>双冒号规则</strong></p>
+<p>很少使用双冒号规则，但用它允许为同一目标定义多个规则。 如果这些规则是单冒号，则会打印一条警告，并且只运行这里的第二组命令。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: blah</span></span><br><span class="line"></span><br><span class="line"><span class="section">blah::</span></span><br><span class="line">	echo <span class="string">&quot;hello&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="section">blah::</span></span><br><span class="line">	echo <span class="string">&quot;hello again&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="变量"><a href="#变量" class="headerlink" title="变量"></a>变量</h3><p><strong>类型和修饰</strong></p>
+<p>有两种类型的变量：</p>
+<ul>
+<li>递归 (使用 <code>=</code>) - 在<em>使用命令</em>时才会查找变量，而不在<em>定义命令</em>时查找变量。</li>
+<li>简单展开 (使用 <code>:=</code>) - 就像普通的命令式编程一样 – 只有到目前为止定义的变量才会得到展开</li>
+</ul>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 递归变量。这将能在下面打印出 “later”</span></span><br><span class="line">one = one $&#123;later_variable&#125;</span><br><span class="line"><span class="comment"># 简单展开变量。这无法在下面打印出 “later”</span></span><br><span class="line">two := two $&#123;later_variable&#125;</span><br><span class="line"></span><br><span class="line">later_variable = later</span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="variable">$(one)</span></span><br><span class="line">	echo <span class="variable">$(two)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>简单的说展开(使用<code>:=</code>)允许你追加到一个变量。 递归定义可能会给出无限循环错误。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">one = hello</span><br><span class="line"><span class="comment"># one被定义为一个简单展开变量(:=)，因此可以处理追加</span></span><br><span class="line">one := $&#123;one&#125; there</span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="variable">$(one)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><code>?=</code> 仅设置尚未设置的变量</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">one = hello</span><br><span class="line">one ?= will not be set</span><br><span class="line">two ?= will be set</span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="variable">$(one)</span></span><br><span class="line">	echo <span class="variable">$(two)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>行尾的空格不会被去掉，但行首的空格会被去掉。 要使用单个空格制作变量，请使用 <code>$(nullstring)</code></p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">with_spaces = hello   <span class="comment"># with_spaces在 &quot;hello&quot; 之后有很多空格</span></span><br><span class="line">after = <span class="variable">$(with_spaces)</span>there</span><br><span class="line"></span><br><span class="line">nullstring =</span><br><span class="line">space = <span class="variable">$(nullstring)</span> <span class="comment"># 构造一个单个空格变量。</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="string">&quot;<span class="variable">$(after)</span>&quot;</span></span><br><span class="line">	echo start<span class="string">&quot;<span class="variable">$(space)</span>&quot;</span>end</span><br></pre></td></tr></table></figure></div>
+
+<p>未定义的变量实际上是空字符串！</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: </span></span><br><span class="line">	<span class="comment"># 未定义的变量只是空字符串!</span></span><br><span class="line">	echo <span class="variable">$(nowhere)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>使用 <code>+=</code> 追加</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">foo := start</span><br><span class="line">foo += more</span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="variable">$(foo)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>字符串替换也是一种真正常见且有用的修改变量的方法。 另请查看 <a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/Text-Functions.html#Text-Functions" >Text Functions<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 和 <a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html#File-Name-Functions" >Filename Functions<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 。</p>
+<p><strong>命令行参数和覆盖</strong></p>
+<p>你可以使用<code>override</code>覆盖来自命令行的变量。 在这里，我们用 <code>make option_one=hi</code> 运行 make</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 覆盖命令行参数</span></span><br><span class="line"><span class="keyword">override</span> option_one = did_override</span><br><span class="line"><span class="comment"># 未覆盖的命令行参数</span></span><br><span class="line">option_two = not_override</span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo <span class="variable">$(option_one)</span></span><br><span class="line">	echo <span class="variable">$(option_two)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>命令列表和define</strong></p>
+<p>“define”实际上只是一个命令列表。 它与函数无关。 请注意，这与命令之间的分号有点不同，因为每个命令都在单独的shell中运行，如预期的那样。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">one = <span class="keyword">export</span> blah=<span class="string">&quot;I was set!&quot;</span>; echo $$blah</span><br><span class="line"></span><br><span class="line"><span class="keyword">define</span> two</span><br><span class="line"><span class="keyword">export</span> blah=set</span><br><span class="line">echo $$blah</span><br><span class="line"><span class="keyword">endef</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># one和two是不同的。</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="string">&quot;这会打印 &#x27;I was set&#x27;&quot;</span></span><br><span class="line">	@<span class="variable">$(one)</span></span><br><span class="line">	@echo <span class="string">&quot;这不会打印 &#x27;I was set&#x27; 因为每个command都在单独的shell中运行&quot;</span></span><br><span class="line">	@<span class="variable">$(two)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>目标特定变量</strong></p>
+<p>可以为特定目标中赋值变量</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: one = cool</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	echo one is defined: <span class="variable">$(one)</span></span><br><span class="line"></span><br><span class="line"><span class="section">other:</span></span><br><span class="line">	echo one is nothing: <span class="variable">$(one)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>模式特定变量</strong></p>
+<p>你可以为特定目标模式中分配变量</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">%.c: one = cool</span></span><br><span class="line"></span><br><span class="line"><span class="section">blah.c: </span></span><br><span class="line">	echo one is defined: <span class="variable">$(one)</span></span><br><span class="line"></span><br><span class="line"><span class="section">other:</span></span><br><span class="line">	echo one is nothing: <span class="variable">$(one)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h3><p><strong>条件if&#x2F;else</strong></p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">foo = ok</span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line"><span class="keyword">ifeq</span> (<span class="variable">$(foo)</span>, ok)</span><br><span class="line">	echo <span class="string">&quot;foo equals ok&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">	echo <span class="string">&quot;nope&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>检查变量是否为空</strong></p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">nullstring =</span><br><span class="line">foo = <span class="variable">$(nullstring)</span> <span class="comment"># 行尾; 这里有一个空格</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line"><span class="keyword">ifeq</span> (<span class="variable">$(<span class="built_in">strip</span> <span class="variable">$(foo)</span>)</span>,)</span><br><span class="line">	echo <span class="string">&quot;foo is empty after being stripped&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br><span class="line"><span class="keyword">ifeq</span> (<span class="variable">$(nullstring)</span>,)</span><br><span class="line">	echo <span class="string">&quot;nullstring doesn&#x27;t even have spaces&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>检查是否定义了变量</strong></p>
+<p>ifdef不展开变量引用；它只查看是否定义了某些内容</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">bar =</span><br><span class="line">foo = <span class="variable">$(bar)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line"><span class="keyword">ifdef</span> foo</span><br><span class="line">	echo <span class="string">&quot;foo is defined&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br><span class="line"><span class="keyword">ifndef</span> bar</span><br><span class="line">	echo <span class="string">&quot;but bar is not&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>$(makeflags)</strong></p>
+<p>此示例向你展示了如何使用 <code>findstring</code> 和 <code>MAKEFLAGS</code> 测试make标志。 使用<code>make -i</code>运行此示例，以查看它打印出echo语句。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">bar =</span><br><span class="line">foo = <span class="variable">$(bar)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line"><span class="comment"># 搜索 “-i” 标志。 MAKEFLAGS只是一个单一字符的列表，每个标志一个字符。 所以在这种情况下寻找 “i”。</span></span><br><span class="line"><span class="keyword">ifneq</span> (,<span class="variable">$(<span class="built_in">findstring</span> i, <span class="variable">$(MAKEFLAGS)</span>)</span>)</span><br><span class="line">	echo <span class="string">&quot;i was passed to MAKEFLAGS&quot;</span></span><br><span class="line"><span class="keyword">endif</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="函数-1"><a href="#函数-1" class="headerlink" title="函数"></a>函数</h3><p><strong>首个函数</strong></p>
+<p><em>函数</em>主要用于文本处理。 用 <code>$(fn, arguments)</code> 或 <code>$&#123;fn, arguments&#125;</code> 调用函数。 你可以使用 <a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/Call-Function.html#Call-Function" >call<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 内置函数来创建自己的代码。 Make有相当数量的 <a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/Functions.html" >内置函数<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">bar := $&#123;subst not, totally, <span class="string">&quot;I am not superman&quot;</span>&#125;</span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="variable">$(bar)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>如果要使用变量替换空格或逗号</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">comma := ,</span><br><span class="line">empty:=</span><br><span class="line">space := <span class="variable">$(empty)</span> <span class="variable">$(empty)</span></span><br><span class="line">foo := a b c</span><br><span class="line">bar := <span class="variable">$(<span class="built_in">subst</span> <span class="variable">$(space)</span>,<span class="variable">$(comma)</span>,<span class="variable">$(foo)</span>)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="variable">$(bar)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>第一个参数后不要包含空格。 否则这将被视为字符串的一部分。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">comma := ,</span><br><span class="line">empty:=</span><br><span class="line">space := <span class="variable">$(empty)</span> <span class="variable">$(empty)</span></span><br><span class="line">foo := a b c</span><br><span class="line">bar := <span class="variable">$(<span class="built_in">subst</span> <span class="variable">$(space)</span>, <span class="variable">$(comma)</span> , <span class="variable">$(foo)</span>)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: </span></span><br><span class="line">	<span class="comment">#输出为 &quot;, a , b , c&quot;。 注意引入的空格</span></span><br><span class="line">	@echo <span class="variable">$(bar)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>字符串替换</strong></p>
+<p><code>$(patsubst pattern,replacement,text)</code>执行以下操作：</p>
+<p>“在与pattern匹配的text中查找空格分隔的单词，并将其替换为replacement。 在这里，模式可以包含充当通配符的‘%’，匹配单词中任意数量的任何字符。 如果替换还包含 ‘%’，则将 ‘%’ 替换为与模式中的 ‘%’ 匹配的文本。 只有模式和替换中的第一个‘%’会以这种方式处理；任何后续的‘%’都不会改变。” (<a class="link"   target="_blank" rel="noopener" href="https://www.gnu.org/software/make/manual/html_node/Text-Functions.html#Text-Functions" >GNU docs<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>)</p>
+<p>替换引用 <code>$(text:pattern=replacement)</code> 是这方面的简写。</p>
+<p>还有一个只替换后缀的简写：<code>$(text:suffix=replacement)</code>。 这里不使用 <code>%</code> 通配符。</p>
+<p>注意：不要为此简写添加额外的空格。 它将被视为搜索或替换术语。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">foo := a.o b.o l.a c.o</span><br><span class="line">one := <span class="variable">$(<span class="built_in">patsubst</span> %.o,%.c,<span class="variable">$(foo)</span>)</span></span><br><span class="line"><span class="comment"># 这是上述内容的简写</span></span><br><span class="line">two := $(foo:%.o=%.c)</span><br><span class="line"><span class="comment"># 这是仅后缀的简写，也等同于上述。</span></span><br><span class="line">three := $(foo:.o=.c)</span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	echo <span class="variable">$(one)</span></span><br><span class="line">	echo <span class="variable">$(two)</span></span><br><span class="line">	echo <span class="variable">$(three)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>foreach函数</strong></p>
+<p>foreach函数如下所示: <code>$(foreach var,list,text)</code>。 它将一个单词列表(由空格分隔)转换为另一个列表。 <code>var</code>被设置为list中每个单词，同时<code>text</code>是针对每一个单词的展开。<br>这里在每个单词后附加了一个感叹号:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">foo := who are you</span><br><span class="line"><span class="comment"># 对于foo中的每个“word”，输出相同的单词，并在后面加一个感叹号</span></span><br><span class="line">bar := <span class="variable">$(<span class="built_in">foreach</span> wrd,<span class="variable">$(foo)</span>,<span class="variable">$(wrd)</span>!)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	<span class="comment"># 输出是 &quot;who! are! you!&quot;</span></span><br><span class="line">	@echo <span class="variable">$(bar)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>if函数</strong></p>
+<p><code>if</code>检查第一个参数是否为非空。如果是，则运行第二个参数，否则运行第三个参数。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">foo := <span class="variable">$(<span class="built_in">if</span> this-is-not-empty,then!,else!)</span></span><br><span class="line">empty :=</span><br><span class="line">bar := <span class="variable">$(<span class="built_in">if</span> <span class="variable">$(empty)</span>,then!,else!)</span></span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	@echo <span class="variable">$(foo)</span></span><br><span class="line">	@echo <span class="variable">$(bar)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>调用函数</strong></p>
+<p>Make支持创建基本函数。 你只需创建一个变量即可定义函数，但需要使用<code>$(0)</code>、<code>$(1)</code>等参数。 然后，你使用特殊的 ‘call’ 函数调用该函数。 语法为<code>$(call variable,param,param)</code>。 <code>$(0)</code> 是变量，而 <code>$(1)</code>，<code>$(2)</code>… 等是参数。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sweet_new_fn = Variable Name: $(0) First: $(1) Second: $(2) Empty Variable: $(3)</span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	<span class="comment"># 输出 “Variable Name：sweet_new_fn First: go Second: tigers Empty Variable：”</span></span><br><span class="line">	@echo <span class="variable">$(<span class="built_in">call</span> sweet_new_fn, go, tigers)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>shell函数</strong></p>
+<p>shell - 这调用shell，但它用空格替换换行符!</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">all: </span></span><br><span class="line">	@echo <span class="variable">$(<span class="built_in">shell</span> ls -la)</span> <span class="comment"># 很难看，因为换行不见了！</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="其他特性"><a href="#其他特性" class="headerlink" title="其他特性"></a>其他特性</h3><p><strong>包含Makefiles</strong></p>
+<p>include指令告诉make读取一个或多个其他多个makefiles。 一行makefile中makefile，看起来像这样:</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">include</span> filenames...</span><br></pre></td></tr></table></figure></div>
+
+<p>当你使用诸如 <code>-M</code> 之类的编译器标志基于源创建Makefiles时，这特别有用。 例如，如果某些c文件包含头文件，则该头文件将被添加到由GCC编写的Makefile中。 我在 <a class="link"   target="_blank" rel="noopener" href="http://makefiletutorial.foofun.cn/#makefile-Cookbook" >Makefile Cookbook<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 中有更多探讨</p>
+<p><strong>vpath指令</strong></p>
+<p>使用vpath指定一些先决条件的存在位置。 格式为<code>vpath &lt;pattern&gt; &lt;directories, space/colon separated&gt;</code><br><code>&lt;pattern&gt;</code> 可以有一个 <code>%</code>，它匹配任何零个或多个字符。<br>你还可以使用变量VPATH在全局范围内执行此操作</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">vpath</span> %.h ../headers ../other-directory</span><br><span class="line"></span><br><span class="line"><span class="section">some_binary: ../headers blah.h</span></span><br><span class="line">	touch some_binary</span><br><span class="line"></span><br><span class="line"><span class="section">../headers:</span></span><br><span class="line">	mkdir ../headers</span><br><span class="line"></span><br><span class="line"><span class="section">blah.h:</span></span><br><span class="line">	touch ../headers/blah.h</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf ../headers</span><br><span class="line">	rm -f some_binary</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>多行</strong></p>
+<p>反斜杠(“&quot;)字符使我们能够在命令太长时使用多行</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">some_file: </span></span><br><span class="line">	echo This line is too long, so \</span><br><span class="line">		it is broken up into multiple lines</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>.phony</strong></p>
+<p>将 <code>.PHONY</code> 添加到目标将防止Make将phony（假）目标与文件名混淆。 在此示例中，如果创建了文件 “clean”，则仍将运行 make clean。 从技术上讲，我应该在每个带有<code>all</code>或<code>clean</code>的示例中使用它，但我没有保持clean示例。 此外，”phony” 目标通常具有很少是文件名的名称，实际上，许多人忽略了它。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">some_file:</span></span><br><span class="line">	touch some_file</span><br><span class="line">	touch clean</span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: clean</span></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f some_file</span><br><span class="line">	rm -f clean</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>.delete_on_error</strong></p>
+<p>如果命令返回非零退出状态，则make工具将停止运行规则(并将传播回先决条件)。<br>如果规则以这种方式失败，则 <code>DELETE_ON_ERROR</code> 将删除规则的目标。 这将发生在所有目标上，而不仅仅是它之前的那个PHONY目标。 最好始终使用它是一个好主意，即使make出于历史原因没有默认使用这个策略。</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">.DELETE_ON_ERROR:</span></span><br><span class="line"><span class="section">all: one two</span></span><br><span class="line"></span><br><span class="line"><span class="section">one:</span></span><br><span class="line">	touch one</span><br><span class="line">	false</span><br><span class="line"></span><br><span class="line"><span class="section">two:</span></span><br><span class="line">	touch two</span><br><span class="line">	false</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p><strong>示例</strong></p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 感谢Job Vranish (https://spin.atomicobject.com/2016/08/26/makefile-c-projects/)</span></span><br><span class="line">TARGET_EXEC := final_program</span><br><span class="line"></span><br><span class="line">BUILD_DIR := ./build</span><br><span class="line">SRC_DIRS := ./src</span><br><span class="line"></span><br><span class="line"><span class="comment"># 找到我们要编译的所有C和C++文件</span></span><br><span class="line"><span class="comment"># 请注意 * 表达式两边的单引号。 否则Make会在那里错误地展开。</span></span><br><span class="line">SRCS := <span class="variable">$(<span class="built_in">shell</span> find <span class="variable">$(SRC_DIRS)</span> -name &#x27;*.cpp&#x27; -<span class="built_in">or</span> -name &#x27;*.c&#x27; -<span class="built_in">or</span> -name &#x27;*.s&#x27;)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 每个C/C++文件的字符串替换。</span></span><br><span class="line"><span class="comment"># 例如，hello.cpp变成./build/hello.cpp.o</span></span><br><span class="line">OBJS := $(SRCS:%=<span class="variable">$(BUILD_DIR)</span>/%.o)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 字符串替换(不带%的后缀版本)。</span></span><br><span class="line"><span class="comment">#例如，./build/hello.cpp.o变成./build/hello.cpp.d</span></span><br><span class="line">DEPS := $(OBJS:.o=.d)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ./src中的每个文件夹将需要传递给GCC，以便它可以找到头文件</span></span><br><span class="line">INC_DIRS := <span class="variable">$(<span class="built_in">shell</span> find <span class="variable">$(SRC_DIRS)</span> -type d)</span></span><br><span class="line"><span class="comment"># 为INC_DIRS添加前缀。所以moduleA会变成-ImoduleA。GCC会理解-I标志</span></span><br><span class="line">INC_FLAGS := <span class="variable">$(<span class="built_in">addprefix</span> -I,<span class="variable">$(INC_DIRS)</span>)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># -MMD和-MP标志一起为我们生成Makefiles！</span></span><br><span class="line"><span class="comment"># 这些文件将有.d而不是.o作为输出。</span></span><br><span class="line">CPPFLAGS := <span class="variable">$(INC_FLAGS)</span> -MMD -MP</span><br><span class="line"></span><br><span class="line"><span class="comment"># 最后一个构建步骤。</span></span><br><span class="line"><span class="variable">$(BUILD_DIR)</span>/<span class="variable">$(TARGET_EXEC)</span>: <span class="variable">$(OBJS)</span></span><br><span class="line">	<span class="variable">$(CC)</span> <span class="variable">$(OBJS)</span> -o <span class="variable">$@</span> <span class="variable">$(LDFLAGS)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># C源代码的构建步骤</span></span><br><span class="line"><span class="variable">$(BUILD_DIR)</span>/%.c.o: %.c</span><br><span class="line">	mkdir -p <span class="variable">$(<span class="built_in">dir</span> <span class="variable">$@</span>)</span></span><br><span class="line">	<span class="variable">$(CC)</span> <span class="variable">$(CPPFLAGS)</span> <span class="variable">$(CFLAGS)</span> -c <span class="variable">$&lt;</span> -o <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># C++源代码构建步骤</span></span><br><span class="line"><span class="variable">$(BUILD_DIR)</span>/%.cpp.o: %.cpp</span><br><span class="line">	mkdir -p <span class="variable">$(<span class="built_in">dir</span> <span class="variable">$@</span>)</span></span><br><span class="line">	<span class="variable">$(CXX)</span> <span class="variable">$(CPPFLAGS)</span> <span class="variable">$(CXXFLAGS)</span> -c <span class="variable">$&lt;</span> -o <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: clean</span></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -r <span class="variable">$(BUILD_DIR)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 包含.d makefiles。 </span></span><br><span class="line"><span class="comment"># 前面的 - 抑制缺少makefile的错误。 </span></span><br><span class="line"><span class="comment"># 最初，所有的.d文件都将丢失，我们不希望出现这些错误。</span></span><br><span class="line"><span class="keyword">-include</span> <span class="variable">$(DEPS)</span></span><br></pre></td></tr></table></figure></div>
+
+<h2 id="CMake"><a href="#CMake" class="headerlink" title="CMake"></a>CMake</h2><h2 id="Ninja"><a href="#Ninja" class="headerlink" title="Ninja"></a>Ninja</h2><h2 id="bazel"><a href="#bazel" class="headerlink" title="bazel"></a>bazel</h2><h1 id="版本控制工具"><a href="#版本控制工具" class="headerlink" title="版本控制工具"></a>版本控制工具</h1><h2 id="Git"><a href="#Git" class="headerlink" title="Git"></a>Git</h2><h2 id="Repo"><a href="#Repo" class="headerlink" title="Repo"></a>Repo</h2><h2 id="Gerrit"><a href="#Gerrit" class="headerlink" title="Gerrit"></a>Gerrit</h2>
 		</div>
 
 		
@@ -518,7 +1420,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-17 10:12:46
+                    :</strong> 2025-02-26 17:50:21
             </li>
         
         <li>
@@ -639,7 +1541,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Shell编程与工程管理</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-shell-%E7%BC%96%E7%A8%8B"><span class="nav-text">Linux shell 编程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%91%BD%E4%BB%A4%E5%B7%A5%E5%85%B7"><span class="nav-text">Linux 命令工具</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#perf"><span class="nav-text">perf</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B7%A5%E7%A8%8B%E7%AE%A1%E7%90%86"><span class="nav-text">工程管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Makefile"><span class="nav-text">Makefile</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMake"><span class="nav-text">CMake</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Git"><span class="nav-text">Git</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Repo"><span class="nav-text">Repo</span></a></li></ol></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-shell-%E7%BC%96%E7%A8%8B"><span class="nav-text">Linux shell 编程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E7%9F%A5%E8%AF%86"><span class="nav-text">基本知识</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%98%E9%87%8F%E5%AE%9A%E4%B9%89"><span class="nav-text">变量定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%9F%E8%83%BD%E8%AF%AD%E5%8F%A5"><span class="nav-text">功能语句</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#echo"><span class="nav-text">echo</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#print-printf"><span class="nav-text">print&#x2F;printf</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#read"><span class="nav-text">read</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#test"><span class="nav-text">test</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#expr"><span class="nav-text">expr</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sed"><span class="nav-text">sed</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#awk"><span class="nav-text">awk</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I-O-%E9%87%8D%E5%AE%9A%E5%90%91"><span class="nav-text">I&#x2F;O 重定向</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A7%E5%88%B6%E8%AF%AD%E5%8F%A5"><span class="nav-text">控制语句</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#if"><span class="nav-text">if</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#while"><span class="nav-text">while</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#for"><span class="nav-text">for</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#case"><span class="nav-text">case</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#until"><span class="nav-text">until</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#select"><span class="nav-text">select</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0"><span class="nav-text">函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0"><span class="nav-text">定义函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E7%A4%BA%E4%BE%8B"><span class="nav-text">函数示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E5%8F%82%E6%95%B0"><span class="nav-text">函数参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-text">返回值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%AC%E5%9C%B0%E5%8F%98%E9%87%8F%E4%B8%8E%E5%85%A8%E5%B1%80%E5%8F%98%E9%87%8F"><span class="nav-text">本地变量与全局变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8"><span class="nav-text">函数的调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E7%9A%84%E4%BD%9C%E7%94%A8%E5%9F%9F"><span class="nav-text">函数的作用域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%92%E5%BD%92%E5%87%BD%E6%95%B0"><span class="nav-text">递归函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E7%9A%84%E6%96%87%E6%A1%A3%E5%92%8C%E5%B8%AE%E5%8A%A9"><span class="nav-text">函数的文档和帮助</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#shell-%E6%89%A9%E5%B1%95"><span class="nav-text">shell 扩展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#shell-%E4%B8%AD%E5%90%84%E7%A7%8D%E6%8B%AC%E5%8F%B7"><span class="nav-text">shell 中各种括号</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="nav-text">文件包含</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%A1%B9%E7%9B%AE%E6%9E%84%E5%BB%BA%E5%B7%A5%E5%85%B7"><span class="nav-text">项目构建工具</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Makefile"><span class="nav-text">Makefile</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%84%E5%88%99"><span class="nav-text">规则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%AA%E7%9B%AE%E6%A0%87"><span class="nav-text">伪目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%91%BD%E4%BB%A4%E5%92%8C%E6%89%A7%E8%A1%8C"><span class="nav-text">命令和执行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%AE%E6%A0%87"><span class="nav-text">目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%87%AA%E5%8A%A8%E5%8F%98%E9%87%8F%E5%92%8C%E9%80%9A%E9%85%8D%E7%AC%A6"><span class="nav-text">自动变量和通配符</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E5%AE%83%E8%A7%84%E5%88%99"><span class="nav-text">其它规则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%98%E9%87%8F"><span class="nav-text">变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9D%A1%E4%BB%B6"><span class="nav-text">条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0-1"><span class="nav-text">函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E7%89%B9%E6%80%A7"><span class="nav-text">其他特性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMake"><span class="nav-text">CMake</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Ninja"><span class="nav-text">Ninja</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bazel"><span class="nav-text">bazel</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E5%B7%A5%E5%85%B7"><span class="nav-text">版本控制工具</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Git"><span class="nav-text">Git</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Repo"><span class="nav-text">Repo</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Gerrit"><span class="nav-text">Gerrit</span></a></li></ol></li></ol>
 
 	</div>
 </div>
@@ -668,7 +1570,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        99 posts in total
+                        110 posts in total
                     </span>
                     
                 </p>

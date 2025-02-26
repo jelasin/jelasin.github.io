@@ -38,8 +38,14 @@
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_9.jpg">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_12.jpg">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/epub_31251702_16.jpg">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217141554384.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217141859134.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217142515769.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217145247890.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217151334617.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217151937113.png">
 <meta property="article:published_time" content="2025-02-12T05:48:36.000Z">
-<meta property="article:modified_time" content="2025-02-17T06:02:58.795Z">
+<meta property="article:modified_time" content="2025-02-19T02:31:42.319Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://jelasin.github.io/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250212154421350.png">
@@ -434,7 +440,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">99</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">110</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -483,8 +489,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-17 14:02:58</span>
-            <span class="mobile">2025-02-17 14:02:58</span>
+            <span class="desktop">2025-02-19 10:31:42</span>
+            <span class="mobile">2025-02-19 10:31:42</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -837,18 +843,7 @@
 <p>Linux内核与操作系统是底层基础和上层建筑的关系，内核提供了基本功能和概念，操作系统在此基础上根据自身的定位和特色实现自身的架构，提供接口和工具来支持应用开发，由应用体现其价值。</p>
 <p>开机后，内核由bootloader加载进入内存执行，它是创建系统的第一个进程，初始化时钟、内存、中断等核心功能，然后执行init程序。init程序是基于Linux内核的操作系统，在用户空间的起点，它启动核心服务，挂载文件系统，更改文件权限，由后续的服务一步步初始化整个操作系统。</p>
 <p>内核实现了内存管理、文件系统、进程管理和网络管理等核心模块，将用户空间封装内核提供的系统调用作为类库，供其他部分使用。内核并不是最底层的，下面还有硬件层，即内核驱动硬件、系统的数据来源于硬件、最终的结果也要靠硬件去体现，内核是系统与硬件的桥梁。</p>
-<h3 id="实例分析"><a href="#实例分析" class="headerlink" title="实例分析"></a>实例分析</h3><p><strong>系统响应“点击智能手机触摸屏”的过程</strong></p>
-<ol>
-<li>首先是触摸屏芯片，点击触摸屏引起信号变化，芯片监测到信号后，计算出当前触摸的位置（坐标），然后通过中断模块通知CPU“有事报告”。</li>
-<li>CPU得到中断后，根据中断信息，调用触摸屏驱动的处理函数。驱动接下来读取触摸的坐标，通过input子系统报告给操作系统。操作系统经过一系列“辗转腾挪”，将点的坐标信息传递给应用，过程中可以涉及进程通信、IO多路复用等。</li>
-<li>应用得到点坐标后，根据点的位置和当前的界面布局做出判断，决定下一步需要进行的操作，比如，点落在空白区域被忽略、落在按钮上触发按钮操作、落在App图标上启动应用等。</li>
-<li>这是由下到上的过程，接下来应用还需要根据相应的操作刷新屏幕，假设它希望改变某个图标的颜色，通过函数调用将该请求传递至操作系统，操作系统通过计算得到新屏幕中的各图层，又经过一系列“辗转腾挪”，屏幕的驱动得到了刷新界面的指令，获取数据刷新界面，这是一个由上到下的过程。</li>
-</ol>
-<p><strong>智能手机的传感器游戏</strong></p>
-<p>但是App需要的传感器是不同的，比如，激流快艇游戏，需要的是陀螺仪的数据；统计步数的App，需要的是加速度传感器的数据。这些传感器的精确度和采样频率对用户体验的影响较大，比如陀螺仪，高端手机必备，低端手机上可能并没有安装，这种情况下的陀螺仪数据是通过其他传感器的数据计算得到的，精确度不足，采样频率也达不到要求，操作会有明显的滞后和偏差。</p>
-<p>从流程角度看，传感器与触摸屏大同小异，同样是由芯片开始，经过操作系统的传递，数据到达应用，然后计算并刷新屏幕。不同的地方在于，系统可能会根据策略对数据做一定的处理，比如在低端手机上没有陀螺仪的情况下，根据加速度和磁力传感器的数据计算得到陀螺仪的数据。</p>
-<p>换作另外一个桌面操作系统，可能就不需要做类似的处理，因为它并不执着于得到陀螺仪的数据。触摸屏的例子也是如此，如果它不需要支持触控操作，也不需要实现中间的“辗转腾挪”。内核是操作系统的基础，是它们的通用部分，操作系统根据自身的定位决定它需要在此基础上实现的功能，定制它的特有算法和流程。</p>
-<h2 id="数据结构和设计模式"><a href="#数据结构和设计模式" class="headerlink" title="数据结构和设计模式"></a>数据结构和设计模式</h2><p>内核中有很多数据结构本身并没有实际意义，它们扮演的是辅助角色，为实现某些特殊目的“穿针引线”，比如下面介绍的几种，可以辅助实现数据结构之间关系。也有某些数据结构，特别适用于某些特定场景，实现某些特定功能，比如位图。</p>
+<h2 id="内核常见数据结构"><a href="#内核常见数据结构" class="headerlink" title="内核常见数据结构"></a>内核常见数据结构</h2><p>内核中有很多数据结构本身并没有实际意义，它们扮演的是辅助角色，为实现某些特殊目的“穿针引线”，比如下面介绍的几种，可以辅助实现数据结构之间关系。也有某些数据结构，特别适用于某些特定场景，实现某些特定功能，比如位图。</p>
 <h3 id="关系型数据结构"><a href="#关系型数据结构" class="headerlink" title="关系型数据结构"></a>关系型数据结构</h3><p>程序&#x3D;数据结构+算法，数据结构指的是数据与数据之间的逻辑关系，算法指的是解决特定问题的步骤和方法。逻辑关系本身就是现实的反映与抽象，理解逻辑关系是理解程序的关键，本节将讲述实现一对一、一对多和多对多关系的常用数据结构和方法。</p>
 <h4 id="一对一关系"><a href="#一对一关系" class="headerlink" title="一对一关系"></a>一对一关系</h4><p>一对一的关系随处可见，结构体与其成员、很多结构体与结构体之间都是这种关系。结构体与成员的一对一关系简单明了，两个结构体之间的一对一关系有指针和内嵌（包含）两种表达方式，代码如下。</p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//指针</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">a</span>&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">b</span> *<span class="title">b</span>;</span></span><br><span class="line">&#125;；</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">b</span>&#123;</span></span><br><span class="line">	(<span class="keyword">struct</span> entity a *a;)</span><br><span class="line">&#125;:</span><br><span class="line"><span class="comment">//内嵌（包含）</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">al</span>&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">entity</span> <span class="title">bb</span>;</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
@@ -947,7 +942,104 @@
                       alt="epub_31251702_16"
                 ></p>
 <p>与<code>list_head</code>相同，不带safe后缀的操作（如hlist_for_each_entry）获得元素后，不能进行删除当前元素的操作，否则无法完成遍历操作。</p>
-<p>红黑树、基数（radix）树等结构也会用在一对多的关系中，它们涉及比较有趣的算法，在对查询与增删改等性能要求较高的地方使用较多，相关知识可参考算法方面的书籍，内核中提供的函数可参考rbtree.h和radix-tree.h等文件。</p>
+<p>红黑树、基数（radix）树等结构也会用在一对多的关系中，它们涉及比较有趣的算法，在对查询与增删改等性能要求较高的地方使用较多，相关知识可参考算法方面的书籍，内核中提供的函数可参考<code>rbtree.h</code>和<code>radix-tree.h</code>等文件。我在数据结构与算法中也有所介绍，后面也会用C语言来实现。</p>
+<h4 id="多对多关系"><a href="#多对多关系" class="headerlink" title="多对多关系"></a>多对多关系</h4><p>多对多关系相对复杂，它并不能像一对多关系那样可以简单地通过将list_head等的结点包含到结构体中来实现。在教与学范畴内，教师和学生关系属于多对多关系，下面就以teacher和student结构体为例分析（链表以list_head为例）。</p>
+<p>一个教师可以有多个学生，从数据结构的角度看，teacher包含list_head链表头，每个student对象都可以通过list_head结点访问到，list_head结点链接到teacher包含的头上。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217141554384.png"
+                      alt="image-20250217141554384"
+                ></p>
+<p>本质上，一对关系就需要一个结点，比如学生A（S_A）是教师A（T_A）的学生，需要一个结点链接到T_A包含的链表头；同时，学生A也是教师B的学生，也需要一个结点链接到T_B包含的链表头。针对该情况，一个学生可以属于多个链表，所以简单地将list_head的结点包含到student结构体中是无法实现多对多关系的（因为指针指向的唯一性，list_head属于且仅属于一个链表）。</p>
+<p>可行的做法是将<code>list_head</code>独立于<code>student</code>结构体，并配合一个指向<code>student</code>对象的指针来定位结点所关联的<code>student</code>对象，如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">s_connection</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">node</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">student</span>;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217141859134.png"
+                      alt="image-20250217141859134"
+                ></p>
+<p>这样从<code>student</code>对象的角度，会有多个指针指向它，也有多个结点与它关联，如此它就可以与多个链表产生关系了。同样，一个学生可以有多个教师，也会遇到一个teacher对象会出现在多个student的链表中的问题，那就需要定义一个<code>t_connection</code>结构体，如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">t_connection</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">node</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">teacher</span> *<span class="title">teacher</span>;</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
+
+<p>由于这种关系是相互的，如果S_A是T_A的学生，那么T_A必然是S_A的老师；如果S_A不是T_A的学生，那么T_A必然也不是S_A的老师。反之亦然。所以可以将<code>s_connection</code>和<code>t_connection</code>合并起来，具体代码如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">connection</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">s_node</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">t_node</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">teacher</span> *<span class="title">teacher</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">student</span>;</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
+
+<p>到此，教师和学生的多对多关系就可以完整地用程序实现了，具体代码如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">teacher</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">head_for_student_list</span>;</span></span><br><span class="line">	<span class="comment">//others</span></span><br><span class="line">&#125;；</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">student</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">head_for_teacher_list</span>;</span></span><br><span class="line">	<span class="comment">//others</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>connection结构体的<code>s_node</code>字段链接到teacher结构体<code>head_for_student_list</code>字段表示的链表头，t_node字段链接到student结构体<code>head_for_teacher_list</code>字段表示的链表头，这个错落有致的关系网就完毕了。</p>
+<p>老师<code>T_A</code>有<code>S_A</code>和<code>S_B</code>两个学生的关系，老师<code>T_B</code>有<code>S_A</code>一个学生的关系，如下图所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217142515769.png"
+                      alt="image-20250217142515769"
+                ></p>
+<p><strong>input 子系统</strong></p>
+<p>input子系统有两大类使用场景。</p>
+<ul>
+<li>第一类是协助我们完成设备驱动(device), 适用于鼠标、键盘、电源按键和传感器等设备。这类设备的共同点是数据量都不大，比如多数传感器不会超过X，Y，Z三个维度的数据。 它最基本的作用是报告数据给系统，如果我们在驱动中定义一些与它相关的文件，也可以作为控制设备的接口使用。</li>
+<li>第二类协助我们定义操作(handler)来处理input事件，设备报告给系统 数据信息、报告一系列数据的结尾标志等都属于input事件。 一个input事件由<code>input_value</code>结构体表示，它的type、code和value 三个字段分别表示事件的类型、 事件码和值。比如手指按在支持多指操作的触摸屏上，报告一个手指的坐标，至少应该包含<code>&#123;EV _ABS, ABS_MT_POSlTlON_X, x&#125;</code>和<code>&#123;EV _ABS, ABS_MT_POSlTlON_Y, y&#125;</code>，两组数据表示x&#x2F;y坐标，报告完毕所们手指的坐标信息后， 还需要一个<code>&#123;EV_SYN,SYN_REPORT,O&#125;</code>表示结束。</li>
+</ul>
+<p><code>input</code>子系统的三个关键结构体<code>input_dev</code>、<code>input_handler</code>、<code>input_handle</code>就是如此实现的，<code>input_dev</code>和<code>input_handler</code>是多对多的关系，<code>input_handle</code>就相当于这里的connection。并不是每个多对多的关系中两个connection结构体都可以合并的，有些关系并不是相互的，比如男生和女生的暗恋关系。A男暗恋B女，B女却不一定暗恋A男；A男的链表关联B女，B女的链表不一定关联A男。两个connection结构体合并在一起明显浪费空间，如果强行利用多余的空间，岂不逻辑混乱。</p>
+<h3 id="位操作数据结构"><a href="#位操作数据结构" class="headerlink" title="位操作数据结构"></a>位操作数据结构</h3><p>位图（bitmap），以每一位（bit）来存放或表示某种状态，这样一个字节（byte）就可以表示8个元素的状态，可以极大地节省内存。一个bit只有0和1两个值，所以它也只适用于每个元素都是“非黑即白”的场景，比如打开和关闭、被占用和空闲等。</p>
+<p>位图的本质是一段物理连续的存储空间，其中每一位表示一个元素的状态。比如申请新的文件描述符fd时，某一个bit为1，表示该bit对应的fd已被占用；为0，则表示fd可用。该bit相对于起始位置的偏移量就是fd的值。我们不妨假设表示fd的这段连续内存内容从低位到高位是 (11111111，11111111，10…)，第17位可用，那么得到的fd可能就是17。</p>
+<p>实际上多数程序员对位图并不陌生，人们可能经常使用一个整数来表示某些状态，比如很多函数的flags等类似的参数，会在自己的函数中操作这个整数的位来更改它的状态，或者根据它的状态来决定函数的行为。这其实也可以算作位图的一种，只不过一个整数一般最多表示32或者64个元素，位图可以表示的元素可以更多。除此之外，它们在逻辑上可能也有些许差别，位图表示的元素一般都是同质化的，而操作整数的情况可能逻辑上要复杂些。</p>
+<p>内核提供了几个宏和函数，可以用来进行位操作，如下表。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217145247890.png"
+                      alt="image-20250217145247890"
+                ></p>
+<p><code>find_first_zero_bit</code>和<code>find_first_bit</code>的第二个参数size是以位（bit）为单位的，<code>find_next_zero_bit</code>和<code>find_next_bit</code>从第<code>offset</code>位（包含offset）开始查找为0和为1的位置，找不到则返回size。有了以上的宏和函数，可以很方便地找到位图中的某位，比如要获取文件描述符的函数<code>alloc_fd</code>，它最终调用<code>find_next_zero_bit</code>来查找位图中下一个值为0的位，该位的偏移量就是可用的文件描述符。</p>
+<h3 id="模块和内核参数传递"><a href="#模块和内核参数传递" class="headerlink" title="模块和内核参数传递"></a>模块和内核参数传递</h3><p>内核的数据结构因为需要供多个模块使用，所以要考虑通用性，而很多模块往往要考虑自身的特性，需要满足自身需求的独特数据结构。模块传递给内核通用参数，从内核获取的也是通用参数，那么它如何通过通用参数来获得属于它的特殊数据呢？在模块内定义全局变量是一个方法，它也不依赖内核的通用参数，除非逻辑需要，全局变量一般并不是首选，下面我们将介绍两种优选方案。</p>
+<h4 id="内嵌通用数据结构"><a href="#内嵌通用数据结构" class="headerlink" title="内嵌通用数据结构"></a>内嵌通用数据结构</h4><p>inode是一个典型的例子，内核使用inode对象，很多文件系统内部除了inode还需要其他特有信息，定义一个内嵌inode的特殊结构体就可以解决该问题，代码如下。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">my_inode</span>&#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">inode</span> <span class="title">inode</span>;</span></span><br><span class="line">    <span class="comment">//others</span></span><br><span class="line">&#125;；</span><br></pre></td></tr></table></figure></div>
+
+<p>传递参数给内核的时候，传递<code>my_inode</code>的inode的地址ptr；从内核获得的inode地址，通过<code>container_of(ptr, my_inode, inode)</code>宏就可以获得<code>my_inode</code>对象。</p>
+<h4 id="通用结构的私有变量"><a href="#通用结构的私有变量" class="headerlink" title="通用结构的私有变量"></a>通用结构的私有变量</h4><p>内核中很多数据结构都定义了类型为<code>void*</code>的私有数据字段，模块可以将它特有的数据赋值给该字段，通过引用该字段就可以获取它的数据。file结构体的<code>private_data</code>、device结构体的<code>driver_data</code>都是这种用法。</p>
+<hr>
+<p>内嵌和私有变量方式该如何选择呢？内嵌和对象由模块负责创建；私有变量，为私有数据的字段赋值的时候，对象已经存在了。前者，对象归模块所有；后者，对象一般归内核所有。当然，有些情况下，模块也可以将两种方法一起使用，比如<code>inode</code>除了可以被内嵌外，它本身就有一个<code>i_private</code>字段。</p>
+<h3 id="模块的封装"><a href="#模块的封装" class="headerlink" title="模块的封装"></a>模块的封装</h3><p>内核中经常提起模块，在实现某一特定功能的时候，最好的做法是将它与其他部分独立开，形成一个单独的模块，有利于在未来以最小的改动扩展功能。这并不是说模块是封闭的，它一方面需要调用其他模块的函数，另一方面也需要提供函数供其他模块访问。在面向对象的编程中，这叫作封装，C语言并没有该概念，但封装的思想是一样的，我们在模块中要尽可能少地透漏实现细节，仅提供必要的函数供外部使用。这样在内部实现变化的时候，对其他模块影响更小，或者说在改变内部实现的时候，需要考虑的因素更少。同样，在使用其他模块的时候，不要违背其他模块的访问控制意图，虽然在我们试图这么做的时候编译器不会报错。</p>
+<p>以inode结构体为例，它主要适用VFS和具体文件系统的实现两种场景。其他模块，比如一个设备驱动一般是不会直接访问它的，而是访问file结构体。从代码角度，通过<code>file-&gt;f_inode</code>就可以得到inode，是可行的，甚至在知道具体的文件系统时，可以通过inode获得内嵌它的那个文件系统内定义的<code>xxx_inode</code>。虽然这么做是错误的，但是方法起码是值得斟酌的。<code>xxx_inode</code>从文件系统的角度不需要为我们的模块负责，但强行“绑定”可能会导致更改<code>xxx_inode</code>变得困难。所以开发一个新模块，不仅要理清它自身的逻辑，还要理解已有模块数据结构的意图，不要逾越对它们的访问控制。</p>
+<h3 id="看破数据结构"><a href="#看破数据结构" class="headerlink" title="看破数据结构"></a>看破数据结构</h3><p>要掌握一个模块，首先要理清模块内的数据结构，数据结构是灵魂，函数是表现。而复杂的模块往往数据结构也是复杂的，主要表现在定义的结构体数量多，而且它们之间的关系错综复杂。结构体间的关系中，类似指针这类单向引用关系容易理解，较难迅速理清的是间接关系，比如本章讨论的关系型数据结构。这些关系虽然表面上不明显，但还是有些技巧可以快速理清脉络的。</p>
+<p>对一个结构体的某个字段，我们要关心字段类型和名字两方面，这句话看似多余却隐藏玄机。首先，链表或树类型结构，如果区分链表头和元素（树的根和叶），从类型即可区分结构体在链表或树中的地位。其次，字段类型在很大程度上体现了它的意图，这由类型本身的特性决定。链表一般用来遍历或者查找，红黑树一般用来查找。</p>
+<p>最后，如果从类型上看不出门道，可以尝试从字段名入手，链表头的名字多为复数或者带有l(list)等字样。如果依然没有思路，可以借助于代码注释，虽然多数情况下会无功而返。</p>
+<h2 id="内核常用设计模式"><a href="#内核常用设计模式" class="headerlink" title="内核常用设计模式"></a>内核常用设计模式</h2><p>看到“设计模式”四个字，熟悉面向对象编程语言的读者可能会有疑问，内核是用C语言编写的，为什么会提到涉及设计模式。实际上，内核是按照面向对象的思维设计的，设计模式与编程语言也并没有必然关系，C语言也完全可以按照面向对象的思路来编程。所谓设计模式，通俗理解就是解决特定类别问题时常用的套路。</p>
+<h3 id="模板方法设计模式"><a href="#模板方法设计模式" class="headerlink" title="模板方法设计模式"></a>模板方法设计模式</h3><p>模板方法(Template Method)设计模式， 又被称为模板模式，顾名思义，就是有一个可以套用的 流程（模板），具体的实现只需要关心自身对流程中涉及的节点的细节即可。 以做菜为例，总共分为三个步骤：备菜、加工、 盛出，模板就是这三个固定的步骤，不同的工具会有不同的做法，如下图所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217151334617.png"
+                      alt="image-20250217151334617"
+                ></p>
+<p>整个过程如下。</p>
+<p>(1) 我们要做菜，也就是Cook类的DoCook，这个方法将做菜细化为三个步骤。</p>
+<p>(2) Tool Kit表示不同的工具需要实现的操作(步骤)。</p>
+<p>(3) 具体的方案只关心这几个操作如何实现。</p>
+<p>这就像我们写一本做菜指南，第一部分阐述做菜的三步骤，第二部分针对不同的工具介绍在三个步骤中如何使用即可。做菜的人选择了工具之后，做菜的细节就定了。也许做菜这个例子显得不够灵活，那我们就看看内核中实际的例子。当我们在用户空间调用mmap()的时候，会调用文件的mmap()，如果文件的mmap()并没有分配物理内存，下次内存访问时触发缺页异常，可能会调用fault()，文件系统的开发人员不需要关心mmap() 和 fault() 的调用过程，只需要根据要求实现它们即可，类似的例子比比皆是。</p>
+<h3 id="观察者设计模式"><a href="#观察者设计模式" class="headerlink" title="观察者设计模式"></a>观察者设计模式</h3><p>订阅行为在我们的生活中随处可见，比如订阅报纸、杂志，以及订阅某些网站的文档等，以订阅报纸为例，过程如下。</p>
+<ol>
+<li>个人读者或者中间代理(比如报刊亭)向报社申请订阅服务。</li>
+<li>报社维护订阅列表。</li>
+<li>新报印刷完毕，报社按照订阅列表派送报纸。</li>
+<li>读者拿到报纸开始阅读，报刊亭拿到报纸开始售卖。</li>
+</ol>
+<p>从程序设计角度来看，各个主体的关系如下图所示。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/02/12/Linux-6-x%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90/image-20250217151937113.png"
+                      alt="image-20250217151937113"
+                ></p>
+<p>显而易见，观察者模式解耦了观察者和被观察者，被观察者不关心具体是谁在观察自己，它只知道一个列表，统一对待列表上每一个观察者，观察者也不需要一直询问被观察者的状态，如果没有订阅，你可能得经常或者定期去报刊亭了。观察者模式在内核中使用频率很高，我们在内核中看到类似<code>xxx_listener</code> 名字的函数多半都是观察者，类似<code>xxx_notify</code>名字的函数多半都是被观察者。</p>
+<h2 id="Linux的时间"><a href="#Linux的时间" class="headerlink" title="Linux的时间"></a>Linux的时间</h2><p>们的作息、行为和活动都与时间息息相关，从人类的角度来看，时间是以时分秒来计算和衡量的。例如，某一时刻做某件事情或某个任务持续了多久等情况，我们基本都以时分秒来计算。但内核中却不是这样，从内核的角度，它的时间以滴答（jiffy）来计算。滴答，通俗地讲，是时间系统周期性地提醒内核某时间间隔已经过去的行为。另一方面，内核服务于用户，所以它还需要拥有将滴答转为时分秒的能力。因此，内核的任务就分为维护并响应滴答和告知用户时间两部分。</p>
 
 		</div>
 
@@ -962,7 +1054,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-17 14:02:58
+                    :</strong> 2025-02-19 10:31:42
             </li>
         
         <li>
@@ -990,6 +1082,18 @@
 
 		
 		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2025/02/17/Frida-python%E6%8C%87%E5%8D%97/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item">Frida-python指南</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
 			
 			
 			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
@@ -1071,7 +1175,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Linux-6-x内核分析</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%AF%87"><span class="nav-text">基础篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E6%A6%82%E8%BF%B0"><span class="nav-text">Linux内核概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU%E4%B8%8E%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">CPU与操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84"><span class="nav-text">Linux内核代码结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Android%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">Android操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E5%88%86%E6%9E%90"><span class="nav-text">实例分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">数据结构和设计模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">关系型数据结构</span></a></li></ol></li></ol></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%AF%87"><span class="nav-text">基础篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E6%A6%82%E8%BF%B0"><span class="nav-text">Linux内核概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU%E4%B8%8E%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">CPU与操作系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84"><span class="nav-text">Linux内核代码结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Android%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="nav-text">Android操作系统</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%B8%B8%E8%A7%81%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">内核常见数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">关系型数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">位操作数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E5%92%8C%E5%86%85%E6%A0%B8%E5%8F%82%E6%95%B0%E4%BC%A0%E9%80%92"><span class="nav-text">模块和内核参数传递</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E7%9A%84%E5%B0%81%E8%A3%85"><span class="nav-text">模块的封装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9C%8B%E7%A0%B4%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">看破数据结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%B8%B8%E7%94%A8%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">内核常用设计模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF%E6%96%B9%E6%B3%95%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">模板方法设计模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%82%E5%AF%9F%E8%80%85%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="nav-text">观察者设计模式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E7%9A%84%E6%97%B6%E9%97%B4"><span class="nav-text">Linux的时间</span></a></li></ol></li></ol>
 
 	</div>
 </div>
@@ -1100,7 +1204,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        99 posts in total
+                        110 posts in total
                     </span>
                     
                 </p>

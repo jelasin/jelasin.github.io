@@ -32,10 +32,26 @@
 <meta property="og:site_name" content="Jelasin">
 <meta property="og:description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112233881.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113446445.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114253555.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114356098.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112327181.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113130101.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113221756.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114533148.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220115844667.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220120004292.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220120017977.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220133319520.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134042993.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134158438.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134613354.png">
 <meta property="article:published_time" content="2025-01-23T06:44:14.000Z">
-<meta property="article:modified_time" content="2025-02-17T03:39:04.197Z">
+<meta property="article:modified_time" content="2025-02-20T08:39:41.873Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112233881.png">
     
     
         <!-- Google tag (gtag.js) -->
@@ -427,7 +443,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">99</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">110</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -476,8 +492,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-17 11:39:04</span>
-            <span class="mobile">2025-02-17 11:39:04</span>
+            <span class="desktop">2025-02-20 16:39:41</span>
+            <span class="mobile">2025-02-20 16:39:41</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -718,8 +734,198 @@
 
 <hr>
 <p><strong>aligned</strong></p>
-<p>GNU C通过<code>__attribute__</code>来声明aligned和packed属性，指定一个变量或类型的对齐方式。这两个属性用来告诉编译器：在给变量分配存储空间时，要按指定的地址对齐方式给变量分配地址。</p>
-<h3 id="内联函数"><a href="#内联函数" class="headerlink" title="内联函数"></a>内联函数</h3><h3 id="内建函数"><a href="#内建函数" class="headerlink" title="内建函数"></a>内建函数</h3><h3 id="可变参数宏"><a href="#可变参数宏" class="headerlink" title="可变参数宏"></a>可变参数宏</h3><h2 id="现代-C-语言"><a href="#现代-C-语言" class="headerlink" title="现代 C 语言"></a>现代 C 语言</h2><h3 id="c99"><a href="#c99" class="headerlink" title="c99"></a>c99</h3><h3 id="c11"><a href="#c11" class="headerlink" title="c11"></a>c11</h3><h3 id="c17"><a href="#c17" class="headerlink" title="c17"></a>c17</h3><h3 id="c23"><a href="#c23" class="headerlink" title="c23"></a>c23</h3><p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/C23_(C_standard_revision)#Features" >c23新特性<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p>GNU C通过<code>__attribute__</code>来声明aligned和packed属性，指定一个变量或类型的对齐方式。这两个属性用来告诉编译器：在给变量分配存储空间时，要按指定的地址对齐方式给变量分配地址。通过aligned属性声明，虽然可以显式地指定变量的地址对齐方式，但是也会因边界对齐造成一定的内存空洞，浪费内存资源。</p>
+<p>我们通过这个属性声明，其实只是建议编译器按照这种大小地址对齐，但不能超过编译器允许的最大值。一个编译器，对每个基本数据类型都有默认的最大边界对齐字节数。如果超过了，则编译器只能按照它规定的最大对齐字节数来给变量分配地址。</p>
+<p><strong>packed</strong></p>
+<p>aligned属性一般用来增大变量的地址对齐，元素之间因为地址对齐会造成一定的内存空洞。而packed属性则与之相反，一般用来减少地址对齐，指定变量或类型使用最可能小的地址对齐方式。</p>
+<p>这个特性在底层驱动开发中还是非常有用的。例如，你想定义一个结构体，封装一个IP控制器的各种寄存器，在ARM芯片中，每一个控制器的寄存器地址空间一般都是连续存在的。如果考虑数据对齐，则结构体内就可能有空洞，就和实际连续的寄存器地址不一致。使用packed可以避免这个问题，结构体的每个成员都紧挨着，依次分配存储地址，这样就避免了各个成员因地址对齐而造成的内存空洞。</p>
+<p>我们也可以对整个结构体添加packed属性，这和分别对每个成员添加packed属性效果是一样的。修改结构体后，重新编译程序，运行结果和上面程序的运行结果相同：结构体的大小为7，结构体内各成员地址相同。</p>
+<p><strong>内核中的packed和aligned</strong></p>
+<p>在Linux内核源码中，我们经常看到aligned和packed一起使用，即对一个变量或类型同时使用aligned和packed属性声明。这样做的好处是：既避免了结构体内各成员因地址对齐产生内存空洞，又指定了整个结构体的对齐方式。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">data</span>&#123;</span></span><br><span class="line">    <span class="type">char</span> a;</span><br><span class="line">    <span class="type">short</span> b;</span><br><span class="line">    <span class="type">int</span> c;</span><br><span class="line">&#125;__attribute__((packed,aligned(<span class="number">8</span>)));</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">data</span> <span class="title">s</span>;</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;size:%d\n&quot;</span>,<span class="keyword">sizeof</span>(s));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;s.a:%p\n&quot;</span>,&amp;s.a);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;s.b:%p\n&quot;</span>,&amp;s.b);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;s.c:%p\n&quot;</span>,&amp;s.c);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// output</span></span><br><span class="line">size:<span class="number">8</span></span><br><span class="line">&amp;s.a:<span class="number">0028F</span>F30</span><br><span class="line">&amp;s.b:<span class="number">0028F</span>F31</span><br><span class="line">&amp;s.C:<span class="number">0028F</span>F33</span><br></pre></td></tr></table></figure></div>
+
+<p>在上面的程序中，结构体data虽然使用了packed属性声明，结构体内所有成员所占的存储空间为7字节，但是我们同时使用了aligned(8)指定结构体按8字节地址对齐，所以编译器要在结构体后面填充1字节，这样整个结构体的大小就变为8字节，按8字节地址对齐。</p>
+<p><strong>format</strong></p>
+<p>GNU通过<code>__attribute__</code>扩展的<code>format</code>属性，来指定变参函数的参数格式检查。它的使用方法如下。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112233881.png"
+                      alt="image-20250220112233881"
+                ></p>
+<p>我们定义一个LOG()变参函数，用来实现日志打印功能。编译器在编译程序时，如何检查LOG()函数的参数格式是否正确呢？方法其实很简单，通过给LOG()函数添加<code>__attribute__（（format(printf，1，2)））</code>属性声明就可以了。这个属性声明告诉编译器：你怎么对<code>printf()</code>函数进行参数格式检查的，就按照同样的方法，对<code>LOG()</code>函数进行检查。</p>
+<p>属性format(printf，1，2)有3个参数，第1个参数printf是告诉编译器，按照printf()函数的标准来检查；第2个参数表示在LOG()函数所有的参数列表中格式字符串的位置索引；第3个参数是告诉编译器要检查的参数的起始位置。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113446445.png"
+                      alt="image-20250220113446445"
+                ></p>
+<p><strong>变参函数</strong></p>
+<p>对于变参函数，编译器或操作系统一般会提供一些宏给程序员使用，用来解析函数的参数列表，这样程序员就不用自己解析了，直接调用封装好的宏即可获取参数列表。编译器提供的宏有以下3种。</p>
+<ul>
+<li><code>va_list</code>：定义在编译器头文件stdarg.h中，如 <code>typedef char *va_list</code>；。</li>
+<li><code>va_start(fmt，args)</code>：根据参数args的地址，获取args后面参数的地址，并保存在fmt指针变量中。</li>
+<li><code> va_end(args)</code>：释放args指针，将其赋值为NULL。</li>
+</ul>
+<p>有了这些宏，我们的工作就简化了很多，就不用从零开始造轮子了。我们使用编译器提供的三个宏，省去了解析参数的麻烦。但打印的时候，使用<code>vprintf()</code>函数完成打印功能。<code>vprintf()</code>函数的声明在<code>stdio.h</code>头文件中。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114253555.png"
+                      alt="image-20250220114253555"
+                ></p>
+<p>我们需要对函数添加<code>format</code>属性声明，让编译器在编译时，像检查<code>printf()</code>一样，检查<code>my_printf()</code>函数的参数格式。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114356098.png"
+                      alt="image-20250220114356098"
+                ></p>
+<p><strong>weak</strong></p>
+<p>GNU C通过<code>weak</code>属性声明，可以将一个强符号转换为弱符号。使用方法如下。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112327181.png"
+                      alt="image-20250220112327181"
+                ></p>
+<p>在一个程序中，无论是变量名，还是函数名，在编译器的眼里，就是一个符号而已。符号可以分为强符号和弱符号。</p>
+<ul>
+<li>强符号：函数名，初始化的全局变量名。</li>
+<li>弱符号：未初始化的全局变量名。</li>
+</ul>
+<p>在一个工程项目中，对于相同的全局变量名、函数名，我们一般可以归结为下面3种场景。</p>
+<ul>
+<li>强符号+强符号。</li>
+<li>强符号+弱符号。</li>
+<li>弱符号+弱符号。</li>
+</ul>
+<p>强符号和弱符号主要用来解决在程序链接过程中，出现多个同名全局变量、同名函数的冲突问题。一般我们遵循下面3个规则。</p>
+<ul>
+<li><p>一山不容二虎。</p>
+</li>
+<li><p>强弱可以共处。</p>
+</li>
+<li><p>体积大者胜出。</p>
+</li>
+</ul>
+<p>在一个项目中，不能同时存在两个强符号。如果你在一个多文件的工程中定义两个同名的函数或全局变量，那么链接器在链接时就会报重定义错误。但是在一个工程中允许强符号和弱符号同时存在，如你可以同时定义一个初始化的全局变量和一个未初始化的全局变量，这种写法在编译时是可以编译通过的。编译器对于这种同名符号冲突，在做符号决议时，一般会选用强符号，丢掉弱符号。还有一种情况就是，在一个工程中，当同名的符号都是弱符号时，那么编译器该选择哪个呢？谁的体积大，即谁在内存中的存储空间大，就选谁。</p>
+<p>弱符号的这个特性，在库函数中应用得很广泛。如你在开发一个库时，基础功能已经实现，有些高级功能还没实现，那么你可以将这些函数通过weak属性声明转换为一个弱符号。通过这样设置，即使还没有定义函数，我们在应用程序中只要在调用之前做一个非零的判断就可以了，并不影响程序的正常运行。等以后发布新的库版本，实现了这些高级功能，应用程序也不需要进行任何修改，直接运行就可以调用这些高级功能。</p>
+<p><strong>alias</strong></p>
+<p>GNU C扩展了一个<code>alias</code>属性，这个属性很简单，主要用来给函数定义一个别名。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113130101.png"
+                      alt="image-20250220113130101"
+                ></p>
+<p>在Linux内核中，你会发现alias有时会和weak属性一起使用。如有些函数随着内核版本升级，函数接口发生了变化，我们可以通过alias属性对这个旧的接口名字进行封装，重新起一个接口名字。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113221756.png"
+                      alt="image-20250220113221756"
+                ></p>
+<h3 id="内联函数"><a href="#内联函数" class="headerlink" title="内联函数"></a>内联函数</h3><p>我们接着介绍与内联函数相关的两个属性：<code>noinline</code>和<code>always_inline</code>。这两个属性的用途是告诉编译器，在编译时，对我们指定的函数内联展开或不展开。其使用方法如下。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220114533148.png"
+                      alt="image-20250220114533148"
+                ></p>
+<p>一个使用inline声明的函数被称为内联函数，内联函数一般前面会有static和extern修饰。使用inline声明一个内联函数，和使用关键字register声明一个寄存器变量一样，只是建议编译器在编译时内联展开。使用关键字register修饰一个变量，只是建议编译器在为变量分配存储空间时，将这个变量放到寄存器里，这会使程序的运行效率更高。那么编译器会不会放呢？这得视具体情况而定，编译器要根据寄存器资源是否紧张、这个变量的类型及是否频繁使用来做权衡。</p>
+<p>同样，当一个函数使用<code>inline</code>关键字修饰时，编译器在编译时一定会内联展开吗？也不一定。编译器也会根据实际情况，如函数体大小、函数体内是否有循环结构、是否有指针、是否有递归、函数调用是否频繁来做决定。如GCC编译器，一般是不会对函数做内联展开的，只有当编译优化等级开到<code>-O2</code>以上时，才会考虑是否内联展开。但是在我们使用noinline和always_inline对一个内联函数作显式属性声明后，编译器的编译行为就变得确定了：使用noinline声明，就是告诉编译器不要展开；使用always_inline属性声明，就是告诉编译器要内联展开。</p>
+<p>内联函数和宏的功能差不多，那么为什么不直接定义一个宏，而去定义一个内联函数呢？与宏相比，内联函数有以下优势。</p>
+<ul>
+<li>参数类型检查：内联函数虽然具有宏的展开特性，但其本质仍是函数，在编译过程中，编译器仍可以对其进行参数检查，而宏不具备这个功能。</li>
+<li>便于调试：函数支持的调试功能有断点、单步等，内联函数同样支持。</li>
+<li>返回值：内联函数有返回值，返回一个结果给调用者。这个优势是相对于ANSI C说的，因为现在宏也可以有返回值和类型了，如前面使用语句表达式定义的宏。</li>
+<li>接口封装：有些内联函数可以用来封装一个接口，而宏不具备这个特性。</li>
+</ul>
+<p>在Linux内核中，你会看到大量的内联函数被定义在头文件中，而且常常使用static修饰。为什么inline函数经常使用static修饰呢？从C语言到C++，甚至有人还拿出了Linux内核作者Linus关于static inline的解释。</p>
+<p>我们可以这样理解：内联函数为什么要定义在头文件中呢？因为它是一个内联函数，可以像宏一样使用，任何想使用这个内联函数的源文件，都不必亲自再去定义一遍，直接包含这个头文件，即可像宏一样使用。那么为什么还要用static修饰呢？因为我们使用inline定义的内联函数，编译器不一定会内联展开，那么当一个工程中多个文件都包含这个内联函数的定义时，编译时就有可能报重定义错误。而使用static关键字修饰，则可以将这个函数的作用域限制在各自的文件内，避免重定义错误的发生。</p>
+<h3 id="内建函数"><a href="#内建函数" class="headerlink" title="内建函数"></a>内建函数</h3><p>内建函数，顾名思义，就是编译器内部实现的函数。这些函数和关键字一样，可以直接调用，无须像标准库函数那样，要先声明后使用。内建函数的函数命名，通常以<code>__builtin</code>开头。这些函数主要在编译器内部使用，主要是为编译器服务的。内建函数的主要用途如下。</p>
+<ul>
+<li>用来处理变长参数列表。</li>
+<li>用来处理程序运行异常、编译优化、性能优化。</li>
+<li>查看函数运行时的底层信息、堆栈信息等。</li>
+<li>实现C标准库的常用函数。</li>
+</ul>
+<p>因为内建函数是在编译器内部定义的，主要供与编译器相关的工具和程序调用，所以这些函数并没有文档说明，而且变动又频繁，对于应用程序开发者来说，不建议使用这些函数。但有些函数，对于我们了解程序运行的底层机制、编译优化很有帮助，在Linux内核中也经常使用这些函数，所以我们很有必要了解Linux内核中常用的一些内建函数。</p>
+<p>常用的内建函数主要有两个：<code>__builtin_return_address()</code>和<code>__builtin_frame_address()</code>。</p>
+<p>**<code>__builtin_return_address(LEVEL)</code> ** 用来返回当前函数或调用者的返回地址</p>
+<p>函数的参数LEVEL表示函数调用链中不同层级的函数。</p>
+<ul>
+<li>0：获取当前函数的返回地址。</li>
+<li>1：获取上一级函数的返回地址。</li>
+<li>2：获取上二级函数的返回地址。</li>
+<li>……</li>
+</ul>
+<p><strong><code>__builtin_frame_address(LEVEL)</code></strong> 用来查看函数的栈帧地址。</p>
+<p>函数的参数LEVEL表示函数调用链中不同层级的函数。</p>
+<ul>
+<li>0：查看当前函数的栈帧地址。</li>
+<li>1：查看上一级函数的栈帧地址。</li>
+<li>……</li>
+</ul>
+<hr>
+<p><strong><code>__builtin_constant_p(n) </code></strong> 该函数主要用来判断参数n在编译时是否为常量。如果是常量，则函数返回1，否则函数返回0。该函数常用于宏定义中，用来编译优化。一个宏定义，根据宏的参数是常量还是变量，可能实现的方法不一样。在内核源码中，我们经常看到这样的宏。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220115844667.png"
+                      alt="image-20250220115844667"
+                ></p>
+<hr>
+<p><strong><code>__builtin_expect(exp，c)</code></strong></p>
+<p>这个函数有2个参数，返回值就是其中一个参数，仍是exp。这个函数的意义主要是告诉编译器：参数exp的值为c的可能性很大，然后编译器可以根据这个提示信息，做一些分支预测上的代码优化。参数c与这个函数的返回值无关，无论c为何值，函数的返回值都是exp。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220120004292.png"
+                      alt="image-20250220120004292"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220120017977.png"
+                      alt="image-20250220120017977"
+                ></p>
+<p>这个函数的主要用途是编译器的分支预测优化。现在CPU内部都有Cache缓存器件。CPU的运行速度很高，而外部RAM的速度相对来说就低了不少，所以当CPU从内存RAM读写数据时就会有一定的性能瓶颈。为了提高程序执行效率，CPU一般都会通过Cache这个CPU内部缓冲区来缓存一定的指令或数据，当CPU读写内存数据时，会先到Cache看看能否找到：如果找到就直接进行读写；如果找不到，则Cache会重新缓存一部分数据进来。CPU读写Cache的速度远远大于内存RAM，所以通过这种缓存方式可以提高系统的性能。</p>
+<p><strong>宏likely和unlikely</strong></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220133319520.png"
+                      alt="image-20250220133319520"
+                ></p>
+<p>这两个宏的主要作用就是告诉编译器：某一个分支发生的概率很高，或者很低，基本不可能发生。编译器根据这个提示信息，在编译程序时就会做一些分支预测上的优化。在这两个宏的定义中有一个细节，就是对宏的参数x做两次取非操作，这是为了将参数x转换为布尔类型，然后与1和0直接做比较，告诉编译器x为真或假的可能性很高。</p>
+<p>编译器将小概率发生的if分支汇编代码放在了后面，将大概率发生的else分支的汇编代码放在了前面，这样就确保了程序在执行时，大部分时间都不需要跳转，直接按照顺序执行下面大概率发生的分支代码，可以提高缓存的命中率。</p>
+<h3 id="可变参数宏"><a href="#可变参数宏" class="headerlink" title="可变参数宏"></a>可变参数宏</h3><p>宏连接符<code>##</code>的主要作用就是连接两个字符串。我们在宏定义中可以使用<code>##</code>来连接两个字符，预处理器在预处理阶段对宏展开时，会将<code>##</code>两边的字符合并，并删除<code>##</code>这个连接符。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134042993.png"
+                      alt="image-20250220134042993"
+                ></p>
+<p>知道了宏连接符<code>##</code>的使用方法，我们就可以对之前提到的s的<code>LOG</code>宏做一些修改。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134158438.png"
+                      alt="image-20250220134158438"
+                ></p>
+<p>我们在标识符<code>__VA_ARGS__</code>前面加上了宏连接符＃＃，这样做的好处是：当变参列表非空时，＃＃的作用是连接fmt和变参列表，各个参数之间用逗号隔开，宏可以正常使用；当变参列表为空时，＃＃还有一个特殊的用处，它会将固定参数fmt后面的逗号删除掉，这样宏就可以正常使用了。</p>
+<hr>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134613354.png"
+                      alt="image-20250220134613354"
+                ></p>
+<p>这种格式是GNU C扩展的一个新写法：可以不使用<code>__VA_ARGS__</code>，而是直接使用args…来表示一个变参列表，然后在后面的宏定义中，直接使用args代表变参列表就可以了。和上面一样，为了避免变参列表为空时的语法错误，我们也需要在参数之间添加一个连接符＃＃。</p>
+<h2 id="现代-C-语言"><a href="#现代-C-语言" class="headerlink" title="现代 C 语言"></a>现代 C 语言</h2><h3 id="c99"><a href="#c99" class="headerlink" title="c99"></a>c99</h3><h3 id="c11"><a href="#c11" class="headerlink" title="c11"></a>c11</h3><h3 id="c17"><a href="#c17" class="headerlink" title="c17"></a>c17</h3><h3 id="c23"><a href="#c23" class="headerlink" title="c23"></a>c23</h3><p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/C23_(C_standard_revision)#Features" >c23新特性<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
 <h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="异步编程"><a href="#异步编程" class="headerlink" title="异步编程"></a>异步编程</h2><h2 id="网络编程"><a href="#网络编程" class="headerlink" title="网络编程"></a>网络编程</h2><h2 id="无锁编程"><a href="#无锁编程" class="headerlink" title="无锁编程"></a>无锁编程</h2><h2 id="异步信号安全"><a href="#异步信号安全" class="headerlink" title="异步信号安全"></a>异步信号安全</h2><p>详见《Linux环境编程与内核之信号》。</p>
 <h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
 <p><strong>0. 把右值放在条件判断的左边</strong></p>
@@ -753,7 +959,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-17 11:39:04
+                    :</strong> 2025-02-20 16:39:41
             </li>
         
         <li>
@@ -903,7 +1109,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        99 posts in total
+                        110 posts in total
                     </span>
                     
                 </p>
