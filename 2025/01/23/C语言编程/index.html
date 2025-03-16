@@ -25,12 +25,12 @@
     
     
         
-        <meta name="description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看">
+        <meta name="description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以利用为主，如果你想深究其原理请看">
 <meta property="og:type" content="article">
 <meta property="og:title" content="C语言编程">
 <meta property="og:url" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/index.html">
 <meta property="og:site_name" content="Jelasin">
-<meta property="og:description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看">
+<meta property="og:description" content="前言如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以利用为主，如果你想深究其原理请看">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112233881.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220113446445.png">
@@ -47,8 +47,9 @@
 <meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134042993.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134158438.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134613354.png">
+<meta property="og:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250314172903564.png">
 <meta property="article:published_time" content="2025-01-23T06:44:14.000Z">
-<meta property="article:modified_time" content="2025-02-20T08:39:41.873Z">
+<meta property="article:modified_time" content="2025-03-14T09:34:43.742Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://jelasin.github.io/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220112233881.png">
@@ -435,7 +436,7 @@
 
         <div class="statistics flex justify-around my-2.5">
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">40</div>
         <div class="label text-third-text-color text-sm">Tags</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
@@ -443,7 +444,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">110</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">122</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -492,8 +493,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-02-20 16:39:41</span>
-            <span class="mobile">2025-02-20 16:39:41</span>
+            <span class="desktop">2025-03-14 17:34:43</span>
+            <span class="mobile">2025-03-14 17:34:43</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -520,9 +521,217 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以使用为主，如果你想深究其原理请看 《Linux环境编程与内核》以及《Linux内核分析》系列文章。</p>
+			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>如果你是一个刚开始学C语言的小白，那么这篇文章可能并不十分适合你（但结尾放了几个C语言的中小项目，感兴趣的同学可以跟着看一下），本文主要聚焦于C语言的一些陷阱和缺陷，我的本职工作是二进制安全研究，关于这些缺陷导致的致命问题也写了很多文章(Pwn系列)。本文讨论的主要包括指针问题，C的语法糖，线程安全问题，系统编程问题，建议的编程风格和习惯等内容。这里编程部分以利用为主，如果你想深究其原理请看 《Linux环境编程与内核》以及《Linux内核分析》系列文章。</p>
 <p>本文只探讨在Linux环境下的C语言编程。</p>
-<h2 id="Linux-C-常用库"><a href="#Linux-C-常用库" class="headerlink" title="Linux C 常用库"></a>Linux C 常用库</h2><h2 id="GNU-C-扩展语法"><a href="#GNU-C-扩展语法" class="headerlink" title="GNU C 扩展语法"></a>GNU C 扩展语法</h2><h3 id="指定初始化"><a href="#指定初始化" class="headerlink" title="指定初始化"></a>指定初始化</h3><hr>
+<h2 id="Linux-C-时间处理"><a href="#Linux-C-时间处理" class="headerlink" title="Linux C 时间处理"></a>Linux C 时间处理</h2><h3 id="格林尼治时间"><a href="#格林尼治时间" class="headerlink" title="格林尼治时间"></a>格林尼治时间</h3><p>所有的UNIX系统都使用同一个时间和日期的起点：格林尼治时间（GMT）1970年1月1 日午夜（0点）。这是“UNIX纪元的起点”，Linux也不例外。Linux系统中所有的时间都以从那时起经过的秒数来衡量</p>
+<p>在 Linux C 编程中，处理时间和日期相关的操作通常需要使用一些标准库函数。以下是关于时间处理的相关函数的详细讲解：</p>
+<h3 id="时间数据类型"><a href="#时间数据类型" class="headerlink" title="时间数据类型"></a>时间数据类型</h3><h4 id="time-t"><a href="#time-t" class="headerlink" title="time_t"></a><code>time_t</code></h4><p>在处理时间时，最常使用的数据类型是<code>time_t</code>。它通常用于表示从1970年1月1日UTC时间（也称为Unix纪元）开始的秒数。</p>
+<ul>
+<li>时间通过一个预定义的类型time_t来处理，我们称time_t表示的时间成为<strong>日历时间</strong></li>
+<li>这是一个大到能够容纳以秒计算的日期和时间的整数类型，它代表从<strong>格林尼治时间开始截止到目前为止的时间秒数</strong></li>
+<li>在Linux系统中，它是一个<strong>长整型</strong>，与处理时间值的函数一起定义在头文件<code>time.h</code>中</li>
+</ul>
+<hr>
+<h4 id="struct-timespec"><a href="#struct-timespec" class="headerlink" title="struct timespec"></a><code>struct timespec</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">timespec</span> &#123;</span></span><br><span class="line">    <span class="type">time_t</span> tv_sec;   <span class="comment">// 秒</span></span><br><span class="line">    <span class="type">long</span>   tv_nsec;  <span class="comment">// 纳秒</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>timespec结构体按照<strong>秒和纳秒</strong>来定义时间</p>
+<ul>
+<li>结构体中至少包含以上两个成员：   <ul>
+<li><strong>tv_sec：秒数</strong></li>
+<li><strong>tv_nsec：纳秒</strong></li>
+</ul>
+</li>
+<li>timespec结构体提供了更高精度的时间戳</li>
+</ul>
+<hr>
+<h4 id="struct-tm"><a href="#struct-tm" class="headerlink" title="struct tm"></a><code>struct tm</code></h4><p><code>tm</code>结构体包含以下字段：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">tm</span> &#123;</span></span><br><span class="line">    <span class="type">int</span> tm_sec;   <span class="comment">// 秒数 [0, 60]</span></span><br><span class="line">    <span class="type">int</span> tm_min;   <span class="comment">// 分钟数 [0, 59]</span></span><br><span class="line">    <span class="type">int</span> tm_hour;  <span class="comment">// 小时数 [0, 23]</span></span><br><span class="line">    <span class="type">int</span> tm_mday;  <span class="comment">// 月中的第几天 [1, 31]</span></span><br><span class="line">    <span class="type">int</span> tm_mon;   <span class="comment">// 第几个月 [0, 11]</span></span><br><span class="line">    <span class="type">int</span> tm_year;  <span class="comment">// 年份，从1900年开始</span></span><br><span class="line">    <span class="type">int</span> tm_wday;  <span class="comment">// 星期几 [0, 6]，星期天为0</span></span><br><span class="line">    <span class="type">int</span> tm_yday;  <span class="comment">// 年中的第几天 [0, 365]</span></span><br><span class="line">    <span class="type">int</span> tm_isdst; <span class="comment">// 夏令时标志</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>tm_sec：</strong>其范围超过59是因为其允许临时表示润秒（Single UNIX Specification的以前版本允许双润秒，所以该字段的范围为<code>0~61</code>，但是UTC的正式定义不允许双润秒，所以现在该字段的范围为<code>0~60</code>）</li>
+<li>除了月日字段，其他字段都是以0开始</li>
+<li><strong>tm_isdest：</strong>如果夏令时生效，则该字段值为正；如果为非夏令时时间，则该字段值为0；如果此信息不可用，则其值为负</li>
+</ul>
+<h3 id="时间处理函数"><a href="#时间处理函数" class="headerlink" title="时间处理函数"></a>时间处理函数</h3><h4 id="time"><a href="#time" class="headerlink" title="time()"></a><code>time()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">time_t</span> <span class="title function_">time</span><span class="params">(<span class="type">time_t</span> *tloc)</span>;</span><br></pre></td></tr></table></figure></div>
+<ul>
+<li>功能：返回当前时间，从1970年1月1日开始的秒数。</li>
+<li>参数：<code>tloc</code>如果不是<code>NULL</code>，则当前时间也会存储在指向的内存位置。</li>
+<li>返回值：当前时间以<code>time_t</code>格式。</li>
+</ul>
+<h4 id="ctime"><a href="#ctime" class="headerlink" title="ctime()"></a><code>ctime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> *<span class="title function_">ctime</span><span class="params">(<span class="type">const</span> <span class="type">time_t</span> *timep)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>功能：将时间值转换为本地时间的字符串表示。</li>
+<li>参数：指向<code>time_t</code>类型的指针。</li>
+<li>返回值：指向静态字符串的指针，格式通常为“Wed Jun 30 21:49:08 1993\n”。</li>
+</ul>
+<h4 id="gmtime-localtime"><a href="#gmtime-localtime" class="headerlink" title="gmtime()&#x2F;localtime()"></a><code>gmtime()</code>&#x2F;<code>localtime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> tm *<span class="title function_">gmtime</span><span class="params">(<span class="type">const</span> <span class="type">time_t</span> *timep)</span>;</span><br><span class="line"><span class="keyword">struct</span> tm *<span class="title function_">localtime</span><span class="params">(<span class="type">const</span> <span class="type">time_t</span> *timep)</span>;</span><br></pre></td></tr></table></figure></div>
+<ul>
+<li>功能：将<code>time_t</code>格式的时间转换为<code>tm</code>结构体，分别表示UTC时间和本地时间。</li>
+<li>返回值：指向<code>tm</code>结构体的指针，该结构体包含了详细的时间信息。</li>
+</ul>
+<h4 id="mktime"><a href="#mktime" class="headerlink" title="mktime()"></a><code>mktime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">time_t</span> <span class="title function_">mktime</span><span class="params">(<span class="keyword">struct</span> tm *tm)</span>;</span><br></pre></td></tr></table></figure></div>
+<ul>
+<li>功能：将<code>tm</code>结构体转换为<code>time_t</code>格式。</li>
+<li>参数：指向<code>tm</code>结构体的指针。</li>
+<li>返回值：表示时间的<code>time_t</code>值。</li>
+</ul>
+<h4 id="strftime"><a href="#strftime" class="headerlink" title="strftime()"></a><code>strftime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">size_t</span> <span class="title function_">strftime</span><span class="params">(<span class="type">char</span> *s, <span class="type">size_t</span> max, <span class="type">const</span> <span class="type">char</span> *format, <span class="type">const</span> <span class="keyword">struct</span> tm *tm)</span>;</span><br></pre></td></tr></table></figure></div>
+<ul>
+<li>功能：格式化时间，将<code>tm</code>结构体格式化为字符串。</li>
+<li>参数：<ul>
+<li><code>s</code>：存储格式化结果的缓冲区。</li>
+<li><code>max</code>：缓冲区的最大长度。</li>
+<li><code>format</code>：格式控制字符串。</li>
+<li><code>tm</code>：指向<code>tm</code>结构体。</li>
+</ul>
+</li>
+<li>返回值：成功则返回写入缓冲区的字符数，失败则返回0。</li>
+</ul>
+<p>常用格式：</p>
+<ul>
+<li><code>%Y</code>：年份（如2023）</li>
+<li><code>%m</code>：月份（01到12）</li>
+<li><code>%d</code>：月份中的天数（01到31）</li>
+<li><code>%H</code>：小时（00到23）</li>
+<li><code>%M</code>：分钟（00到59）</li>
+<li><code>%S</code>：秒（00到60）</li>
+</ul>
+<h4 id="difftime"><a href="#difftime" class="headerlink" title="difftime()"></a><code>difftime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">double</span> <span class="title function_">difftime</span><span class="params">(<span class="type">time_t</span> time1, <span class="type">time_t</span> time0)</span>;</span><br></pre></td></tr></table></figure></div>
+<ul>
+<li>功能：计算两个时间点之间的差，以秒为单位。</li>
+<li>参数：两个<code>time_t</code>时间值。</li>
+<li>返回值：时间差，单位为秒。</li>
+</ul>
+<h4 id="clock-gettime"><a href="#clock-gettime" class="headerlink" title="clock_gettime()"></a><code>clock_gettime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">clock_gettime</span><span class="params">(<span class="type">clockid_t</span> clk_id, <span class="keyword">struct</span> timespec *tp)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>功能：获取指定时钟的时间。</li>
+<li>参数：<ul>
+<li><code>clk_id</code>：时钟标识，如<code>CLOCK_REALTIME</code>（系统实时时钟）、<code>CLOCK_MONOTONIC</code>（不受系统时间改变影响的时钟）。</li>
+<li><code>tp</code>：指向<code>timespec</code>结构体的指针，用于存储获取的时间值。</li>
+</ul>
+</li>
+<li>返回值：成功返回0，失败返回-1。</li>
+</ul>
+<h4 id="strptime"><a href="#strptime" class="headerlink" title="strptime()"></a><code>strptime()</code></h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> *<span class="title function_">strptime</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *s, <span class="type">const</span> <span class="type">char</span> *format, <span class="keyword">struct</span> tm *tm)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>功能：解析字符串时间，根据指定格式填充<code>tm</code>结构体。</li>
+<li>参数：<ul>
+<li><code>s</code>：输入时间字符串。</li>
+<li><code>format</code>：格式控制字符串，定义如何解析<code>tim</code>字符串。</li>
+<li><code>tm</code>：指向<code>tm</code>结构体，用于存储解析结果。</li>
+</ul>
+</li>
+<li>返回值：指向处理完的字符串部分的指针。</li>
+</ul>
+<h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><p>以下代码示范了如何使用上述函数来获取和处理时间：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;time.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 使用 clock_gettime</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">timespec</span> <span class="title">ts</span>;</span></span><br><span class="line">    clock_gettime(CLOCK_REALTIME, &amp;ts);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Seconds: %ld, Nanoseconds: %ld\n&quot;</span>, ts.tv_sec, ts.tv_nsec);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用 time 和 localtime</span></span><br><span class="line">    <span class="type">time_t</span> now = time(<span class="literal">NULL</span>);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">tm</span> *<span class="title">local</span> =</span> localtime(&amp;now);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Local time: %s&quot;</span>, ctime(&amp;now));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用 strftime</span></span><br><span class="line">    <span class="type">char</span> buffer[<span class="number">80</span>];</span><br><span class="line">    strftime(buffer, <span class="keyword">sizeof</span>(buffer), <span class="string">&quot;%Y-%m-%d %H:%M:%S&quot;</span>, local);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Formatted local time: %s\n&quot;</span>, buffer);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用 strptime</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">tm</span> <span class="title">parsed_time</span>;</span></span><br><span class="line">    <span class="type">char</span> *result = strptime(<span class="string">&quot;2024-12-01 12:34:56&quot;</span>, <span class="string">&quot;%Y-%m-%d %H:%M:%S&quot;</span>, &amp;parsed_time);</span><br><span class="line">    <span class="keyword">if</span> (result != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;Parsed day of the month: %d\n&quot;</span>, parsed_time.tm_mday);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;Failed to parse time\n&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="动态库与静态库"><a href="#动态库与静态库" class="headerlink" title="动态库与静态库"></a>动态库与静态库</h2><p>对于二进制安全研究者对于动静态库的编译链接，动态链接流程应该很熟悉，起码知道<code>plt</code>表和<code>got</code>表的关系，<code>got</code>表何时保存真实地址。</p>
+<p>在 Linux 中，库分为两种主要类型：静态库和动态库。这两种库都用于封装可重用的代码和资源，但它们的使用和制作方式有所不同。下面是详细的介绍。</p>
+<h3 id="静态库（Static-Library）"><a href="#静态库（Static-Library）" class="headerlink" title="静态库（Static Library）"></a>静态库（Static Library）</h3><p>静态库是将多个目标文件（.o 文件）打包成一个单一文件（通常以 <code>.a</code> 结尾），在链接时直接与可执行文件合并。使用时只需要包含<code>.h</code>文件并在链接时指定<code>.a</code>即可。</p>
+<h4 id="1-静态库的特点"><a href="#1-静态库的特点" class="headerlink" title="1. 静态库的特点"></a>1. 静态库的特点</h4><ul>
+<li><strong>打包</strong>：在编译时将所有需要的代码编译并打包到一个静态库文件。</li>
+<li><strong>代码包含</strong>：最终生成的可执行文件中包含了使用的库的所有代码，因此不会受到库文件是否存在的影响。</li>
+<li><strong>版本管理</strong>：每当库代码更改时，需要重新编译使用该库的所有可执行文件。</li>
+</ul>
+<h4 id="2-制作静态库的步骤"><a href="#2-制作静态库的步骤" class="headerlink" title="2. 制作静态库的步骤"></a>2. 制作静态库的步骤</h4><ol>
+<li><p><strong>编写源代码</strong>（假设有多个文件，如 <code>foo.c</code> 和 <code>bar.c</code>）：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// foo.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">foo</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello from foo!\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bar.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">bar</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello from bar!\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>编译源代码为目标文件（.o 文件）</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc -c foo.c  <span class="comment"># 生成 foo.o</span></span><br><span class="line">gcc -c bar.c  <span class="comment"># 生成 bar.o</span></span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>使用 <code>ar</code> 命令创建静态库</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ar rcs libmylibrary.a foo.o bar.o</span><br></pre></td></tr></table></figure></div>
+<p>这里：</p>
+<ul>
+<li><code>r</code> 表示插入文件。</li>
+<li><code>c</code> 表示创建静态库。</li>
+<li><code>s</code> 表示创建索引。</li>
+</ul>
+</li>
+<li><p><strong>使用静态库进行链接</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -o myprogram main.c -L. -lmylibrary</span><br></pre></td></tr></table></figure></div>
+<p>其中，<code>-L.</code> 指定库路径为当前目录，<code>-lmylibrary</code> 指定库名称（去掉前缀 <code>lib</code> 和后缀 <code>.a</code>）。</p>
+</li>
+</ol>
+<h3 id="动态库（Dynamic-Library）"><a href="#动态库（Dynamic-Library）" class="headerlink" title="动态库（Dynamic Library）"></a>动态库（Dynamic Library）</h3><p>动态库在运行时链接，也称为共享库，通常以 <code>.so</code> 结尾。与静态库不同，动态库在程序运行时被加载。</p>
+<h4 id="1-动态库的特点"><a href="#1-动态库的特点" class="headerlink" title="1. 动态库的特点"></a>1. 动态库的特点</h4><ul>
+<li><strong>共享</strong>：多个程序可以共享同一个库，降低内存使用。</li>
+<li><strong>更新方便</strong>：更新库文件后，所有依赖该库的程序可以立即受益，而无需重新编译它们。</li>
+<li><strong>动态链接</strong>：在程序启动时或运行时动态加载库，代码不会嵌入到可执行文件中。</li>
+</ul>
+<h4 id="2-制作动态库的步骤"><a href="#2-制作动态库的步骤" class="headerlink" title="2. 制作动态库的步骤"></a>2. 制作动态库的步骤</h4><ol>
+<li><p><strong>编写源代码</strong>（同样的例子）：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// foo.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">foo</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello from foo!\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bar.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">bar</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello from bar!\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>编译源文件为位置无关的代码（-fPIC 标志）</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc -fPIC -c foo.c  <span class="comment"># 生成 foo.o</span></span><br><span class="line">gcc -fPIC -c bar.c  <span class="comment"># 生成 bar.o</span></span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>使用 <code>gcc</code> 创建动态库</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -shared -o libmylibrary.so foo.o bar.o</span><br></pre></td></tr></table></figure></div>
+<p>这里：</p>
+<ul>
+<li><code>-shared</code> 标志告诉编译器生成共享库。</li>
+</ul>
+</li>
+<li><p><strong>使用动态库进行链接</strong>：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -o myprogram main.c -L. -lmylibrary</span><br></pre></td></tr></table></figure></div>
+<p>模式同静态库一样。</p>
+</li>
+<li><p><strong>设置环境变量</strong>（可选）：</p>
+<ul>
+<li>如果动态库不在标准路径下，可以设置环境变量 <code>LD_LIBRARY_PATH</code> 来告诉链接器查找库的位置。</li>
+</ul>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> LD_LIBRARY_PATH=<span class="variable">$LD_LIBRARY_PATH</span>:.</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>使用dlopen</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// add.h</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> __ADD_H__</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __ADD_H__</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">add</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">// __ADD_H__</span></span></span><br><span class="line"><span class="comment">// add.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;add.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">add</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// main.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;dlfcn.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">void</span> *handle;</span><br><span class="line">    <span class="type">int</span> (*add)(<span class="type">int</span>, <span class="type">int</span>);</span><br><span class="line">&#125; <span class="type">g_dyn_add_t</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">load_dyn_libadd</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">g_dyn_add_t</span>.handle = dlopen(<span class="string">&quot;./libadd.so&quot;</span>, RTLD_LAZY);</span><br><span class="line">    <span class="keyword">if</span> (!<span class="type">g_dyn_add_t</span>.handle) </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;Error: %s\n&quot;</span>, dlerror());</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">g_dyn_add_t</span>.add = dlsym(<span class="type">g_dyn_add_t</span>.handle, <span class="string">&quot;add&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span> (!<span class="type">g_dyn_add_t</span>.add)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;Error: %s\n&quot;</span>, dlerror());</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span> *argv[])</span> </span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> a = <span class="number">10</span>, b = <span class="number">20</span>, c;</span><br><span class="line">    <span class="keyword">if</span> (<span class="number">0</span> &gt; load_dyn_libadd())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;Error: failed to load dynamic library\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    c = <span class="type">g_dyn_add_t</span>.add(a, b);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Sum of %d and %d is %d\n&quot;</span>, a, b, c);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div></li>
+</ol>
+<hr>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>静态库</th>
+<th>动态库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接时机</td>
+<td>编译时</td>
+<td>运行时</td>
+</tr>
+<tr>
+<td>文件扩展</td>
+<td><code>.a</code></td>
+<td><code>.so</code></td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>每个程序都有一份</td>
+<td>多个程序共享一份</td>
+</tr>
+<tr>
+<td>更新库的方式</td>
+<td>需要重编所有程序</td>
+<td>只需更新库文件</td>
+</tr>
+<tr>
+<td>库的使用</td>
+<td>更复杂的管理</td>
+<td>更新简单，方便使用</td>
+</tr>
+</tbody></table>
+<p>静态库和动态库各自有优缺点，开发者可以根据项目需求选择合适的方式。常见的做法是将相对稳定的基础库做成动态库，而不常更改的功能模块则可以选择静态库以便提升性能。</p>
+<h2 id="GNU-C-扩展语法"><a href="#GNU-C-扩展语法" class="headerlink" title="GNU C 扩展语法"></a>GNU C 扩展语法</h2><h3 id="指定初始化"><a href="#指定初始化" class="headerlink" title="指定初始化"></a>指定初始化</h3><hr>
 <p><strong>数组初始化</strong></p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> arr[<span class="number">100</span>] = &#123;[<span class="number">10</span>] = <span class="number">1</span>, [<span class="number">30</span>] = <span class="number">1</span>&#125;;</span><br></pre></td></tr></table></figure></div>
 
@@ -726,6 +935,7 @@
 <li>format：指定函数的参数格式，用于检查printf和scanf等函数的参数类型。</li>
 <li>constructor：指定函数为构造函数，在程序启动时自动执行。</li>
 <li>destructor：指定函数为析构函数，在程序结束时自动执行。</li>
+<li>regparm(n)：属性用于以指定寄存器传递参数的个数，该属性只能用在函数定义和声明里，寄存器参数的上限值为3（使用顺序为EAX、EDX、ECX）。如果函数的参数个数超过3，那么剩余参数将使用内存传递方式。值得注意的一点是，regparm属性只在x86处理器体系结构下有效，而在x64体系结构下，GUN C语言使用寄存器传参方式作为函数的默认调用约定。无论是否采用regparm属性加以修饰，函数都会使用寄存器来传递参数，即使参数个数超过3，依然使用寄存器来传递参数</li>
 </ol>
 <hr>
 <p><strong>section</strong></p>
@@ -916,7 +1126,7 @@
                      data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134158438.png"
                       alt="image-20250220134158438"
                 ></p>
-<p>我们在标识符<code>__VA_ARGS__</code>前面加上了宏连接符＃＃，这样做的好处是：当变参列表非空时，＃＃的作用是连接fmt和变参列表，各个参数之间用逗号隔开，宏可以正常使用；当变参列表为空时，＃＃还有一个特殊的用处，它会将固定参数fmt后面的逗号删除掉，这样宏就可以正常使用了。</p>
+<p>我们在标识符<code>__VA_ARGS__</code>前面加上了宏连接符<code>##</code>，这样做的好处是：当变参列表非空时，<code>##</code>的作用是连接fmt和变参列表，各个参数之间用逗号隔开，宏可以正常使用；当变参列表为空时，＃＃还有一个特殊的用处，它会将固定参数fmt后面的逗号删除掉，这样宏就可以正常使用了。</p>
 <hr>
 <p><img  
                      lazyload
@@ -924,7 +1134,78 @@
                      data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250220134613354.png"
                       alt="image-20250220134613354"
                 ></p>
-<p>这种格式是GNU C扩展的一个新写法：可以不使用<code>__VA_ARGS__</code>，而是直接使用args…来表示一个变参列表，然后在后面的宏定义中，直接使用args代表变参列表就可以了。和上面一样，为了避免变参列表为空时的语法错误，我们也需要在参数之间添加一个连接符＃＃。</p>
+<p>这种格式是GNU C扩展的一个新写法：可以不使用<code>__VA_ARGS__</code>，而是直接使用args…来表示一个变参列表，然后在后面的宏定义中，直接使用args代表变参列表就可以了。和上面一样，为了避免变参列表为空时的语法错误，我们也需要在参数之间添加一个连接符<code>##</code>。</p>
+<h3 id="当前函数名"><a href="#当前函数名" class="headerlink" title="当前函数名"></a>当前函数名</h3><p>GNU C语言为当前函数的名字准备了两个标识符，它们分别是<code>__PRETTY__FUNCTION__</code>和<code>__FUNCTION__</code>，其中<code>__FUNCTION__</code>标识符保存着函数在源码中的名字，<code>__PRETTY__FUNCTION__</code>标识符则保存着带有语言特色的名字。在C函数中，这两个标识符代表的函数名字相同，参考代码如下所示：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">func_example</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;the function name is %s&quot;</span>, __FUNCTION__);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>在C99标准中，只规定标识符<code>__func__</code>能够代表函数的名字，而<code>__FUNCTION__</code>虽被各类编译器广泛支持，但只是<code>__func__</code>标识符的宏别名。</p>
+<h3 id="内联汇编"><a href="#内联汇编" class="headerlink" title="内联汇编"></a>内联汇编</h3><p>在很多操作系统开发场景中，C语言依然无法完全代替汇编语言。例如，操作某些特殊的CPU寄存器、操作主板上的某些IO端口或者对性能要求极为苛刻的场景等，此时我们必须在C语言内嵌入汇编语言来满足上述要求。GNU C语言提供了关键字asm来声明代码是内嵌的汇编语句，如下面这行代码：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> nop()     __asm__ __volatile__ (<span class="string">&quot;nop     \n\t&quot;</span>)</span></span><br></pre></td></tr></table></figure></div>
+
+<p>C语言使用关键字<code>__asm__</code>和<code>__volatile__</code>对汇编语句加以修饰，这两个关键字在C语言内嵌汇编语句时经常使用。</p>
+<ul>
+<li><p><code>__asm__</code>关键字：用于声明这行代码是一个内嵌汇编表达式，它是关键字asm的宏定义（<code>#define __asm__ asm</code>）。故此，它是内嵌汇编语言必不可少的关键字，任何内嵌的汇编表达式都以此关键字作为开头；如果希望编写符合ANSI C标准的代码（即与ANSI C标准相兼容），那么建议使用关键字<code>__asm__</code>。</p>
+</li>
+<li><p><code>__volatile__</code>关键字：其作用是告诉编译器此行代码不能被编译器优化，编译时保持代码原状。由此看来，它也是内嵌汇编语言不可或缺的关键字，否则经过编译器优化后，汇编语句很可能被修改以至于无法达到预期的执行效果。如果期望编写处符合ANSI C标准的程序（即与ANSI C标准兼容），那么建议使用关键字<code>__volatile__</code>。</p>
+</li>
+</ul>
+<p>GNU C语言的内嵌汇编表达式由4部分构成，它们之间使用<code>&quot;:&quot;</code>号分隔，其完整格式为：<strong>指令部分：输出部分：输入部分：损坏部分</strong></p>
+<ul>
+<li><p><strong>指令部分</strong>：汇编代码本身，其书写格式与AT&amp;T汇编语言程序的书写格式基本相同，但也存在些许不同之处。指令部分是内嵌汇编表达式的必填项，而其他部分视具体情况而定，如果不需要的话则可以直接忽略。在最简单的情况下，指令部分与常规汇编语句基本相同，如nop函数。</p>
+<p>指令部分的编写规则要求是：当指令表达式中存在多条汇编代码时，可全部书写在一对双引号中；亦可将汇编代码放在多对双引号中。如果将所有指令编写在同一双引号中，那么相邻两条指令间必须使用分号（<code>;</code>）或换行符（<code>\n</code>）分隔。如果使用换行符，通常在其后还会紧跟一个制表符（<code>\t</code>）。当汇编代码引用寄存器时，必须在寄存器名前再添加一个 <code>%</code> 符，以表示对寄存器的引用，例如代码<code>&quot;movl $0x10, %%eax&quot;</code>。</p>
+</li>
+<li><p><strong>输出部分</strong>：紧接在指令部分之后，这部分记录着指令部分的输出信息，其格式为：<strong>“输出操作约束”（输出表达式）, “输出操作约束”（输出表达式）, ……</strong>。格式中的输出操作约束和输出表达式成对出现，整个输出部分可包含多条输出信息，每条信息之间必须使用逗号<code>&quot;,&quot;</code>分隔开。</p>
+<ul>
+<li>括号内的输出表达式部分主要负责保存指令部分的执行结果。通常情况下，输出表达式是一个变量。</li>
+<li>双引号内的部分，被称为“输出操作约束”，也可简称为“输出约束”。输出约束部分必须使用等号<code>“=”</code>或加号<code>“+”</code>进行修饰。这两个符号的区别是，等号<code>“=”</code>意味着输出表达式是一个纯粹的输出操作，加号<code>“+”</code>意味着输出表达式既用于输出操作，又用于输入操作。不论是等号<code>“=”</code>还是加号<code>“+”</code>，它们只能用在输出部分，不能出现在输入部分，而且是可读写的。关于输出约束的更多内容，将在“操作约束和修饰符”中进行补充。</li>
+</ul>
+</li>
+<li><p><strong>输入部分</strong>：记录着指令部分的输入信息，其格式为：<strong>“输入操作约束”（输入表达式）, “输入操作约束”（输入表达式）, ……</strong>。格式中的输入操作约束与输入表达式同样要求成对出现，整个输入部分亦可包含多条输入信息，并用逗号<code>“, ”</code>分隔开。在输入操作约束中<strong>不允许</strong>使用等号<code>“=”</code>和加号<code>“+”</code>，因此输入部分是只读的。</p>
+</li>
+<li><p><strong>损坏部分</strong>：描述了在指令部分执行的过程中，将被修改的寄存器、内存空间或标志寄存器，并且这些修改部分并未在输出部分和输入部分出现过，格式为：<strong>“损坏描述”, “损坏描述”, ……</strong>。如果需要声明多个寄存器，则必须使用逗号<code>“, ”</code>将它们分隔开，这点与输入&#x2F;输出部分一致。</p>
+<ul>
+<li><p><strong>寄存器修改通知</strong>。这种情况一般发生在寄存器出现于指令部分，又不是输入&#x2F;输出操作表达式指定的寄存器，更不是编译器为r或g约束选择的寄存器。如果该寄存器被指令部分所修改，那么就应该在损坏部分加以描述，比如下面这行代码：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__asm__ __volatile__ (<span class="string">&quot;movl %0, %%ecx&quot;</span>::<span class="string">&quot;a&quot;</span>(__tmp):<span class="string">&quot;cx&quot;</span>);</span><br></pre></td></tr></table></figure></div>
+
+<p>这段汇编表达式的指令部分修改了寄存器ECX的值，却未被任何输入&#x2F;输出部分所记录，那么必须在损坏部分加以描述，一旦编译器发现后续代码还要使用它，便会在内嵌汇编语句的过程中做好数据保存与恢复工作。如果未在损坏部分描述，则很可能会影响后续程序的执行结果。注意，已在损坏部分声明的寄存器，不能作为输入&#x2F;输出操作表达式的寄存器约束，也不会被指派为<code>q 、 r 、 g</code>约束的寄存器。如果在输入&#x2F;输出操作表达式中已明确选定寄存器，或者使用<code>q 、 r 、 g</code>约束让编译器指派寄存器时，编译器对这些寄存器的状态非常清楚，它知道哪些寄存器将会被修改。除此之外，编译器对指令部分修改的寄存器却一无所知。</p>
+</li>
+<li><p><strong>内存修改通知</strong>：除了寄存器的内容会被篡改外，内存中的数据同样会被修改。如果一个内嵌汇编语句的指令部分修改了内存数据，或者在内嵌汇编表达式出现的地方，内存数据可能发生改变，并且被修改的内存未使用m约束。此时，应该在损坏部分使用字符串memory，向编译器声明内存会发生改变。如果损坏部分已经使用memory对内存加以约束，那么编译器会保证在执行汇编表达式之后，重新向寄存器装载已引用过的内存空间，而非使用寄存器中的副本，以防止内存与副本中的数据不一致。</p>
+</li>
+<li><p><strong>标志寄存器修改通知</strong>：当内嵌汇编表达式中包含影响标志寄存器<code>R|EFLAGS</code>的指令时，必须在损坏部分使用<code>cc</code>来向编译器声明这一点。</p>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><strong>操作约束和修饰符</strong></p>
+<p>每个输入&#x2F;输出表达式都必须指定自身的操作约束。操作约束的类型可以细分为寄存器约束、内存约束和立即数约束。在输出表达式中，还有限定寄存器操作的修饰符。</p>
+<ul>
+<li><p><strong>寄存器约束</strong>限定了表达式的载体是一个寄存器，这个寄存器可以明确指派，亦可模糊指派再由编译器自行分配。寄存器约束可使用寄存器的全名，也可以使用寄存器的缩写名称，如下所示：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">__asm__ __volatile__(<span class="string">&quot;movl %0, %%cr0&quot;</span>::<span class="string">&quot;eax&quot;</span>(cr0));</span><br><span class="line">__asm__ __volatile__(<span class="string">&quot;movl %0, %%cr0&quot;</span>::<span class="string">&quot;a&quot;</span>(cr0));</span><br></pre></td></tr></table></figure></div>
+
+<p>如果使用寄存器的缩写名称，那么编译器会根据指令部分的汇编代码来确定寄存器的实际位宽。下表记录了常用的约束缩写名称。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2025/01/23/C%E8%AF%AD%E8%A8%80%E7%BC%96%E7%A8%8B/image-20250314172903564.png"
+                      alt="image-20250314172903564"
+                ></p>
+</li>
+<li><p><strong>内存约束</strong>限定了表达式的载体是一个内存空间，使用约束名m表示。例如以下内嵌汇编表达式：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">__asm__ __volatile__ (<span class="string">&quot;sgdt %0&quot;</span>:<span class="string">&quot;=m&quot;</span>(__gdt_addr)::);</span><br><span class="line">__asm__ __volatile__ (<span class="string">&quot;lgdt %0&quot;</span>::<span class="string">&quot;m&quot;</span>(__gdt_addr));</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>立即数约束</strong>只能用于输入部分，它限定了表达式的载体是一个数值，如果不想借助任何寄存器或内存，那么可以使用立即数约束，比如下面这行代码：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__asm__ __volatile__(<span class="string">&quot;movl %0, %%ebx&quot;</span>::<span class="string">&quot;i&quot;</span>(<span class="number">50</span>));</span><br></pre></td></tr></table></figure></div>
+
+<p>使用约束名<code>i</code>限定输入表达式是一个整数类型的立即数，如果希望限定输入表达式是一个浮点数类型的立即数，则使用约束名<code>F</code>。立即数约束只能使用在输入部分</p>
+</li>
+<li><p><strong>修饰符</strong>只可用在输出部分，除了等号 &#x3D; 和加号 + 外，还有 &amp; 符。符号 &amp; 只能写在输出约束部分的第二个字符位置上，即只能位于&#x3D;和 + 之后，它告诉编译器不得为任何输入操作表达式分配该寄存器。因为编译器会在输入部分赋值前，先对 &amp;符号修饰的寄存器进行赋值，一旦后面的输入操作表达式向该寄存器赋值，将会造成输入和输出数据混乱。</p>
+<p>只有在输入约束中使用过模糊约束（使用q、r或g等约束缩写）时，在输出约束中使用符号&amp;修饰才有意义！如果所有输入操作表达式都明确指派了寄存器，那么输出约束再使用符号 &amp; 就没有任何意义。如果没有使用修饰符 &amp;，那就意味着编译器将先对输入部分进行赋值，当指令部分执行结束后，再对输出部分进行操作。</p>
+</li>
+</ul>
+<p><strong>序号占位符</strong></p>
+<p>序号占位符是输入&#x2F;输出操作约束的数值映射，每个内嵌汇编表达式最多只有10条输入&#x2F;输出约束，这些约束按照书写顺序依次被映射为序号0～9。如果指令部分想引用序号占位符，必须使用百分号%前缀加以修饰，例如序号占位符%0对应第1个操作约束，序号占位符%1对应第2个操作约束，依次类推。指令部分为了区分序号占位符和寄存器，特使用两个百分号(%%)对寄存器加以修饰。在编译时，编译器会将每个占位符代表的表达式替换到相应的寄存器或内存中。</p>
+<p>指令部分在引用序号占位符时，可以根据需要指定操作位宽是字节或者字，也可以指定操作的字节位置，即在%与序号占位符之间插入字母b表示操作最低字节，或插入字母h表示操作次低字节</p>
 <h2 id="现代-C-语言"><a href="#现代-C-语言" class="headerlink" title="现代 C 语言"></a>现代 C 语言</h2><h3 id="c99"><a href="#c99" class="headerlink" title="c99"></a>c99</h3><h3 id="c11"><a href="#c11" class="headerlink" title="c11"></a>c11</h3><h3 id="c17"><a href="#c17" class="headerlink" title="c17"></a>c17</h3><h3 id="c23"><a href="#c23" class="headerlink" title="c23"></a>c23</h3><p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/C23_(C_standard_revision)#Features" >c23新特性<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
 <h2 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h2><h2 id="异步编程"><a href="#异步编程" class="headerlink" title="异步编程"></a>异步编程</h2><h2 id="网络编程"><a href="#网络编程" class="headerlink" title="网络编程"></a>网络编程</h2><h2 id="无锁编程"><a href="#无锁编程" class="headerlink" title="无锁编程"></a>无锁编程</h2><h2 id="异步信号安全"><a href="#异步信号安全" class="headerlink" title="异步信号安全"></a>异步信号安全</h2><p>详见《Linux环境编程与内核之信号》。</p>
 <h2 id="代码和行为规范问题"><a href="#代码和行为规范问题" class="headerlink" title="代码和行为规范问题"></a>代码和行为规范问题</h2><p>这里并不能罗列所有问题和规范，还需经验总结和习惯。我以安全的视角来提醒一些程序员注意自己的代码规范问题。还有一些内容在其他文章里面。</p>
@@ -944,8 +1225,10 @@
 <p><strong>10. 当不能使用简单点循环解决问题，再考虑递归函数，否则程序开销会很大</strong></p>
 <p><strong>11. 循环数组时，数组的大小要用宏定义定义好，或者使用<code>sizeof</code>来计算数组的大小，这样修改数组的大小</strong></p>
 <p><strong>12. 不要使用glibc的signal函数，它的历史负担太重，不同glibc版本和操作系统版本实现可能不同，语义模糊。Linux给出了语义更加精确的sigaction。</strong></p>
-<h1 id="C-语言项目"><a href="#C-语言项目" class="headerlink" title="C 语言项目"></a>C 语言项目</h1><p>学之前可以先看一下博客中《数据结构与算法》这篇文章。</p>
-<h2 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h2><h2 id="进程池"><a href="#进程池" class="headerlink" title="进程池"></a>进程池</h2><h2 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h2><h2 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h2>
+<h1 id="C-语言项目"><a href="#C-语言项目" class="headerlink" title="C 语言项目"></a>C 语言项目</h1><p>学之前可以先看一下博客中《数据结构与算法》《Linux环境编程系列》这几篇篇文章。我写的注释比较全了，哪里看不懂直接去找相关文章即可。</p>
+<h2 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h2><h2 id="进程池"><a href="#进程池" class="headerlink" title="进程池"></a>进程池</h2><h2 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h2><h2 id="协程库"><a href="#协程库" class="headerlink" title="协程库"></a>协程库</h2><h2 id="无锁编程库"><a href="#无锁编程库" class="headerlink" title="无锁编程库"></a>无锁编程库</h2><p>打算使用引用计数来完成一个无锁编程库。</p>
+<h2 id="高并发服务器"><a href="#高并发服务器" class="headerlink" title="高并发服务器"></a>高并发服务器</h2><h2 id="网络视频监控"><a href="#网络视频监控" class="headerlink" title="网络视频监控"></a>网络视频监控</h2><h2 id="TinyBox"><a href="#TinyBox" class="headerlink" title="TinyBox"></a>TinyBox</h2><p>项目链接：<a class="link"   target="_blank" rel="noopener" href="https://github.com/jelasin/tinybox.git" >https://github.com/jelasin/tinybox.git<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+
 		</div>
 
 		
@@ -959,7 +1242,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-02-20 16:39:41
+                    :</strong> 2025-03-14 17:34:43
             </li>
         
         <li>
@@ -1080,7 +1363,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">C语言编程</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E5%B8%B8%E7%94%A8%E5%BA%93"><span class="nav-text">Linux C 常用库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GNU-C-%E6%89%A9%E5%B1%95%E8%AF%AD%E6%B3%95"><span class="nav-text">GNU C 扩展语法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E5%AE%9A%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">指定初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8F%E5%AE%9A%E4%B9%89%E4%B8%AD%E7%9A%84%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">宏定义中的语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#typeof%E4%B8%8Econtainer-of%E5%AE%8F"><span class="nav-text">typeof与container_of宏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9B%B6%E9%95%BF%E6%95%B0%E7%BB%84"><span class="nav-text">零长数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B1%9E%E6%80%A7%E5%A3%B0%E6%98%8E"><span class="nav-text">属性声明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0"><span class="nav-text">内联函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%BB%BA%E5%87%BD%E6%95%B0"><span class="nav-text">内建函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E5%AE%8F"><span class="nav-text">可变参数宏</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E4%BB%A3-C-%E8%AF%AD%E8%A8%80"><span class="nav-text">现代 C 语言</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#c99"><span class="nav-text">c99</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c11"><span class="nav-text">c11</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c17"><span class="nav-text">c17</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c23"><span class="nav-text">c23</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B"><span class="nav-text">异步编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B"><span class="nav-text">网络编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B"><span class="nav-text">无锁编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E4%BF%A1%E5%8F%B7%E5%AE%89%E5%85%A8"><span class="nav-text">异步信号安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%AF%AD%E8%A8%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">C 语言项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-text">线程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E6%B1%A0"><span class="nav-text">进程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-text">内存池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%8F%E7%A8%8B"><span class="nav-text">协程</span></a></li></ol></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-C-%E6%97%B6%E9%97%B4%E5%A4%84%E7%90%86"><span class="nav-text">Linux C 时间处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%BC%E6%9E%97%E5%B0%BC%E6%B2%BB%E6%97%B6%E9%97%B4"><span class="nav-text">格林尼治时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%B6%E9%97%B4%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-text">时间数据类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%B6%E9%97%B4%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="nav-text">时间处理函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B"><span class="nav-text">示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E4%B8%8E%E9%9D%99%E6%80%81%E5%BA%93"><span class="nav-text">动态库与静态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9D%99%E6%80%81%E5%BA%93%EF%BC%88Static-Library%EF%BC%89"><span class="nav-text">静态库（Static Library）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%EF%BC%88Dynamic-Library%EF%BC%89"><span class="nav-text">动态库（Dynamic Library）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GNU-C-%E6%89%A9%E5%B1%95%E8%AF%AD%E6%B3%95"><span class="nav-text">GNU C 扩展语法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E5%AE%9A%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">指定初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8F%E5%AE%9A%E4%B9%89%E4%B8%AD%E7%9A%84%E8%AF%AD%E5%8F%A5%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="nav-text">宏定义中的语句表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#typeof%E4%B8%8Econtainer-of%E5%AE%8F"><span class="nav-text">typeof与container_of宏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9B%B6%E9%95%BF%E6%95%B0%E7%BB%84"><span class="nav-text">零长数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B1%9E%E6%80%A7%E5%A3%B0%E6%98%8E"><span class="nav-text">属性声明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0"><span class="nav-text">内联函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%BB%BA%E5%87%BD%E6%95%B0"><span class="nav-text">内建函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E5%AE%8F"><span class="nav-text">可变参数宏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BD%93%E5%89%8D%E5%87%BD%E6%95%B0%E5%90%8D"><span class="nav-text">当前函数名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E8%81%94%E6%B1%87%E7%BC%96"><span class="nav-text">内联汇编</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E4%BB%A3-C-%E8%AF%AD%E8%A8%80"><span class="nav-text">现代 C 语言</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#c99"><span class="nav-text">c99</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c11"><span class="nav-text">c11</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c17"><span class="nav-text">c17</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#c23"><span class="nav-text">c23</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="nav-text">线程安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B"><span class="nav-text">异步编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B"><span class="nav-text">网络编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B"><span class="nav-text">无锁编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E4%BF%A1%E5%8F%B7%E5%AE%89%E5%85%A8"><span class="nav-text">异步信号安全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%92%8C%E8%A1%8C%E4%B8%BA%E8%A7%84%E8%8C%83%E9%97%AE%E9%A2%98"><span class="nav-text">代码和行为规范问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%AF%AD%E8%A8%80%E9%A1%B9%E7%9B%AE"><span class="nav-text">C 语言项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-text">线程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E6%B1%A0"><span class="nav-text">进程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-text">内存池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%8F%E7%A8%8B%E5%BA%93"><span class="nav-text">协程库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E9%94%81%E7%BC%96%E7%A8%8B%E5%BA%93"><span class="nav-text">无锁编程库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AB%98%E5%B9%B6%E5%8F%91%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-text">高并发服务器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E8%A7%86%E9%A2%91%E7%9B%91%E6%8E%A7"><span class="nav-text">网络视频监控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TinyBox"><span class="nav-text">TinyBox</span></a></li></ol></li></ol>
 
 	</div>
 </div>
@@ -1109,7 +1392,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        110 posts in total
+                        122 posts in total
                     </span>
                     
                 </p>
