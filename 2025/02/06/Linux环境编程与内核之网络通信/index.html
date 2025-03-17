@@ -25,15 +25,15 @@
     
     
         
-        <meta name="description" content="概述在互联网时代，网络通信编程已经是一个程序员必不可少的技能之一。几乎所有的产品都会涉及网络操作或访问。在Linux编程环境中，系统提供了socket套接字为程序员提供统一的网络编程接口。这里假设读者有一定的Linux网络编程基础，所以对于系统调用的解释都是点到为止，只针对不常见或容易忽视的问题进行详细说明。 网路连接的建立数据报文的发送数据报文的接收">
+        <meta name="description" content="概述在互联网时代，网络通信编程已经是一个程序员必不可少的技能之一。几乎所有的产品都会涉及网络操作或访问。在Linux编程环境中，系统提供了socket套接字为程序员提供统一的网络编程接口。这里假设读者有一定的Linux网络编程基础，所以对于系统调用的解释都是点到为止，只针对不常见或容易忽视的问题进行详细说明。 网路连接的建立socket文件描述符socket翻译成中文是插座、插槽的意思，而在网络编">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux环境编程与内核之网络通信">
 <meta property="og:url" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/index.html">
 <meta property="og:site_name" content="Jelasin">
-<meta property="og:description" content="概述在互联网时代，网络通信编程已经是一个程序员必不可少的技能之一。几乎所有的产品都会涉及网络操作或访问。在Linux编程环境中，系统提供了socket套接字为程序员提供统一的网络编程接口。这里假设读者有一定的Linux网络编程基础，所以对于系统调用的解释都是点到为止，只针对不常见或容易忽视的问题进行详细说明。 网路连接的建立数据报文的发送数据报文的接收">
+<meta property="og:description" content="概述在互联网时代，网络通信编程已经是一个程序员必不可少的技能之一。几乎所有的产品都会涉及网络操作或访问。在Linux编程环境中，系统提供了socket套接字为程序员提供统一的网络编程接口。这里假设读者有一定的Linux网络编程基础，所以对于系统调用的解释都是点到为止，只针对不常见或容易忽视的问题进行详细说明。 网路连接的建立socket文件描述符socket翻译成中文是插座、插槽的意思，而在网络编">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-02-06T06:49:47.000Z">
-<meta property="article:modified_time" content="2025-03-13T06:26:35.023Z">
+<meta property="article:modified_time" content="2025-03-17T02:16:00.017Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
     
@@ -427,7 +427,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">121</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">123</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -476,8 +476,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-03-13 14:26:35</span>
-            <span class="mobile">2025-03-13 14:26:35</span>
+            <span class="desktop">2025-03-17 10:16</span>
+            <span class="mobile">2025-03-17 10:16</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -505,7 +505,35 @@
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
 			<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在互联网时代，网络通信编程已经是一个程序员必不可少的技能之一。几乎所有的产品都会涉及网络操作或访问。在Linux编程环境中，系统提供了socket套接字为程序员提供统一的网络编程接口。这里假设读者有一定的Linux网络编程基础，所以对于系统调用的解释都是点到为止，只针对不常见或容易忽视的问题进行详细说明。</p>
-<h1 id="网路连接的建立"><a href="#网路连接的建立" class="headerlink" title="网路连接的建立"></a>网路连接的建立</h1><h1 id="数据报文的发送"><a href="#数据报文的发送" class="headerlink" title="数据报文的发送"></a>数据报文的发送</h1><h1 id="数据报文的接收"><a href="#数据报文的接收" class="headerlink" title="数据报文的接收"></a>数据报文的接收</h1>
+<h1 id="网路连接的建立"><a href="#网路连接的建立" class="headerlink" title="网路连接的建立"></a>网路连接的建立</h1><h2 id="socket文件描述符"><a href="#socket文件描述符" class="headerlink" title="socket文件描述符"></a>socket文件描述符</h2><p>socket翻译成中文是插座、插槽的意思，而在网络编程中，其被翻译为“套接字”。Linux环境下，我们经常说“一切皆文件”。因此套接字也被视为一种文件描述符。首先，来看看如何使用socket系统调用创建一个套接字，代码如下：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/types.h&gt;</span>          <span class="comment">/* See NOTES */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="type">int</span> <span class="title function_">socket</span><span class="params">(<span class="type">int</span> domain, <span class="type">int</span> type, <span class="type">int</span> protocol)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p>其中的参数解释如下。</p>
+<ul>
+<li><strong>domain</strong>：用于指示协议族名字，如AF_INET为IPv4。</li>
+<li><strong>type</strong>：用于指示类型，如基于流通信的SOCK_STREAM。</li>
+<li><strong>protocol</strong>：用于指示对于这种socket的具体协议类型。一般情况下，使用前两个参数限定后，只会存在一种协议类型对应该情况。这时，可以将protocol设置为0。但是在某些情况下，会存在多个协议类型，这时就必须指定具体的协议类型。</li>
+<li>成功创建socket后，会返回一个文件描述符。失败时，该接口返回-1。</li>
+</ul>
+<p>那么对于Linux内核来说，如何知道一个文件描述符是一个套接字，还是一个普通文件呢？其实这个问题也可以扩展到，内核如何知道一个文件描述符的具体类型，如何调用实际类型的操作函数呢？这仍然是VFS的魔力。</p>
+<p>文件描述符fd与内核文件结构struct file之间的关系，后者是内核用于管理文件的真正结构，其中的成员变量<code>file-&gt;f_op</code>为VFS支持的所有文件操作。VFS层无须关心该文件file的实际类型，它会直接调用<code>file-&gt;f_op</code>中的操作函数（这样的处理，与面向对象语言中的多态是类似的）。</p>
+<p>对于套接字来说，只要在创建套接字时，将<code>file-&gt;f_op</code>设置为正确的套接字操作函数即可。该操作是在<code>socket-&gt;sock_map_fd-&gt;sock_alloc_file</code>中完成的，代码如下：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">sock_alloc_file</span><span class="params">(<span class="keyword">struct</span> socket *sock, <span class="keyword">struct</span> file **f, <span class="type">int</span> flags)</span></span><br><span class="line">&#123;    </span><br><span class="line">    …………    </span><br><span class="line">    <span class="comment">/* 申请一个struct file，并将socket_file_ops作为参数来传递。</span></span><br><span class="line"><span class="comment">    * 在alloc_file中，会将socket_file_ops赋给file-&gt;f_op。</span></span><br><span class="line"><span class="comment">    */</span>    </span><br><span class="line">    file = alloc_file(&amp;path, FMODE_READ | FMODE_WRITE, &amp;socket_file_ops);    </span><br><span class="line"> 	…………    </span><br><span class="line">    <span class="comment">/* 让sock-&gt;file指向file，完成sock和file的关联 */</span>    </span><br><span class="line">    sock-&gt;file = file;    </span><br><span class="line">    file-&gt;f_flags = O_RDWR | (flags &amp; O_NONBLOCK);    </span><br><span class="line">    file-&gt;f_pos = <span class="number">0</span>;    </span><br><span class="line">    file-&gt;private_data = sock;    </span><br><span class="line">    *f = file;    </span><br><span class="line">    <span class="keyword">return</span> fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>尽管Linux内核是使用C语言编写的，但是其应用了很多面向对象的设计思想。以这里的file为例，内核利用f_op（对象操作函数指针集合）指向具体对象的操作函数集合。这样一来，对于VFS来说，就只须关心struct file，而无须关心具体的对象类型了，它会在处理过程中，调用正确的处理函数。</p>
+<h2 id="绑定IP地址"><a href="#绑定IP地址" class="headerlink" title="绑定IP地址"></a>绑定IP地址</h2><p>在成功创建套接字后，该套接字仅仅是一个文件描述符，并没有任何地址与之关联。使用该socket发送数据包时，由于该socket没有任何IP地址，内核会根据策略自动选择一个地址。但是，在某些情况下，我们需要手工指定socket使用哪个IP地址进行发送。这时，就需要使用bind系统调用了。</p>
+<h3 id="bind的使用"><a href="#bind的使用" class="headerlink" title="bind的使用"></a>bind的使用</h3><p>bind系统调用的接口定义如下：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/types.h&gt;</span>          <span class="comment">/* See NOTES */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="type">int</span> <span class="title function_">bind</span><span class="params">(<span class="type">int</span> sockfd, <span class="type">const</span> <span class="keyword">struct</span> sockaddr *addr, <span class="type">socklen_t</span> addrlen)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p>其中的参数解释如下。</p>
+<ul>
+<li>sockfd：表示要绑定地址的套接字描述符。</li>
+<li>addr：表示绑定到套接字的地址。</li>
+<li>addrlen：表示绑定的地址长度。</li>
+<li>返回值0表示成功，-1则表示错误。</li>
+</ul>
+<p>因为Linux的套接字是针对多种协议族的，而每个协议族都可以有不同的地址类型。所以Linux套接字关于地址的系统调用，统一使用了一个公共结构体，并要求调用者将实际地址参数进行强制类型转换，以此来避免编译警告。</p>
+<h1 id="数据报文的发送"><a href="#数据报文的发送" class="headerlink" title="数据报文的发送"></a>数据报文的发送</h1><h1 id="数据报文的接收"><a href="#数据报文的接收" class="headerlink" title="数据报文的接收"></a>数据报文的接收</h1><h1 id="标准库"><a href="#标准库" class="headerlink" title="标准库"></a>标准库</h1>
 		</div>
 
 		
@@ -519,7 +547,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-03-13 14:26:35
+                    :</strong> 2025-03-17 10:16:00
             </li>
         
         <li>
@@ -640,7 +668,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Linux环境编程与内核之网络通信</div>
-		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-text">概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BD%91%E8%B7%AF%E8%BF%9E%E6%8E%A5%E7%9A%84%E5%BB%BA%E7%AB%8B"><span class="nav-text">网路连接的建立</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8A%A5%E6%96%87%E7%9A%84%E5%8F%91%E9%80%81"><span class="nav-text">数据报文的发送</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8A%A5%E6%96%87%E7%9A%84%E6%8E%A5%E6%94%B6"><span class="nav-text">数据报文的接收</span></a></li></ol>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-text">概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BD%91%E8%B7%AF%E8%BF%9E%E6%8E%A5%E7%9A%84%E5%BB%BA%E7%AB%8B"><span class="nav-text">网路连接的建立</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#socket%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="nav-text">socket文件描述符</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%91%E5%AE%9AIP%E5%9C%B0%E5%9D%80"><span class="nav-text">绑定IP地址</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#bind%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-text">bind的使用</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8A%A5%E6%96%87%E7%9A%84%E5%8F%91%E9%80%81"><span class="nav-text">数据报文的发送</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8A%A5%E6%96%87%E7%9A%84%E6%8E%A5%E6%94%B6"><span class="nav-text">数据报文的接收</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A0%87%E5%87%86%E5%BA%93"><span class="nav-text">标准库</span></a></li></ol>
 
 	</div>
 </div>
@@ -669,7 +697,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        121 posts in total
+                        123 posts in total
                     </span>
                     
                 </p>
