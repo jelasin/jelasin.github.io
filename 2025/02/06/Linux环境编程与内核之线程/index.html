@@ -68,7 +68,7 @@
 <meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250303162328824.png">
 <meta property="og:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250303162437154.png">
 <meta property="article:published_time" content="2025-02-06T06:49:11.000Z">
-<meta property="article:modified_time" content="2025-03-17T07:26:09.947Z">
+<meta property="article:modified_time" content="2025-03-27T05:28:14.193Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://jelasin.github.io/2025/02/06/Linux%E7%8E%AF%E5%A2%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%86%85%E6%A0%B8%E4%B9%8B%E7%BA%BF%E7%A8%8B/image-20250217101916574.png">
@@ -512,8 +512,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-03-17 15:26:09</span>
-            <span class="mobile">2025-03-17 15:26:09</span>
+            <span class="desktop">2025-03-27 13:28:14</span>
+            <span class="mobile">2025-03-27 13:28:14</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -755,7 +755,8 @@
 <p>这里有一个问题，就是不能将遗言存放到线程的局部变量里，因为如果用户写的线程函数退出了，线程函数栈上的局部变量可能就不复存在了，线程的临终遗言也就无法被接收者读到。那我们应该如何正确地传递返回值呢？</p>
 <ul>
 <li>如果是int型的变量，则可以使用<code>pthread_exit((int*)ret)</code>。</li>
-<li>使用全局变量返回。·将返回值填入到用malloc在堆上分配的空间里。</li>
+<li>使用全局变量返回。</li>
+<li>将返回值填入到用malloc在堆上分配的空间里。</li>
 <li>使用字符串常量，如pthread_exit（“hello，world”）。</li>
 </ul>
 <p>第一种是tricky的做法，我们将返回值ret进行强制类型转换，接收方再把返回值强制转换成int。但是不推荐使用这种方法。这种方法虽然是奏效的，但是太tricky，而且C标准没有承诺将int型转成指针后，再从指针转成int型时，数据一直保持不变。</p>
@@ -765,7 +766,19 @@
 <p>传递线程的返回值，除了pthread_exit函数可以做到，线程的启动函数（start_routine函数）return也可以做到，两者的数据类型要保持一致，都是<code>void*</code>类型。这也解释了为什么线程的启动函数start_routine的返回值总是<code>void*</code>类型，如下：</p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">pthread_exit</span><span class="params">(<span class="type">void</span> *retval)</span>;</span><br><span class="line"><span class="type">void</span> * <span class="title function_">start_routine</span><span class="params">(<span class="type">void</span> *param)</span></span><br></pre></td></tr></table></figure></div>
 
-<p>线程退出有一种比较有意思的场景，即线程组的其他线程仍在执行的情况下，主线程却调用pthread_exit函数退出了。这会发生什么事情？首先要说明的是这不是常规的做法，但是如果真的这样做了，那么主线程将进入僵尸状态，而其他线程则不受影响，会继续执行。</p>
+<p>线程退出有一种比较有意思的场景，即线程组的其他线程仍在执行的情况下，主线程却调用pthread_exit函数退出了。这会发生什么事情？首先要说明的是这不是常规的做法，但是如果真的这样做了，<strong>那么主线程将进入僵尸状态</strong>，而其他线程则不受影响，会继续执行。</p>
+<p>当主线程调用 <code>pthread_exit(NULL)</code> 时，它会导致主线程自行终止，但不会终止整个进程。具体行为如下：</p>
+<ol>
+<li><p><strong>主线程终止</strong>: <code>pthread_exit(NULL)</code> 使得调用线程（在这里是主线程）正常退出。</p>
+</li>
+<li><p><strong>进程继续运行</strong>: 如果在 <code>pthread_exit(NULL)</code> 被调用时，进程中还有其他线程在运行，那么这些线程会继续执行，进程不会因为主线程的退出而终止。</p>
+</li>
+<li><p><strong>不会执行 <code>return 0;</code></strong>: 在 <code>pthread_exit(NULL)</code> 被调用后，主线程的控制流不会继续执行，因此 <code>pthread_exit(NULL)</code> 之后的任何代码，包括 <code>return 0;</code>，都不会被执行。</p>
+</li>
+<li><p><strong>进程终止条件</strong>: 进程会在所有线程都终止后才会终止。因此，如果主线程调用了 <code>pthread_exit(NULL)</code>，而其他线程仍在运行，进程会继续存在，直到所有线程都结束。</p>
+</li>
+</ol>
+<p>如果主线程希望在退出时终止整个进程，通常会使用 <code>exit()</code> 或 <code>return</code> 语句（在 <code>main</code> 函数中）。<code>exit()</code> 会终止进程并停止所有线程的运行，而 <code>return</code> 语句在 <code>main</code> 函数中也会导致进程终止。</p>
 <h1 id="线程的连接与分离"><a href="#线程的连接与分离" class="headerlink" title="线程的连接与分离"></a>线程的连接与分离</h1><h2 id="线程的连接"><a href="#线程的连接" class="headerlink" title="线程的连接"></a>线程的连接</h2><p>线程库提供了<code>pthread_join</code>函数，用来等待某线程的退出并接收它的返回值。这种操作被称为连接（joining）。相关函数的接口定义如下：</p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="comment">// 该函数第一个参数为要等待的线程的线程ID，第二个参数用来接收返回值。</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">pthread_join</span><span class="params">(<span class="type">pthread_t</span> thread, <span class="type">void</span> **retval)</span>;</span><br></pre></td></tr></table></figure></div>
 
@@ -1228,7 +1241,7 @@ int pthread_spin_destroy(pthread_spinlock_t *lock);
 <p>下面的伪代码显示了POSIX如何使用条件变量v和互斥量m来等待条件的发生：</p>
 <div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pthread_mutex_lock(&amp;m);</span><br><span class="line"><span class="keyword">while</span>(condition_is_false)</span><br><span class="line">    pthread_cond_wait(&amp;v,&amp;m);<span class="comment">//此处会阻塞</span></span><br><span class="line"><span class="comment">/*如果代码运行到此处，则表示我们等待的条件已经满足了，并且在此持有了互斥量*/</span></span><br><span class="line"><span class="comment">/*在满足条件的情况下，做你想做的事情。*/</span></span><br><span class="line">pthread_mutex_unlock(&amp;m);</span><br></pre></td></tr></table></figure></div>
 
-<p><code>pthread_cond_wait</code>函数只能由拥有互斥量的线程来调用，当该函数返回的时候，系统会确保该线程再次持有互斥量，所以这个接口容易给人一种误解，就是该线程一直在持有互斥量。事实上并不是这样的。这个接口向系统声明了我的心在等待，永远在等待之后，就把互斥量给释放了。这样其他线程就有机会持有互斥量，操作共享数据，触发变化，使线程等待的条件得到满足。</p>
+<p><code>pthread_cond_wait</code>函数只能由拥有互斥量的线程来调用，当该函数返回的时候，系统会确保该线程再次持有互斥量，所以这个接口容易给人一种误解，就是该线程一直在持有互斥量。事实上并不是这样的。这个接口向系统声明了我在等待之后，就把互斥量给释放了。这样其他线程就有机会持有互斥量，操作共享数据，触发变化，使线程等待的条件得到满足。</p>
 <p><code>pthread_cond_timedwait</code>函数与<code>pthread_cond_wait</code>的工作方式几乎是一样的，只是调用时需要指定一个超时的时间。注意这个时间是绝对时间，而不是相对时间。如果最多等待2分钟，那么这个值应该是当前时间加上2分钟。</p>
 <p>上面将互斥量和条件变量配合使用的示范代码中有个很有意思的地方，就是用了<code>while</code>语句，醒来之后要再次判断条件是否满足。</p>
 <p>唤醒以后，再次检查条件是否满足，是不是多此一举？答案是不得不如此。因为唤醒中存在<strong>虚假唤醒（spurious wakeup）</strong>，换言之，条件尚未满足，<code>pthread_cond_wait</code>就返回了。在一些实现中，即使没有其他线程向条件变量发送信号，等待此条件变量的线程也有可能会醒来。看起来这像是个bug，但它是实实在在存在的。为什么会存在虚假唤醒？一个原因是pthread_cond_wait是futex系统调用，属于阻塞型的系统调用，当系统调用被信号中断的时候，会返回-1，并且把errno置为EINTR。很多这种系统调用为了防止被信号中断都会重启系统调用，代码如下：</p>
@@ -2820,7 +2833,7 @@ int pthread_spin_destroy(pthread_spinlock_t *lock);
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-03-17 15:26:09
+                    :</strong> 2025-03-27 13:28:14
             </li>
         
         <li>
