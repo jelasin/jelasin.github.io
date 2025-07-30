@@ -214,7 +214,7 @@
 <meta property="og:image" content="https://jelasin.github.io/2023/10/16/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Pwn_Kernel%E5%8F%8A%E7%9B%B8%E5%85%B3%E4%BE%8B%E9%A2%98/7iQO1b64XNaTkG8.png">
 <meta property="og:image" content="https://jelasin.github.io/2023/10/16/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Pwn_Kernel%E5%8F%8A%E7%9B%B8%E5%85%B3%E4%BE%8B%E9%A2%98/e2LRJKzQVYSTO5k.png">
 <meta property="article:published_time" content="2023-10-16T12:15:29.000Z">
-<meta property="article:modified_time" content="2025-06-04T08:57:03.287Z">
+<meta property="article:modified_time" content="2025-07-29T03:41:00.695Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Pwn_Kernel">
 <meta name="twitter:card" content="summary">
@@ -610,7 +610,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">138</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">139</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -659,8 +659,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2025-06-04 16:57:03</span>
-            <span class="mobile">2025-06-04 16:57:03</span>
+            <span class="desktop">2025-07-29 11:41</span>
+            <span class="mobile">2025-07-29 11:41</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -1964,7 +1964,7 @@
 <p><strong>makefile</strong></p>
 <div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">obj-m := ko_test.o</span><br><span class="line"></span><br><span class="line">KERNELDR :=/home/kl/linux-5.4.98</span><br><span class="line"></span><br><span class="line">PWD := <span class="variable">$(<span class="built_in">shell</span> pwd)</span></span><br><span class="line"></span><br><span class="line"><span class="section">modules:  </span></span><br><span class="line">	<span class="variable">$(MAKE)</span> -C <span class="variable">$(KERNELDR)</span> M=<span class="variable">$(PWD)</span> modules</span><br><span class="line"></span><br><span class="line"><span class="section">clean:  </span></span><br><span class="line">	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions</span><br></pre></td></tr></table></figure></div>
 
-<p>make 之后，将 <code>ko_test.ko</code> 文件打包进 busybox 文件系统中，并创建文件夹 <code>mkdir -p  proc sys dev etc/init.d</code>。然后创建启动脚本并赋予其可执行权限。</p>
+<p>make 之后，将 <code>ko_test.ko</code> 文件打包进 busybox 文件系统中，并创建文件夹 <code>mkdir -p lib tmp proc sys dev etc/init.d</code>。然后创建启动脚本并赋予其可执行权限。</p>
 <div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/sh</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;INIT SCRIPT&quot;</span></span><br><span class="line"><span class="built_in">mkdir</span> /tmp</span><br><span class="line">mount -t proc none /proc</span><br><span class="line">mount -t sysfs none /sys</span><br><span class="line">mount -t devtmpfs none /dev</span><br><span class="line">mount -t debugfs none /sys/kernel/debug</span><br><span class="line">mount -t tmpfs none /tmp</span><br><span class="line">insmod /lib/ko_test.ko</span><br><span class="line"><span class="built_in">echo</span> -e <span class="string">&quot;Boot took <span class="subst">$(cut -d&#x27; &#x27; -f1 /proc/uptime)</span> seconds&quot;</span></span><br><span class="line">setsid /bin/cttyhack setuidgid 1000 /bin/sh</span><br><span class="line">poweroff -f</span><br></pre></td></tr></table></figure></div>
 
 <p>之后在busybox 根目录运行命令 <code>find . | cpio -o -H newc &gt; ../rootfs.img </code>。将编译好的<code>/kernel/arch/x86/boot/bzImage</code>复制到rootfs.img 同级目录。</p>
@@ -2904,7 +2904,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2025-06-04 16:57:03
+                    :</strong> 2025-07-29 11:41:00
             </li>
         
         <li>
@@ -3062,7 +3062,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        138 posts in total
+                        139 posts in total
                     </span>
                     
                 </p>
