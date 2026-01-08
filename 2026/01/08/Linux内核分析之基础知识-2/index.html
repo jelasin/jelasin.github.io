@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/08/linux内核分析之基础知识-2/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-2">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-2/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-07T18:39:50.000Z">
+<meta property="article:modified_time" content="2026-01-08T11:01:32.085Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-2 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">39</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">132</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-2</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-08 02:39:50</span>
+        <span class="mobile">2026-01-08 02:39:50</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-08 19:01:32</span>
+            <span class="mobile">2026-01-08 19:01:32</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第2章：x86-64-UEFI-启动流程"><a href="#第2章：x86-64-UEFI-启动流程" class="headerlink" title="第2章：x86_64 UEFI 启动流程"></a>第2章：x86_64 UEFI 启动流程</h1><blockquote>
+<p>统一可扩展固件接口 - 现代系统启动标准</p>
+</blockquote>
+<hr>
+<h2 id="本章概述"><a href="#本章概述" class="headerlink" title="本章概述"></a>本章概述</h2><p>UEFI (Unified Extensible Firmware Interface) 是 BIOS 的现代替代方案。本章详细讲解 UEFI 启动流程，包括 EFI Stub 机制。</p>
+<h3 id="UEFI-vs-BIOS-Legacy-对比"><a href="#UEFI-vs-BIOS-Legacy-对比" class="headerlink" title="UEFI vs BIOS Legacy 对比"></a>UEFI vs BIOS Legacy 对比</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>BIOS Legacy</th>
+<th>UEFI</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>运行模式</strong></td>
+<td>16位实模式</td>
+<td>32&#x2F;64位保护模式</td>
+</tr>
+<tr>
+<td><strong>寻址能力</strong></td>
+<td>1MB 限制</td>
+<td>完整内存访问</td>
+</tr>
+<tr>
+<td><strong>启动方式</strong></td>
+<td>MBR + 引导代码</td>
+<td>ESP 分区 + EFI 应用</td>
+</tr>
+<tr>
+<td><strong>分区表</strong></td>
+<td>MBR</td>
+<td>GPT (支持更大磁盘)</td>
+</tr>
+<tr>
+<td><strong>图形支持</strong></td>
+<td>VGA 文本模式</td>
+<td>UEFI GOP (图形输出协议)</td>
+</tr>
+<tr>
+<td><strong>配置界面</strong></td>
+<td>基于文本</td>
+<td>图形化界面</td>
+</tr>
+<tr>
+<td><strong>模块化</strong></td>
+<td>固化在 ROM</td>
+<td>驱动 (.efi 文件) 可独立更新</td>
+</tr>
+<tr>
+<td><strong>安全启动</strong></td>
+<td>不支持</td>
+<td>Secure Boot 支持</td>
+</tr>
+<tr>
+<td><strong>网络启动</strong></td>
+<td>需要扩展 ROM</td>
+<td>原生 HTTP&#x2F;iSCSI 支持</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-1-UEFI-架构概览"><a href="#2-1-UEFI-架构概览" class="headerlink" title="2.1 UEFI 架构概览"></a>2.1 UEFI 架构概览</h2><h3 id="2-1-1-UEFI-启动阶段"><a href="#2-1-1-UEFI-启动阶段" class="headerlink" title="2.1.1 UEFI 启动阶段"></a>2.1.1 UEFI 启动阶段</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      UEFI 启动流程                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌──────────────┐   ┌───────────────┐   ┌─────────────────┐   │</span><br><span class="line">│  │   SEC        │ → │   PEI         │ → │    DXE          │   │</span><br><span class="line">│  │ (安全验证)    │   │ (早期初始化)  │   │  (驱动执行)      │   │</span><br><span class="line">│  └──────────────┘   └───────────────┘   └─────────────────┘   │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                    BDS (启动设备选择)                    │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                          │                                    │</span><br><span class="line">│                          ↓                                    │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │              加载 EFI 应用程序 (引导管理器)               │   │</span><br><span class="line">│  │              - \EFI\BOOT\BOOTX64.EF                     │   │</span><br><span class="line">│  │              - GRUB EFI 版本                             │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                          │                                    │</span><br><span class="line">│                          ↓                                    │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │              加载并启动 Linux 内核                        │   │</span><br><span class="line">│  │              方式1: GRUB 加载 vmlinuz.efi                 │   │</span><br><span class="line">│  │              方式2: EFI Stub 直接启动                     │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-1-2-UEFI-阶段详解"><a href="#2-1-2-UEFI-阶段详解" class="headerlink" title="2.1.2 UEFI 阶段详解"></a>2.1.2 UEFI 阶段详解</h3><h4 id="SEC-Security-Phase"><a href="#SEC-Security-Phase" class="headerlink" title="SEC (Security Phase)"></a>SEC (Security Phase)</h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* UEFI SEC 阶段职责 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sec_phase</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 1. 系统上电/重置处理</span></span><br><span class="line"><span class="comment">     * 2. 硬件信任根建立</span></span><br><span class="line"><span class="comment">     * 3. 临时内存初始化</span></span><br><span class="line"><span class="comment">     * 4. 向 PEI 传递控制权</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 典型操作 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">sec_phase</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* CPU 初始化 */</span></span><br><span class="line">    cpu_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 缓存初始化 */</span></span><br><span class="line">    cache_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 内存控制器初始化 */</span></span><br><span class="line">    memory_controller_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 安全验证 */</span></span><br><span class="line">    <span class="keyword">if</span> (secure_boot_enabled()) &#123;</span><br><span class="line">        verify_boot_firmware();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 传递控制到 PEI */</span></span><br><span class="line">    pass_control_to_pei();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="PEI-Pre-EFI-Initialization"><a href="#PEI-Pre-EFI-Initialization" class="headerlink" title="PEI (Pre-EFI Initialization)"></a>PEI (Pre-EFI Initialization)</h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* PEI 阶段职责 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pei_phase</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 1. 内存初始化</span></span><br><span class="line"><span class="comment">     * 2. CPU 特性检测</span></span><br><span class="line"><span class="comment">     * 3. 芯片组初始化</span></span><br><span class="line"><span class="comment">     * 4. 固件卷 (FV) 解析</span></span><br><span class="line"><span class="comment">     * 5. 向 DXE 传递控制权</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* PEI 模块示例 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_PEI_SERVICES</span> &#123;</span></span><br><span class="line">    EFI_PEI_SERVICES_INSTAL;</span><br><span class="line">    EFI_PEI_SERVICES_XXX;</span><br><span class="line">    <span class="comment">/* ... 更多服务 ... */</span></span><br><span class="line">&#125; EFI_PEI_SERVICES;</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="DXE-Driver-Execution-Environment"><a href="#DXE-Driver-Execution-Environment" class="headerlink" title="DXE (Driver Execution Environment)"></a>DXE (Driver Execution Environment)</h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* DXE 阶段职责 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dxe_phase</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 1. 启动服务 (Boot Services) 初始化</span></span><br><span class="line"><span class="comment">     * 2. 运行时服务 (Runtime Services) 初始化</span></span><br><span class="line"><span class="comment">     * 3. 驱动程序执行</span></span><br><span class="line"><span class="comment">     * 4. 协议安装</span></span><br><span class="line"><span class="comment">     * 5. 向 BDS 传递控制权</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 关键 DXE 原型 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_BOOT_SERVICES</span> &#123;</span></span><br><span class="line">    EFI_TASK_PRIORITY_LEVEL       RaiseTPL;</span><br><span class="line">    EFI_TASK_PRIORITY_LEVEL       RestoreTPL;</span><br><span class="line">    EFI_ALLOCATE_PAGES            AllocatePages;</span><br><span class="line">    EFI_FREE_PAGES                FreePages;</span><br><span class="line">    EFI_GET_MEMORY_MAP            GetMemoryMap;</span><br><span class="line">    EFI_ALLOCATE_POOL             AllocatePool;</span><br><span class="line">    EFI_FREE_POOL                 FreePool;</span><br><span class="line">    EFI_CREATE_EVENT              CreateEvent;</span><br><span class="line">    <span class="comment">/* ... 更多服务 ... */</span></span><br><span class="line">&#125; EFI_BOOT_SERVICES;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_RUNTIME_SERVICES</span> &#123;</span></span><br><span class="line">    EFI_GET_TIME                  GetTime;</span><br><span class="line">    EFI_SET_TIME                  SetTime;</span><br><span class="line">    EFI_GET_WAKEUP_TIME           GetWakeupTime;</span><br><span class="line">    EFI_SET_WAKEUP_TIME           SetWakeupTime;</span><br><span class="line">    EFI_SET_VIRTUAL_ADDRESS_MAP   SetVirtualAddressMap;</span><br><span class="line">    EFI_CONVERT_POINTER           ConvertPointer;</span><br><span class="line">    <span class="comment">/* ... 更多服务 ... */</span></span><br><span class="line">&#125; EFI_RUNTIME_SERVICES;</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="BDS-Boot-Device-Selection"><a href="#BDS-Boot-Device-Selection" class="headerlink" title="BDS (Boot Device Selection)"></a>BDS (Boot Device Selection)</h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* BDS 阶段职责 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">bds_phase</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 1. 枚举启动设备</span></span><br><span class="line"><span class="comment">     * 2. 执行启动策略</span></span><br><span class="line"><span class="comment">     * 3. 加载启动管理器</span></span><br><span class="line"><span class="comment">     * 4. 执行或提供用户界面</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 典型 BDS 流程 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">bds_phase</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 连接所有设备 */</span></span><br><span class="line">    gBS-&gt;ConnectAllControllers();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 枚举启动选项 */</span></span><br><span class="line">    enumerate_boot_options();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 如果没有自动启动, 显示启动管理器 */</span></span><br><span class="line">    <span class="keyword">if</span> (!auto_boot()) &#123;</span><br><span class="line">        launch_boot_manager();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-2-UEFI-系统表和协议"><a href="#2-2-UEFI-系统表和协议" class="headerlink" title="2.2 UEFI 系统表和协议"></a>2.2 UEFI 系统表和协议</h2><h3 id="2-1-1-EFI-SYSTEM-TABLE"><a href="#2-1-1-EFI-SYSTEM-TABLE" class="headerlink" title="2.1.1 EFI_SYSTEM_TABLE"></a>2.1.1 EFI_SYSTEM_TABLE</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 系统表是 UEFI 环境的核心数据结构 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_SYSTEM_TABLE</span> &#123;</span></span><br><span class="line">    EFI_TABLE_HEADER                Hdr;</span><br><span class="line"></span><br><span class="line">    CHAR16                          *FirmwareVendor;</span><br><span class="line">    UINT32                          FirmwareRevision;</span><br><span class="line"></span><br><span class="line">    EFI_HANDLE                      ConsoleInHandle;</span><br><span class="line">    EFI_SIMPLE_TEXT_IN_PROTOCOL     *ConIn;</span><br><span class="line"></span><br><span class="line">    EFI_HANDLE                      ConsoleOutHandle;</span><br><span class="line">    EFI_SIMPLE_TEXT_OUT_PROTOCOL    *ConOut;</span><br><span class="line"></span><br><span class="line">    EFI_HANDLE                      StandardErrorHandle;</span><br><span class="line">    EFI_SIMPLE_TEXT_OUT_PROTOCOL    *StdErr;</span><br><span class="line"></span><br><span class="line">    EFI_RUNTIME_SERVICES            *RuntimeServices;</span><br><span class="line">    EFI_BOOT_SERVICES               *BootServices;</span><br><span class="line"></span><br><span class="line">    UINTN                           NumberOfTableEntries;</span><br><span class="line">    EFI_CONFIGURATION_TABLE         *ConfigurationTable;</span><br><span class="line"></span><br><span class="line">&#125; EFI_SYSTEM_TABLE;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 内核中的使用 */</span></span><br><span class="line"><span class="type">efi_system_table_t</span> *efi_system_table;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">efi_call_vendor</span><span class="params">(<span class="type">efi_system_table_t</span> *sys_table,</span></span><br><span class="line"><span class="params">                     <span class="type">efi_guid_t</span> *protocol,</span></span><br><span class="line"><span class="params">                     <span class="type">void</span> **interface)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 查找并调用协议 */</span></span><br><span class="line">    status = sys_table-&gt;BootServices-&gt;LocateProtocol(</span><br><span class="line">        protocol,</span><br><span class="line">        <span class="literal">NULL</span>,</span><br><span class="line">        interface</span><br><span class="line">    );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-2-2-关键-UEFI-协议"><a href="#2-2-2-关键-UEFI-协议" class="headerlink" title="2.2.2 关键 UEFI 协议"></a>2.2.2 关键 UEFI 协议</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 1. 加载镜像协议 (Loaded Image Protocol) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_LOADED_IMAGE_PROTOCOL_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x5B1B31A1, 0x9562, 0x11d2, &#123;0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_LOADED_IMAGE</span> &#123;</span></span><br><span class="line">    UINT32                          Revision;</span><br><span class="line">    EFI_HANDLE                      ParentHandle;</span><br><span class="line">    EFI_SYSTEM_TABLE                *SystemTable;</span><br><span class="line"></span><br><span class="line">    EFI_HANDLE                      DeviceHandle;</span><br><span class="line">    EFI_DEVICE_PATH_PROTOCOL        *FilePath;</span><br><span class="line">    VOID                            *Reserved;</span><br><span class="line"></span><br><span class="line">    UINT32                          LoadOptionsSize;</span><br><span class="line">    VOID                            *LoadOptions;</span><br><span class="line"></span><br><span class="line">    VOID                            *ImageBase;</span><br><span class="line">    UINT64                          ImageSize;</span><br><span class="line">    EFI_MEMORY_TYPE                 ImageCodeType;</span><br><span class="line">    EFI_MEMORY_TYPE                 ImageDataType;</span><br><span class="line">    EFI_IMAGE_UNLOAD                Unload;</span><br><span class="line"></span><br><span class="line">&#125; EFI_LOADED_IMAGE_PROTOCOL;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 2. 设备路径协议 (Device Path Protocol) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_DEVICE_PATH_PROTOCOL_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x09576E91, 0x6D3F, 0x11D2, &#123;0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 3. 块 I/O 协议 (Block I/O Protocol) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_BLOCK_IO_PROTOCOL_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x964E5B21, 0x6459, 0x11D2, &#123;0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_BLOCK_IO_PROTOCOL</span> &#123;</span></span><br><span class="line">    UINT32                          Revision;</span><br><span class="line">    EFI_BLOCK_IO_MEDIA              *Media;</span><br><span class="line"></span><br><span class="line">    EFI_BLOCK_RESET                 Reset;</span><br><span class="line">    EFI_BLOCK_READ                  ReadBlocks;</span><br><span class="line">    EFI_BLOCK_WRITE                 WriteBlocks;</span><br><span class="line">    EFI_BLOCK_FLUSH                 FlushBlocks;</span><br><span class="line"></span><br><span class="line">&#125; EFI_BLOCK_IO_PROTOCOL;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 4. 图形输出协议 (Graphics Output Protocol) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x9042A9DE, 0x23DC, 0x4A38, &#123;0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_GRAPHICS_OUTPUT_PROTOCOL</span> &#123;</span></span><br><span class="line">    UINT32                          Mode;</span><br><span class="line">    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE  *Mode;</span><br><span class="line">    EFI_GRAPHICS_OUTPUT_BLT          Blt;</span><br><span class="line">    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE_QUERY_MODE  *QueryMode;</span><br><span class="line">    EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE        *SetMode;</span><br><span class="line">    EFI_GRAPHICS_OUTPUT_PROTOCOL_MAX_MODE        *MaxMode;</span><br><span class="line"></span><br><span class="line">&#125; EFI_GRAPHICS_OUTPUT_PROTOCOL;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 5. 简单文件系统协议 (Simple File System Protocol) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x0964E5B22, 0x6459, 0x11D2, &#123;0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B&#125; &#125;</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-3-EFI-Stub-机制"><a href="#2-3-EFI-Stub-机制" class="headerlink" title="2.3 EFI Stub 机制"></a>2.3 EFI Stub 机制</h2><h3 id="2-3-1-EFI-Stub-原理"><a href="#2-3-1-EFI-Stub-原理" class="headerlink" title="2.3.1 EFI Stub 原理"></a>2.3.1 EFI Stub 原理</h3><p>EFI Stub 使 Linux 内核可以直接作为 EFI 应用程序运行，无需引导程序。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">传统启动方式:</span><br><span class="line">┌──────────┐    ┌──────────┐    ┌──────────┐</span><br><span class="line">│   UEFI   │ → │   GRUB   │ → │  Kernel  │</span><br><span class="line">└──────────┘    └──────────┘    └──────────┘</span><br><span class="line">   固件          引导程序        内核</span><br><span class="line"></span><br><span class="line">EFI Stub 方式:</span><br><span class="line">┌──────────┐              ┌──────────┐</span><br><span class="line">│   UEFI   │ ──────────→ │  Kernel  │</span><br><span class="line">└──────────┘   (直接)     └──────────┘</span><br><span class="line">   固件                      内核 (自带 EFI 应用)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-2-内核-PE-头部结构"><a href="#2-3-2-内核-PE-头部结构" class="headerlink" title="2.3.2 内核 PE 头部结构"></a>2.3.2 内核 PE 头部结构</h3><p><code>arch/x86/boot/header.S</code> 中定义的 PE 头部：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* PE 可选头 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pe_opt_header</span> &#123;</span></span><br><span class="line">    <span class="type">uint16_t</span> magic;              <span class="comment">/* PE32/PE32+ 魔数 */</span></span><br><span class="line">    <span class="type">uint8_t</span>  major_linker_version;</span><br><span class="line">    <span class="type">uint8_t</span>  minor_linker_version;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_code;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_initialized_data;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_uninitialized_data;</span><br><span class="line">    <span class="type">uint32_t</span> address_of_entry_point;    <span class="comment">/* EFI 入口点 */</span></span><br><span class="line">    <span class="type">uint32_t</span> base_of_code;</span><br><span class="line">    <span class="type">uint64_t</span> image_base;</span><br><span class="line">    <span class="type">uint32_t</span> section_alignment;</span><br><span class="line">    <span class="type">uint32_t</span> file_alignment;</span><br><span class="line">    <span class="type">uint16_t</span> major_os_version;</span><br><span class="line">    <span class="type">uint16_t</span> minor_os_version;</span><br><span class="line">    <span class="type">uint16_t</span> major_image_version;</span><br><span class="line">    <span class="type">uint16_t</span> minor_image_version;</span><br><span class="line">    <span class="type">uint16_t</span> major_subsystem_version;</span><br><span class="line">    <span class="type">uint16_t</span> minor_subsystem_version;</span><br><span class="line">    <span class="type">uint32_t</span> win32_version_value;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_image;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_headers;</span><br><span class="line">    <span class="type">uint32_t</span> checksum;</span><br><span class="line">    <span class="type">uint16_t</span> subsystem;                <span class="comment">/* EFI 应用 */</span></span><br><span class="line">    <span class="type">uint16_t</span> dll_characteristics;</span><br><span class="line">    <span class="type">uint64_t</span> size_of_stack_reserve;</span><br><span class="line">    <span class="type">uint64_t</span> size_of_stack_commit;</span><br><span class="line">    <span class="type">uint64_t</span> size_of_heap_reserve;</span><br><span class="line">    <span class="type">uint64_t</span> size_of_heap_commit;</span><br><span class="line">    <span class="type">uint32_t</span> loader_flags;</span><br><span class="line">    <span class="type">uint32_t</span> number_of_rva_and_sizes;</span><br><span class="line">    <span class="type">uint64_t</span> data_directory[<span class="number">16</span>];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* PE 节头 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pe_section</span> &#123;</span></span><br><span class="line">    <span class="type">char</span> name[<span class="number">8</span>];                <span class="comment">/* &quot;.setup&quot;, &quot;.text&quot;, etc. */</span></span><br><span class="line">    <span class="type">uint32_t</span> virtual_size;</span><br><span class="line">    <span class="type">uint32_t</span> virtual_address;</span><br><span class="line">    <span class="type">uint32_t</span> size_of_raw_data;</span><br><span class="line">    <span class="type">uint32_t</span> pointer_to_raw_data;</span><br><span class="line">    <span class="type">uint32_t</span> pointer_to_relocations;</span><br><span class="line">    <span class="type">uint32_t</span> pointer_to_line_numbers;</span><br><span class="line">    <span class="type">uint16_t</span> number_of_relocations;</span><br><span class="line">    <span class="type">uint16_t</span> number_of_line_numbers;</span><br><span class="line">    <span class="type">uint32_t</span> characteristics;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-3-EFI-入口点"><a href="#2-3-3-EFI-入口点" class="headerlink" title="2.3.3 EFI 入口点"></a>2.3.3 EFI 入口点</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">/* arch/x86/boot/compressed/efi_mixed.S */</span><br><span class="line"></span><br><span class="line">    .code64</span><br><span class="line">    .globl efi_pe_entry</span><br><span class="line">efi_pe_entry:</span><br><span class="line">    /*</span><br><span class="line">     * EFI 入口点 (x86_64)</span><br><span class="line">     * 寄存器约定 (Microsoft x64 calling convention):</span><br><span class="line">     *   rcx - ImageHandle</span><br><span class="line">     *   rdx - SystemTable</span><br><span class="line">     */</span><br><span class="line"></span><br><span class="line">    /* 保存 EFI 句柄 */</span><br><span class="line">    movq    %rcx, %rbx              # EFI_HANDLE</span><br><span class="line"></span><br><span class="line">    /* 保存系统表指针 */</span><br><span class="line">    movq    %rdx, %r12              # EFI_SYSTEM_TABLE*</span><br><span class="line"></span><br><span class="line">    /* 调用 C 语言入口 */</span><br><span class="line">    jmp     efi_main</span><br><span class="line"></span><br><span class="line">    .code32</span><br><span class="line">    .globl efi32_pe_entry</span><br><span class="line">efi32_pe_entry:</span><br><span class="line">    /*</span><br><span class="line">     * EFI 入口点 (32位)</span><br><span class="line">     * 寄存器约定 (Microsoft i386 calling convention):</span><br><span class="line">     *   [esp+4]  - ImageHandle</span><br><span class="line">     *   [esp+8]  - SystemTable</span><br><span class="line">     */</span><br><span class="line"></span><br><span class="line">    /* 保存参数 */</span><br><span class="line">    movl    4(%esp), %eax           # ImageHandle</span><br><span class="line">    movl    8(%esp), %edx           # SystemTable</span><br><span class="line"></span><br><span class="line">    /* 切换到 64 位模式 */</span><br><span class="line">    jmp     efi_stub_entry</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-4-efi-main-函数"><a href="#2-3-4-efi-main-函数" class="headerlink" title="2.3.4 efi_main() 函数"></a>2.3.4 efi_main() 函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* arch/x86/boot/compressed/efi.c */</span></span><br><span class="line"></span><br><span class="line"><span class="type">efi_status_t</span> <span class="title function_">efi_main</span><span class="params">(<span class="type">efi_handle_t</span> image_handle,</span></span><br><span class="line"><span class="params">                      <span class="keyword">struct</span> efi_system_table *sys_table_arg)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">efi_status_t</span> status;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">efi_boot_params</span> *<span class="title">boot_params</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 初始化全局系统表指针 */</span></span><br><span class="line">    efi_system_table = sys_table_arg;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 初始化 EFI 库 */</span></span><br><span class="line">    efi_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取图形输出协议 (用于早期显示) */</span></span><br><span class="line">    status = efi_bs_call(locate_protocol,</span><br><span class="line">                        &amp;graphics_output_protocol_guid,</span><br><span class="line">                        <span class="literal">NULL</span>, (<span class="type">void</span> **)&amp;gop);</span><br><span class="line">    <span class="keyword">if</span> (status == EFI_SUCCESS) &#123;</span><br><span class="line">        efi_gop = gop;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取内存映射 */</span></span><br><span class="line">    status = efi_get_memory_map(&amp;<span class="built_in">map</span>, &amp;map_size, &amp;key,</span><br><span class="line">                                &amp;desc_size, &amp;desc_ver);</span><br><span class="line">    <span class="keyword">if</span> (status != EFI_SUCCESS) &#123;</span><br><span class="line">        efi_printk(<span class="string">&quot;Failed to get memory map\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> status;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 分配 boot_params 结构 */</span></span><br><span class="line">    status = efi_bs_call(allocate_pool, EFI_LOADER_DATA,</span><br><span class="line">                        <span class="keyword">sizeof</span>(*boot_params),</span><br><span class="line">                        (<span class="type">void</span> **)&amp;boot_params);</span><br><span class="line">    <span class="keyword">if</span> (status != EFI_SUCCESS)</span><br><span class="line">        <span class="keyword">return</span> status;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 初始化 boot_params */</span></span><br><span class="line">    <span class="built_in">memset</span>(boot_params, <span class="number">0</span>, <span class="keyword">sizeof</span>(*boot_params));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取启动选项 */</span></span><br><span class="line">    status = efi_parse_options(load_options, load_options_size);</span><br><span class="line">    <span class="keyword">if</span> (status != EFI_SUCCESS)</span><br><span class="line">        <span class="keyword">goto</span> fail;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取 ACPI 表 */</span></span><br><span class="line">    efi_acpi_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取 SMBIOS 表 */</span></span><br><span class="line">    efi_smbios_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 退出启动服务 */</span></span><br><span class="line">    status = efi_bs_call(exit_boot_services, image_handle, key);</span><br><span class="line">    <span class="keyword">if</span> (status != EFI_SUCCESS) &#123;</span><br><span class="line">        <span class="comment">/* 重新获取内存映射并重试 */</span></span><br><span class="line">        efi_get_memory_map(&amp;<span class="built_in">map</span>, &amp;map_size, &amp;key,</span><br><span class="line">                          &amp;desc_size, &amp;desc_ver);</span><br><span class="line">        status = efi_bs_call(exit_boot_services, image_handle, key);</span><br><span class="line">        <span class="keyword">if</span> (status != EFI_SUCCESS)</span><br><span class="line">            <span class="keyword">goto</span> fail;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 跳转到内核入口 */</span></span><br><span class="line">    efi_stub_entry(image_handle, sys_table_arg, boot_params);</span><br><span class="line"></span><br><span class="line">fail:</span><br><span class="line">    efi_bs_call(free_pool, boot_params);</span><br><span class="line">    <span class="keyword">return</span> status;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-4-UEFI-启动详解"><a href="#2-4-UEFI-启动详解" class="headerlink" title="2.4 UEFI 启动详解"></a>2.4 UEFI 启动详解</h2><h3 id="2-4-1-ESP-分区结构"><a href="#2-4-1-ESP-分区结构" class="headerlink" title="2.4.1 ESP 分区结构"></a>2.4.1 ESP 分区结构</h3><p>EFI 系统分区 (ESP) 是 UEFI 启动的核心：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">磁盘布局示例:</span><br><span class="line">┌─────────────────────────────────────────────────────┐</span><br><span class="line">│  Protective MBR (LBA 0)                            │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  GPT Header (LBA 1)                                │</span><br><span class="line">│  GPT Partition Entries (LBA 2-33)                  │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  ESP 分区 (通常第一个分区)                           │</span><br><span class="line">│    ├── /EFI/BOOT/                                  │</span><br><span class="line">│    │    └── BOOTX64.EF     # 默认引导加载器         │</span><br><span class="line">│    ├── /EFI/GRUB/                                  │</span><br><span class="line">│    │    └── GRUBX64.EF     # GRUB 引导加载器        │</span><br><span class="line">│    ├── /EFI/systemd/                               │</span><br><span class="line">│    │    └── systemd-bootx64.efi                    │</span><br><span class="line">│    └── /EFI/Microsoft/                             │</span><br><span class="line">│         └── Boot/bootmgfw.efi  # Windows 启动      │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  Linux 根分区                                       │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  Linux 交换分区                                     │</span><br><span class="line">└─────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">ESP 分区特点:</span><br><span class="line">- FAT32 文件系统</span><br><span class="line">- 分区类型 GUID: C12A7328-F81F-11D2-BA4B-00A0C93EC93B</span><br><span class="line">- 必须是可启动分区</span><br><span class="line">- 通常 100MB - 500MB 大小</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-4-2-UEFI-启动管理器"><a href="#2-4-2-UEFI-启动管理器" class="headerlink" title="2.4.2 UEFI 启动管理器"></a>2.4.2 UEFI 启动管理器</h3><p>UEFI 固件使用 NVRAM 变量存储启动配置：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* UEFI 启动选项格式 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">EFI_LOAD_OPTION</span> &#123;</span></span><br><span class="line">    UINT32                          Attributes;</span><br><span class="line">    UINT16                          FilePathListLength;</span><br><span class="line">    CHAR16                          Description[];</span><br><span class="line">    <span class="comment">/* EFI_DEVICE_PATH_PROTOCOL     FilePathList[] */</span></span><br><span class="line">    <span class="comment">/* UINT8                        OptionalData[] */</span></span><br><span class="line">&#125; EFI_LOAD_OPTION;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 启动选项属性 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOAD_OPTION_ACTIVE          0x00000001</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOAD_OPTION_FORCE_RECONNECT 0x00000002</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOAD_OPTION_HIDDEN          0x00000008</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOAD_OPTION_CATEGORY        0x00001F00</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* EFI 全局变量 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_GLOBAL_VARIABLE_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0x8BE4DF61, 0x93CA, 0x11D2, &#123;0xAA, 0x0D, 0x00, 0xE0, 0x98, 0x03, 0x2B, 0x8C&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 关键变量名 */</span></span><br><span class="line"><span class="string">L&quot;Boot0000&quot;</span> - <span class="string">L&quot;BootFFFF&quot;</span>  <span class="comment">/* 启动选项 */</span></span><br><span class="line"><span class="string">L&quot;BootOrder&quot;</span>               <span class="comment">/* 启动顺序 */</span></span><br><span class="line"><span class="string">L&quot;BootCurrent&quot;</span>             <span class="comment">/* 当前启动项 */</span></span><br><span class="line"><span class="string">L&quot;BootNext&quot;</span>                <span class="comment">/* 下次启动项 */</span></span><br><span class="line"><span class="string">L&quot;Timeout&quot;</span>                 <span class="comment">/* 菜单超时 */</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-4-3-使用-efibootmgr-管理启动项"><a href="#2-4-3-使用-efibootmgr-管理启动项" class="headerlink" title="2.4.3 使用 efibootmgr 管理启动项"></a>2.4.3 使用 efibootmgr 管理启动项</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列出当前启动项</span></span><br><span class="line">efibootmgr</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出示例:</span></span><br><span class="line"><span class="comment"># BootCurrent: 0001</span></span><br><span class="line"><span class="comment"># Timeout: 3 seconds</span></span><br><span class="line"><span class="comment"># BootOrder: 0001, 0000, 0002</span></span><br><span class="line"><span class="comment"># Boot0000* Windows Boot Manager</span></span><br><span class="line"><span class="comment"># Boot0001* Linux</span></span><br><span class="line"><span class="comment"># Boot0002* UEFI Shell</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加新的启动项</span></span><br><span class="line">efibootmgr -c -d /dev/sda -p 1 -L <span class="string">&quot;Linux&quot;</span> -l <span class="string">&#x27;\EFI\BOOT\BOOTX64.EF&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置启动顺序</span></span><br><span class="line">efibootmgr -o 0001,0000,0002</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除启动项</span></span><br><span class="line">efibootmgr -b 0002 -B</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置超时</span></span><br><span class="line">efibootmgr -t 5</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置下次启动项</span></span><br><span class="line">efibootmgr -n 0002</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-5-UEFI-手动加载协议"><a href="#2-5-UEFI-手动加载协议" class="headerlink" title="2.5 UEFI 手动加载协议"></a>2.5 UEFI 手动加载协议</h2><h3 id="2-5-1-启动协议参数"><a href="#2-5-1-启动协议参数" class="headerlink" title="2.5.1 启动协议参数"></a>2.5.1 启动协议参数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* boot_params.hdr 的关键字段 (UEFI 情况下) */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">setup_header</span> &#123;</span></span><br><span class="line">    <span class="comment">/* ... */</span></span><br><span class="line">    u32 loadflags;            <span class="comment">/* 位标志 */</span></span><br><span class="line">    u32 code32_start;         <span class="comment">/* 32/64位入口点 */</span></span><br><span class="line">    u32 cmd_line_ptr;         <span class="comment">/* 命令行指针 */</span></span><br><span class="line">    u32 initrd_addr_max;      <span class="comment">/* initrd 最大地址 */</span></span><br><span class="line">    u32 kernel_alignment;     <span class="comment">/* 内核对齐 */</span></span><br><span class="line">    <span class="comment">/* ... */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* loadflags 位定义 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADED_HIGH            0x01    <span class="comment">/* 内核加载到高位地址 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CAN_USE_HEAP           0x80    <span class="comment">/* 可以使用堆 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> QUIET_FLAG             0x8000  <span class="comment">/* 安静启动 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* EFI Stub 特定标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADFLAGS_EFI_STUB     (1 &lt;&lt; 0) <span class="comment">/* EFI Stub 已加载 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-5-2-内存布局-UEFI-情况"><a href="#2-5-2-内存布局-UEFI-情况" class="headerlink" title="2.5.2 内存布局 (UEFI 情况)"></a>2.5.2 内存布局 (UEFI 情况)</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">UEFI 启动时的内存布局:</span><br><span class="line">┌─────────────────────────────────────────────────────┐</span><br><span class="line">│  物理内存地址                                       │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  0x00000000 - 0x000FFFFF   保留给 BIOS/UEFI        │</span><br><span class="line">│  0x00100000 - 0x00FFFFFF  可用常规内存             │</span><br><span class="line">│  0x01000000 - 0xXXXXXXX   内核加载位置             │</span><br><span class="line">│                             (通常是 0x1000000)      │</span><br><span class="line">│                                                      │</span><br><span class="line">│  initrd 位置:                                       │</span><br><span class="line">│  - 由 initrd_addr_max 限制                          │</span><br><span class="line">│  - 通常加载在内核上方                                │</span><br><span class="line">│                                                      │</span><br><span class="line">│  命令行参数:                                        │</span><br><span class="line">│  - 由 cmd_line_ptr 指向                             │</span><br><span class="line">│  - 最大 COMMAND_LINE_SIZE (4096) 字节              │</span><br><span class="line">└─────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-6-UEFI-和内核交互"><a href="#2-6-UEFI-和内核交互" class="headerlink" title="2.6 UEFI 和内核交互"></a>2.6 UEFI 和内核交互</h2><h3 id="2-6-1-EFI-内存映射到-E820"><a href="#2-6-1-EFI-内存映射到-E820" class="headerlink" title="2.6.1 EFI 内存映射到 E820"></a>2.6.1 EFI 内存映射到 E820</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 内核需要将 UEFI 内存映射转换为 E820 格式 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">efi_map_memmap</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">efi_memory_desc_t</span> *md;</span><br><span class="line">    u64 start, end;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 遍历 UEFI 内存映射 */</span></span><br><span class="line">    for_each_efi_memory_desc(md) &#123;</span><br><span class="line">        start = md-&gt;PhysicalStart;</span><br><span class="line">        end = md-&gt;PhysicalStart + md-&gt;NumberOfPages * EFI_PAGE_SIZE;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 转换为 E820 类型 */</span></span><br><span class="line">        <span class="keyword">switch</span> (md-&gt;Type) &#123;</span><br><span class="line">        <span class="keyword">case</span> EFI_LOADER_CODE:</span><br><span class="line">        <span class="keyword">case</span> EFI_LOADER_DATA:</span><br><span class="line">        <span class="keyword">case</span> EFI_BOOT_SERVICES_CODE:</span><br><span class="line">        <span class="keyword">case</span> EFI_BOOT_SERVICES_DATA:</span><br><span class="line">        <span class="keyword">case</span> EFI_CONVENTIONAL_MEMORY:</span><br><span class="line">            <span class="comment">/* 可用内存 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_RAM);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">case</span> EFI_UNUSABLE_MEMORY:</span><br><span class="line">            <span class="comment">/* 不可用内存 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_UNUSABLE);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">case</span> EFI_ACPI_RECLAIM_MEMORY:</span><br><span class="line">            <span class="comment">/* ACPI 可回收内存 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_ACPI);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">case</span> EFI_ACPI_MEMORY_NVS:</span><br><span class="line">            <span class="comment">/* ACPI NVS 内存 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_NVS);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">case</span> EFI_PERSISTENT_MEMORY:</span><br><span class="line">            <span class="comment">/* 持久内存 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_PMEM);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            <span class="comment">/* 其他类型视为保留 */</span></span><br><span class="line">            e820__range_add(start, end, E820_TYPE_RESERVED);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-6-2-UEFI-运行时服务"><a href="#2-6-2-UEFI-运行时服务" class="headerlink" title="2.6.2 UEFI 运行时服务"></a>2.6.2 UEFI 运行时服务</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 退出启动服务后的内存映射 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">efi_runtime_update_mappings</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 在 ExitBootServices() 之后:</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * 1. 只有运行时服务区域保留映射</span></span><br><span class="line"><span class="comment">     * 2. 其他内存可以被内核重新使用</span></span><br><span class="line"><span class="comment">     * 3. 需要调用 SetVirtualAddressMap() 建立虚拟映射</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">efi_status_t</span> status;</span><br><span class="line">    u32 attr = EFI_MEMORY_RUNTIME | EFI_MEMORY_WB;</span><br><span class="line">    u64 size;</span><br><span class="line">    <span class="type">void</span> **va;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取运行时服务区域 */</span></span><br><span class="line">    status = efi_get_memory_map(&amp;<span class="built_in">map</span>, &amp;map_size, <span class="literal">NULL</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 建立虚拟地址映射 */</span></span><br><span class="line">    for_each_efi_memory_desc(md) &#123;</span><br><span class="line">        <span class="keyword">if</span> (md-&gt;Attribute &amp; EFI_MEMORY_RUNTIME) &#123;</span><br><span class="line">            <span class="comment">/* 分配虚拟地址 */</span></span><br><span class="line">            va = efi_map_region(md, attr);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 调用 SetVirtualAddressMap */</span></span><br><span class="line">    status = efi_rs_call(set_virtual_address_map,</span><br><span class="line">                        size, desc_size, desc_ver,</span><br><span class="line">                        efi_map);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-7-Secure-Boot-安全启动"><a href="#2-7-Secure-Boot-安全启动" class="headerlink" title="2.7 Secure Boot (安全启动)"></a>2.7 Secure Boot (安全启动)</h2><h3 id="2-7-1-Secure-Boot-工作原理"><a href="#2-7-1-Secure-Boot-工作原理" class="headerlink" title="2.7.1 Secure Boot 工作原理"></a>2.7.1 Secure Boot 工作原理</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│              Secure Boot 验证链                         │</span><br><span class="line">├─────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                         │</span><br><span class="line">│  ┌──────────────┐     ┌──────────────┐                │</span><br><span class="line">│  │   KEK        │ ←── │   PK         │                │</span><br><span class="line">│  │ (密钥交换密钥) │     │ (平台密钥)    │                │</span><br><span class="line">│  └──────────────┘     └──────────────┘                │</span><br><span class="line">│         │                                              │</span><br><span class="line">│         ↓                                              │</span><br><span class="line">│  ┌──────────────┐                                     │</span><br><span class="line">│  │   db         │                                     │</span><br><span class="line">│  │ (签名数据库)   │                                     │</span><br><span class="line">│  └──────────────┘                                     │</span><br><span class="line">│         │                                              │</span><br><span class="line">│         ↓                                              │</span><br><span class="line">│  ┌──────────────┐     ┌──────────────┐                │</span><br><span class="line">│  │   shim       │ ←── │  GRUB/Kernel │                │</span><br><span class="line">│  │ (第一阶段)    │     │  (验证签名)   │                │</span><br><span class="line">│  └──────────────┘     └──────────────┘                │</span><br><span class="line">│                                                         │</span><br><span class="line">└─────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-7-2-Secure-Boot-变量"><a href="#2-7-2-Secure-Boot-变量" class="headerlink" title="2.7.2 Secure Boot 变量"></a>2.7.2 Secure Boot 变量</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Secure Boot 相关的 EFI 变量 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EFI_IMAGE_SECURITY_DATABASE_GUID \</span></span><br><span class="line"><span class="meta">    &#123; 0xd719b2cb, 0x3d3a, 0x4596, &#123;0xa3, 0xbc, 0xda, 0xd0, 0x0e, 0x67, 0x65, 0x6f&#125; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 关键数据库 */</span></span><br><span class="line"><span class="string">L&quot;PK&quot;</span>    # Platform <span class="title function_">Key</span> <span class="params">(平台密钥)</span></span><br><span class="line">L&quot;KEK&quot;   # Key Exchange <span class="title function_">Key</span> <span class="params">(密钥交换密钥)</span></span><br><span class="line">L&quot;db&quot;    # Signature <span class="title function_">Database</span> <span class="params">(签名数据库 - 允许)</span></span><br><span class="line">L&quot;dbx&quot;   # Forbidden Signature <span class="title function_">Database</span> <span class="params">(禁止数据库)</span></span><br><span class="line">L&quot;dbt&quot;   # Revocation <span class="title function_">Timebase</span> <span class="params">(撤销时间基准)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查 Secure Boot 状态 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">efi_secureboot_enabled</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">efi_guid_t</span> guid = EFI_GLOBAL_VARIABLE_GUID;</span><br><span class="line">    u8 secboot, setupmode;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> size;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 读取 SecureBoot 变量 */</span></span><br><span class="line">    size = <span class="keyword">sizeof</span>(secboot);</span><br><span class="line">    <span class="keyword">if</span> (efi_get_variable(<span class="string">L&quot;SecureBoot&quot;</span>, &amp;guid, <span class="literal">NULL</span>, &amp;size, &amp;secboot))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 读取 SetupMode 变量 */</span></span><br><span class="line">    size = <span class="keyword">sizeof</span>(setupmode);</span><br><span class="line">    <span class="keyword">if</span> (efi_get_variable(<span class="string">L&quot;SetupMode&quot;</span>, &amp;guid, <span class="literal">NULL</span>, &amp;size, &amp;setupmode))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Secure Boot 启用且不在 Setup 模式 */</span></span><br><span class="line">    <span class="keyword">return</span> (secboot == <span class="number">1</span> &amp;&amp; setupmode == <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-8-本章小结"><a href="#2-8-本章小结" class="headerlink" title="2.8 本章小结"></a>2.8 本章小结</h2><h3 id="UEFI-启动流程回顾"><a href="#UEFI-启动流程回顾" class="headerlink" title="UEFI 启动流程回顾"></a>UEFI 启动流程回顾</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">UEFI 固件 (SEC/PEI/DXE/BSD)</span><br><span class="line">    ↓</span><br><span class="line">ESP 分区 /EFI/BOOT/BOOTX64.EF</span><br><span class="line">    ↓</span><br><span class="line">[方式1] GRUB → 加载内核</span><br><span class="line">[方式2] EFI Stub → 直接启动</span><br><span class="line">    ↓</span><br><span class="line">efi_pe_entry → efi_main</span><br><span class="line">    ↓</span><br><span class="line">获取内存映射、ACPI 表等</span><br><span class="line">    ↓</span><br><span class="line">ExitBootServices()</span><br><span class="line">    ↓</span><br><span class="line">跳转到 startup_64()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="UEFI-vs-BIOS-关键差异"><a href="#UEFI-vs-BIOS-关键差异" class="headerlink" title="UEFI vs BIOS 关键差异"></a>UEFI vs BIOS 关键差异</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>UEFI</th>
+<th>BIOS</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>入口点</td>
+<td>efi_pe_entry (PE)</td>
+<td>header.S (0x7C00)</td>
+</tr>
+<tr>
+<td>参数传递</td>
+<td>EFI_HANDLE + SystemTable</td>
+<td>boot_params (0x90000)</td>
+</tr>
+<tr>
+<td>内存信息</td>
+<td>EFI_MEMORY_DESCRIPTOR</td>
+<td>e820_map</td>
+</tr>
+<tr>
+<td>早期输出</td>
+<td>GOP 协议</td>
+<td>VGA 文本模式</td>
+</tr>
+<tr>
+<td>配置存储</td>
+<td>NVRAM 变量</td>
+<td>CMOS&#x2F;BIOS 设置</td>
+</tr>
+</tbody></table>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-2</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-08 02:39:50</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-08 19:01:32
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/08/Linux内核分析之基础知识-2/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-3/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-3</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-1/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-1</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-2</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC2%E7%AB%A0%EF%BC%9Ax86-64-UEFI-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">第2章：x86_64 UEFI 启动流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E6%A6%82%E8%BF%B0"><span class="nav-text">本章概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#UEFI-vs-BIOS-Legacy-%E5%AF%B9%E6%AF%94"><span class="nav-text">UEFI vs BIOS Legacy 对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-UEFI-%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88"><span class="nav-text">2.1 UEFI 架构概览</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-UEFI-%E5%90%AF%E5%8A%A8%E9%98%B6%E6%AE%B5"><span class="nav-text">2.1.1 UEFI 启动阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-2-UEFI-%E9%98%B6%E6%AE%B5%E8%AF%A6%E8%A7%A3"><span class="nav-text">2.1.2 UEFI 阶段详解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-UEFI-%E7%B3%BB%E7%BB%9F%E8%A1%A8%E5%92%8C%E5%8D%8F%E8%AE%AE"><span class="nav-text">2.2 UEFI 系统表和协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-EFI-SYSTEM-TABLE"><span class="nav-text">2.1.1 EFI_SYSTEM_TABLE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E5%85%B3%E9%94%AE-UEFI-%E5%8D%8F%E8%AE%AE"><span class="nav-text">2.2.2 关键 UEFI 协议</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-EFI-Stub-%E6%9C%BA%E5%88%B6"><span class="nav-text">2.3 EFI Stub 机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-EFI-Stub-%E5%8E%9F%E7%90%86"><span class="nav-text">2.3.1 EFI Stub 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E5%86%85%E6%A0%B8-PE-%E5%A4%B4%E9%83%A8%E7%BB%93%E6%9E%84"><span class="nav-text">2.3.2 内核 PE 头部结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-EFI-%E5%85%A5%E5%8F%A3%E7%82%B9"><span class="nav-text">2.3.3 EFI 入口点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-4-efi-main-%E5%87%BD%E6%95%B0"><span class="nav-text">2.3.4 efi_main() 函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4-UEFI-%E5%90%AF%E5%8A%A8%E8%AF%A6%E8%A7%A3"><span class="nav-text">2.4 UEFI 启动详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-1-ESP-%E5%88%86%E5%8C%BA%E7%BB%93%E6%9E%84"><span class="nav-text">2.4.1 ESP 分区结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-2-UEFI-%E5%90%AF%E5%8A%A8%E7%AE%A1%E7%90%86%E5%99%A8"><span class="nav-text">2.4.2 UEFI 启动管理器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-3-%E4%BD%BF%E7%94%A8-efibootmgr-%E7%AE%A1%E7%90%86%E5%90%AF%E5%8A%A8%E9%A1%B9"><span class="nav-text">2.4.3 使用 efibootmgr 管理启动项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-5-UEFI-%E6%89%8B%E5%8A%A8%E5%8A%A0%E8%BD%BD%E5%8D%8F%E8%AE%AE"><span class="nav-text">2.5 UEFI 手动加载协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-1-%E5%90%AF%E5%8A%A8%E5%8D%8F%E8%AE%AE%E5%8F%82%E6%95%B0"><span class="nav-text">2.5.1 启动协议参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-2-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80-UEFI-%E6%83%85%E5%86%B5"><span class="nav-text">2.5.2 内存布局 (UEFI 情况)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-6-UEFI-%E5%92%8C%E5%86%85%E6%A0%B8%E4%BA%A4%E4%BA%92"><span class="nav-text">2.6 UEFI 和内核交互</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-1-EFI-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E5%88%B0-E820"><span class="nav-text">2.6.1 EFI 内存映射到 E820</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-2-UEFI-%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9C%8D%E5%8A%A1"><span class="nav-text">2.6.2 UEFI 运行时服务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-7-Secure-Boot-%E5%AE%89%E5%85%A8%E5%90%AF%E5%8A%A8"><span class="nav-text">2.7 Secure Boot (安全启动)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-1-Secure-Boot-%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="nav-text">2.7.1 Secure Boot 工作原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-2-Secure-Boot-%E5%8F%98%E9%87%8F"><span class="nav-text">2.7.2 Secure Boot 变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">2.8 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#UEFI-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%9B%9E%E9%A1%BE"><span class="nav-text">UEFI 启动流程回顾</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#UEFI-vs-BIOS-%E5%85%B3%E9%94%AE%E5%B7%AE%E5%BC%82"><span class="nav-text">UEFI vs BIOS 关键差异</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        132 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/08/linux内核分析之基础知识-7/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-7">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-7/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-07T18:47:13.000Z">
+<meta property="article:modified_time" content="2026-01-08T11:02:25.035Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-7 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">39</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">132</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-7</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-08 02:47:13</span>
+        <span class="mobile">2026-01-08 02:47:13</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-08 19:02:25</span>
+            <span class="mobile">2026-01-08 19:02:25</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第7章：调试技巧"><a href="#第7章：调试技巧" class="headerlink" title="第7章：调试技巧"></a>第7章：调试技巧</h1><blockquote>
+<p>诊断和分析内核启动问题的方法</p>
+</blockquote>
+<hr>
+<h2 id="本章概述"><a href="#本章概述" class="headerlink" title="本章概述"></a>本章概述</h2><p>内核启动问题可能发生在任何阶段，从早期汇编代码到用户空间启动。本章提供各种调试技术和工具来诊断这些问题。</p>
+<h3 id="调试阶段划分"><a href="#调试阶段划分" class="headerlink" title="调试阶段划分"></a>调试阶段划分</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    调试阶段和技术                            │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  阶段1: 固件/引导程序                                       │</span><br><span class="line">│    - BIOS/UEFI 调试                                       │</span><br><span class="line">│    - 串口输出                                             │</span><br><span class="line">│    - GRUB 调试                                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  阶段2: 早期汇编代码                                       │</span><br><span class="line">│    - 早期串口输出 (earlyprintk)                           │</span><br><span class="line">│    - QEMU/GDB 调试                                        │</span><br><span class="line">│    - JTAG 调试                                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  阶段3: 解压阶段                                           │</span><br><span class="line">│    - 解压日志                                             │</span><br><span class="line">│    - 堆栈跟踪                                             │</span><br><span class="line">│                                                             │</span><br><span class="line">│  阶段4: start_kernel                                      │</span><br><span class="line">│    - ftrace 跟踪                                           │</span><br><span class="line">│    - initcall 调试                                        │</span><br><span class="line">│    - crash 工具                                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  阶段5: 用户空间启动                                       │</span><br><span class="line">│    - init 进程调试                                        │</span><br><span class="line">│    - systemd 调试                                         │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-1-早期调试技术"><a href="#7-1-早期调试技术" class="headerlink" title="7.1 早期调试技术"></a>7.1 早期调试技术</h2><h3 id="7-1-1-earlyprintk-和-earlycon"><a href="#7-1-1-earlyprintk-和-earlycon" class="headerlink" title="7.1.1 earlyprintk 和 earlycon"></a>7.1.1 earlyprintk 和 earlycon</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># x86_64 earlyprintk</span></span><br><span class="line">earlyprintk=serial,ttyS0,115200</span><br><span class="line">earlyprintk=vga</span><br><span class="line">earlyprintk=dbgp</span><br><span class="line"></span><br><span class="line"><span class="comment"># x86_64 earlycon (现代方式)</span></span><br><span class="line">earlycon=uart,mmio,0x3f8,115200n8</span><br><span class="line">earlycon=pciserial,mmio,0x1234,115200</span><br><span class="line">earlycon=dbgp</span><br><span class="line">earlycon=efifb</span><br><span class="line"></span><br><span class="line"><span class="comment"># ARM64 earlycon</span></span><br><span class="line">earlycon=pl011,0x09000000,115200n8</span><br><span class="line">earlycon=uart8250,mmio32,0xff1a0000,115200n8</span><br><span class="line"></span><br><span class="line"><span class="comment"># 持久化早期控制台</span></span><br><span class="line">earlyprintk=serial,ttyS0,115200,keep</span><br><span class="line"></span><br><span class="line"><span class="comment"># 组合使用</span></span><br><span class="line">earlyprintk=serial,ttyS0,115200 console=ttyS0,115200n8</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-1-2-调试级别控制"><a href="#7-1-2-调试级别控制" class="headerlink" title="7.1.2 调试级别控制"></a>7.1.2 调试级别控制</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内核日志级别</span></span><br><span class="line">loglevel=0    <span class="comment"># 仅 KERN_EMERG</span></span><br><span class="line">loglevel=1    <span class="comment"># KERN_EMERG, KERN_ALERT</span></span><br><span class="line">loglevel=2    <span class="comment"># + KERN_CRIT</span></span><br><span class="line">loglevel=3    <span class="comment"># + KERN_ERR</span></span><br><span class="line">loglevel=4    <span class="comment"># + KERN_WARNING</span></span><br><span class="line">loglevel=5    <span class="comment"># + KERN_NOTICE</span></span><br><span class="line">loglevel=6    <span class="comment"># + KERN_INFO</span></span><br><span class="line">loglevel=7    <span class="comment"># + KERN_DEBUG (最详细)</span></span><br><span class="line">loglevel=15   <span class="comment"># 所有消息, 包括调试</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 忽略默认日志级别</span></span><br><span class="line">ignore_loglevel</span><br><span class="line"></span><br><span class="line"><span class="comment"># 静默启动</span></span><br><span class="line">quiet</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-1-3-启用调试选项"><a href="#7-1-3-启用调试选项" class="headerlink" title="7.1.3 启用调试选项"></a>7.1.3 启用调试选项</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"># 调试选项配置</span><br><span class="line"></span><br><span class="line"># 一般调试</span><br><span class="line">CONFIG_DEBUG_KERNEL=y</span><br><span class="line">CONFIG_DEBUG_INFO=y</span><br><span class="line">CONFIG_DEBUG_INFO_BTF=y        # BPF 类型格式</span><br><span class="line"></span><br><span class="line"># 早期调试</span><br><span class="line">CONFIG_DEBUG_LL=y             # 低层调试</span><br><span class="line">CONFIG_DEBUG_LL_UART_8250=y   # UART 8250</span><br><span class="line">CONFIG_DEBUG_ICEDCC=y         # DCC (ARM)</span><br><span class="line">CONFIG_EARLY_PRINTK=y         # 早期打印</span><br><span class="line">CONFIG_EARLY_PRINTK_DBGP=y    # DBGP earlycon</span><br><span class="line"></span><br><span class="line"># 页分配调试</span><br><span class="line">CONFIG_DEBUG_PAGEALLOC=y</span><br><span class="line">CONFIG_PAGE_POISONING=y</span><br><span class="line"></span><br><span class="line"># slab/slab 调试</span><br><span class="line">CONFIG_DEBUG_SLAB=y</span><br><span class="line">CONFIG_SLUB_DEBUG=y</span><br><span class="line"></span><br><span class="line"># 锁调试</span><br><span class="line">CONFIG_DEBUG_RT_LOCKS=y</span><br><span class="line">CONFIG_DEBUG_SPINLOCK=y</span><br><span class="line">CONFIG_PROVE_LOCKING=y        # 锁证明</span><br><span class="line"></span><br><span class="line"># 内存调试</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK=y       # 内存泄漏检测</span><br><span class="line">CONFIG_KASAN=y                # KASAN</span><br><span class="line">CONFIG_UBSAN=y                # UBSAN</span><br><span class="line">CONFIG_KCOV=y                 # 覆盖率检测</span><br><span class="line"></span><br><span class="line"># 跟踪</span><br><span class="line">CONFIG_TRACING=y</span><br><span class="line">CONFIG_FTRACE=y</span><br><span class="line">CONFIG_FUNCTION_TRACER=y</span><br><span class="line">CONFIG_FUNCTION_GRAPH_TRACER=y</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-2-QEMU-调试"><a href="#7-2-QEMU-调试" class="headerlink" title="7.2 QEMU 调试"></a>7.2 QEMU 调试</h2><h3 id="7-2-1-QEMU-基础调试"><a href="#7-2-1-QEMU-基础调试" class="headerlink" title="7.2.1 QEMU 基础调试"></a>7.2.1 QEMU 基础调试</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># x86_64 QEMU 调试</span></span><br><span class="line">qemu-system-x86_64 \</span><br><span class="line">    -kernel <span class="built_in">arch</span>/x86/boot/bzImage \</span><br><span class="line">    -append <span class="string">&quot;root=/dev/sda console=ttyS0&quot;</span> \</span><br><span class="line">    -serial stdio \</span><br><span class="line">    -s -S                    <span class="comment"># -s: 等待 gdb, -S: 冻结 CPU</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ARM64 QEMU 调试</span></span><br><span class="line">qemu-system-aarch64 \</span><br><span class="line">    -M virt \</span><br><span class="line">    -cpu cortex-a57 \</span><br><span class="line">    -kernel <span class="built_in">arch</span>/arm64/boot/Image \</span><br><span class="line">    -append <span class="string">&quot;console=ttyAMA0&quot;</span> \</span><br><span class="line">    -serial stdio \</span><br><span class="line">    -s -S</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加内核镜像符号</span></span><br><span class="line">qemu-system-x86_64 \</span><br><span class="line">    -kernel bzImage \</span><br><span class="line">    -initrd initrd.img \</span><br><span class="line">    -smp 2 \</span><br><span class="line">    -m 2G \</span><br><span class="line">    -serial mon:stdio \</span><br><span class="line">    -s</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-2-2-GDB-连接和调试"><a href="#7-2-2-GDB-连接和调试" class="headerlink" title="7.2.2 GDB 连接和调试"></a>7.2.2 GDB 连接和调试</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动 GDB</span></span><br><span class="line">gdb vmlinux</span><br><span class="line"></span><br><span class="line"><span class="comment"># GDB 命令</span></span><br><span class="line">(gdb) target remote :1234        <span class="comment"># 连接到 QEMU</span></span><br><span class="line">(gdb) <span class="built_in">break</span> startup_64          <span class="comment"># 设置断点</span></span><br><span class="line">(gdb) <span class="built_in">break</span> start_kernel        <span class="comment"># 设置断点</span></span><br><span class="line">(gdb) <span class="built_in">continue</span>                  <span class="comment"># 继续执行</span></span><br><span class="line">(gdb) bt                        <span class="comment"># 回溯栈</span></span><br><span class="line">(gdb) info registers            <span class="comment"># 寄存器信息</span></span><br><span class="line">(gdb) x/50i <span class="variable">$pc</span>                 <span class="comment"># 反汇编当前指令</span></span><br><span class="line">(gdb) stepi                     <span class="comment"># 单步执行指令</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看汇编代码</span></span><br><span class="line">(gdb) disassemble start_kernel</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看源代码</span></span><br><span class="line">(gdb) list start_kernel</span><br><span class="line"></span><br><span class="line"><span class="comment"># 自动化断点</span></span><br><span class="line">(gdb) commands 1</span><br><span class="line">Type commands <span class="keyword">for</span> breakpoint(s) 1 (end with a line saying just <span class="string">&quot;end&quot;</span>):</span><br><span class="line">&gt;bt</span><br><span class="line">&gt;<span class="built_in">continue</span></span><br><span class="line">&gt;end</span><br><span class="line"></span><br><span class="line"><span class="comment"># 条件断点</span></span><br><span class="line">(gdb) <span class="built_in">break</span> start_kernel <span class="keyword">if</span> x0 == 0x1000</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-2-3-GDB-Python-扩展"><a href="#7-2-3-GDB-Python-扩展" class="headerlink" title="7.2.3 GDB Python 扩展"></a>7.2.3 GDB Python 扩展</h3><div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># gdb 脚本示例</span></span><br><span class="line"><span class="keyword">import</span> gdb</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PrintKernelCmd</span>(gdb.Command):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;Print kernel command&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="built_in">super</span>(PrintKernelCmd, self).__init__(<span class="string">&quot;printkernel&quot;</span>,</span><br><span class="line">                                                gdb.COMMAND_DATA)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">invoke</span>(<span class="params">self, arg, from_tty</span>):</span><br><span class="line">        <span class="comment"># 读取 linux_banner</span></span><br><span class="line">        gdb.execute(<span class="string">&quot;print/x *(char*)0x1000000&quot;</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">PrintKernelCmd()</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-3-ftrace-跟踪"><a href="#7-3-ftrace-跟踪" class="headerlink" title="7.3 ftrace 跟踪"></a>7.3 ftrace 跟踪</h2><h3 id="7-3-1-ftrace-基础"><a href="#7-3-1-ftrace-基础" class="headerlink" title="7.3.1 ftrace 基础"></a>7.3.1 ftrace 基础</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 挂载 debugfs</span></span><br><span class="line">mount -t debugfs none /sys/kernel/debug</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 ftrace 可用性</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/tracing/available_tracers</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用函数跟踪</span></span><br><span class="line"><span class="built_in">echo</span> <span class="keyword">function</span> &gt; /sys/kernel/debug/tracing/current_tracer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看跟踪输出</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/tracing/trace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 过滤跟踪函数</span></span><br><span class="line"><span class="built_in">echo</span> do_initcalls &gt; /sys/kernel/debug/tracing/set_ftrace_filter</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用跟踪</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/kernel/debug/tracing/tracing_on</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用跟踪</span></span><br><span class="line"><span class="built_in">echo</span> 0 &gt; /sys/kernel/debug/tracing/tracing_on</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-3-2-trace-cmd-工具"><a href="#7-3-2-trace-cmd-工具" class="headerlink" title="7.3.2 trace-cmd 工具"></a>7.3.2 trace-cmd 工具</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 记录启动过程</span></span><br><span class="line">trace-cmd record -p <span class="keyword">function</span> -e do_initcalls -f \</span><br><span class="line">    -b 1000 --max-graph-depth 8 --<span class="built_in">date</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 重放跟踪</span></span><br><span class="line">trace-cmd report</span><br><span class="line"></span><br><span class="line"><span class="comment"># 报告摘要</span></span><br><span class="line">trace-cmd show</span><br><span class="line"></span><br><span class="line"><span class="comment"># 图形化跟踪</span></span><br><span class="line">trace-cmd report --profile</span><br><span class="line"></span><br><span class="line"><span class="comment"># 事件跟踪</span></span><br><span class="line">trace-cmd record -e sched_switch -e sched_wakeup</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-3-3-启动时跟踪"><a href="#7-3-3-启动时跟踪" class="headerlink" title="7.3.3 启动时跟踪"></a>7.3.3 启动时跟踪</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内核参数</span></span><br><span class="line">ftrace=<span class="keyword">function</span>                          <span class="comment"># 函数跟踪</span></span><br><span class="line">ftrace=function_graph                      <span class="comment"># 函数图跟踪</span></span><br><span class="line">ftrace_graph_max_depth=5                  <span class="comment"># 图深度</span></span><br><span class="line">trace_event=<span class="built_in">sched</span>:sched_switch            <span class="comment"># 事件跟踪</span></span><br><span class="line">ftrace_filter=start_kernel                <span class="comment"># 过滤函数</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># initcall 跟踪</span></span><br><span class="line">initcall_debug                            <span class="comment"># initcall 调试</span></span><br><span class="line">trace_initcall=do_initcalls              <span class="comment"># 跟踪 initcall</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-4-initcall-调试"><a href="#7-4-initcall-调试" class="headerlink" title="7.4 initcall 调试"></a>7.4 initcall 调试</h2><h3 id="7-4-1-initcall-时间分析"><a href="#7-4-1-initcall-时间分析" class="headerlink" title="7.4.1 initcall 时间分析"></a>7.4.1 initcall 时间分析</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 initcall 时间</span></span><br><span class="line">initcall_debug</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出示例</span></span><br><span class="line">[    0.000000] calling  pci_apply_final_quirks+0x0/0x20 @ 1</span><br><span class="line">[    0.000001] initcall pci_apply_final_quirks+0x0/0x20 returned 0 after 5 usecs</span><br><span class="line"></span><br><span class="line"><span class="comment"># 黑名单 initcall</span></span><br><span class="line">initcall_blacklist=problematic_initcall,another_initcall</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析工具</span></span><br><span class="line">grep initcall /var/log/dmesg | <span class="built_in">sort</span> -k4 -n | <span class="built_in">head</span> -20</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-4-2-延迟初始化"><a href="#7-4-2-延迟初始化" class="headerlink" title="7.4.2 延迟初始化"></a>7.4.2 延迟初始化</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 延迟 initcall</span></span><br><span class="line">late_initcall(your_init_function)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 观察哪些 initcall 被延迟</span></span><br><span class="line"><span class="built_in">cat</span> /proc/initcalls_blacklist</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-5-crash-kdump-分析"><a href="#7-5-crash-kdump-分析" class="headerlink" title="7.5 crash&#x2F;kdump 分析"></a>7.5 crash&#x2F;kdump 分析</h2><h3 id="7-5-1-配置-kdump"><a href="#7-5-1-配置-kdump" class="headerlink" title="7.5.1 配置 kdump"></a>7.5.1 配置 kdump</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 保留崩溃内存</span></span><br><span class="line"><span class="comment"># /etc/default/grub</span></span><br><span class="line">GRUB_CMDLINE_LINUX=<span class="string">&quot;crashkernel=256M&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或指定位置</span></span><br><span class="line">GRUB_CMDLINE_LINUX=<span class="string">&quot;crashkernel=256M@2G&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 配置 kdump 服务</span></span><br><span class="line"><span class="comment"># /etc/kdump.conf</span></span><br><span class="line">path /var/crash</span><br><span class="line">core_collector makedumpfile -c --message-level 1 -d 31</span><br><span class="line">kdump_post_notag_level 1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 启动服务</span></span><br><span class="line">systemctl <span class="built_in">enable</span> kdump</span><br><span class="line">systemctl start kdump</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 测试配置</span></span><br><span class="line">kdumpctl status</span><br><span class="line">kdumpctl estimate</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-5-2-使用-crash-分析"><a href="#7-5-2-使用-crash-分析" class="headerlink" title="7.5.2 使用 crash 分析"></a>7.5.2 使用 crash 分析</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 分析 vmcore</span></span><br><span class="line">crash vmlinux /var/crash/127.0.0.1-2025-01-04-12:34:56/vmcore</span><br><span class="line"></span><br><span class="line"><span class="comment"># crash 命令</span></span><br><span class="line">crash&gt; bt                   <span class="comment"># 回溯</span></span><br><span class="line">crash&gt; bt -a               <span class="comment"># 所有任务回溯</span></span><br><span class="line">crash&gt; <span class="built_in">log</span>                 <span class="comment"># dmesg</span></span><br><span class="line">crash&gt; ps                  <span class="comment"># 进程列表</span></span><br><span class="line">crash&gt; ps -A               <span class="comment"># 所有任务</span></span><br><span class="line">crash&gt; task &lt;pid&gt;          <span class="comment"># 切换任务上下文</span></span><br><span class="line">crash&gt; sys                 <span class="comment"># 系统信息</span></span><br><span class="line">crash&gt; mount               <span class="comment"># 挂载信息</span></span><br><span class="line">crash&gt; net -A              <span class="comment"># 网络信息</span></span><br><span class="line">crash&gt; kmem -i             <span class="comment"># 内存信息</span></span><br><span class="line">crash&gt; files &lt;pid&gt;         <span class="comment"># 打开的文件</span></span><br><span class="line">crash&gt; vm                  <span class="comment"># 虚拟内存</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 反汇编</span></span><br><span class="line">crash&gt; dis -l start_kernel</span><br><span class="line"></span><br><span class="line"><span class="comment"># 搜索符号</span></span><br><span class="line">crash&gt; sym -l | grep start</span><br><span class="line"></span><br><span class="line"><span class="comment"># 显示变量</span></span><br><span class="line">crash&gt; p jiffies</span><br><span class="line">crash&gt; p current_task</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-5-3-分析示例"><a href="#7-5-3-分析示例" class="headerlink" title="7.5.3 分析示例"></a>7.5.3 分析示例</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查找崩溃原因</span></span><br><span class="line">crash&gt; bt</span><br><span class="line">PID: 0      TASK: ffff88001a200000  CPU: 0   COMMAND: <span class="string">&quot;swapper/0&quot;</span></span><br><span class="line"> <span class="comment">#0 [ffff88001a2005c0] __schedule at ffffffff810a2345</span></span><br><span class="line"> <span class="comment">#1 [ffff88001a200640] schedule at ffffffff810a2789</span></span><br><span class="line"> <span class="comment">#2 [ffff88001a2006c0] schedule_timeout at ffffffff810c1234</span></span><br><span class="line"> <span class="comment">#3 [ffff88001a200740] wait_for_completion at ffffffff810b5678</span></span><br><span class="line"> ...</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看变量</span></span><br><span class="line">crash&gt; p jiffies_64</span><br><span class="line">jiffies_64 = 4294938592</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看崩溃信息</span></span><br><span class="line">crash&gt; <span class="built_in">log</span> | <span class="built_in">tail</span> -20</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析死锁</span></span><br><span class="line">crash&gt; lock -a</span><br><span class="line">crash&gt; lock -t &lt;lock_addr&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 内存转储</span></span><br><span class="line">crash&gt; dump -q &lt;address&gt; &lt;count&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 导出数据</span></span><br><span class="line">crash&gt; ascii &lt;address&gt;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-6-ARM64-特定调试"><a href="#7-6-ARM64-特定调试" class="headerlink" title="7.6 ARM64 特定调试"></a>7.6 ARM64 特定调试</h2><h3 id="7-6-1-ARM64-串口调试"><a href="#7-6-1-ARM64-串口调试" class="headerlink" title="7.6.1 ARM64 串口调试"></a>7.6.1 ARM64 串口调试</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># U-Boot 环境变量设置</span></span><br><span class="line">setenv bootargs <span class="string">&#x27;console=ttyAMA0,115200n8 earlycon=pl011,0x09000000&#x27;</span></span><br><span class="line">setenv earlycon <span class="string">&#x27;earlycon=pl011,0x09000000&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 设备树配置</span></span><br><span class="line">/ &#123;</span><br><span class="line">    chosen &#123;</span><br><span class="line">        bootargs = <span class="string">&quot;console=ttyAMA0,115200n8&quot;</span>;</span><br><span class="line">        stdout-path = <span class="string">&quot;serial0:115200n8&quot;</span>;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    serial@9010000 &#123;</span><br><span class="line">        compatible = <span class="string">&quot;arm,pl011&quot;</span>;</span><br><span class="line">        reg = &lt;0x0 0x9010000 0x0 0x1000&gt;;</span><br><span class="line">        interrupts = &lt;0 1&gt;;</span><br><span class="line">        clock-frequency = &lt;24000000&gt;;</span><br><span class="line">        current-speed = &lt;115200&gt;;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-6-2-ARM64-JTAG-调试"><a href="#7-6-2-ARM64-JTAG-调试" class="headerlink" title="7.6.2 ARM64 JTAG 调试"></a>7.6.2 ARM64 JTAG 调试</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 硬件要求</span></span><br><span class="line">- JTAG 调试器 (Segger J-Link, ST-Link, 等)</span><br><span class="line">- OpenOCD 或 pyOCD</span><br><span class="line">- GDB with ARM 支持</span><br><span class="line"></span><br><span class="line"><span class="comment"># OpenOCD 配置</span></span><br><span class="line"><span class="comment"># openocd.cfg</span></span><br><span class="line">adapter driver ftdi</span><br><span class="line">transport <span class="keyword">select</span> jtag</span><br><span class="line">target create a64.target cortex_a -chain-position a64.dap</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动 OpenOCD</span></span><br><span class="line">openocd -f openocd.cfg</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接 GDB</span></span><br><span class="line">aarch64-linux-gnu-gdb vmlinux</span><br><span class="line">(gdb) target remote :3333</span><br><span class="line">(gdb) load vmlinux</span><br><span class="line">(gdb) <span class="built_in">break</span> start_kernel</span><br><span class="line">(gdb) <span class="built_in">continue</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-7-性能分析"><a href="#7-7-性能分析" class="headerlink" title="7.7 性能分析"></a>7.7 性能分析</h2><h3 id="7-7-1-启动性能分析"><a href="#7-7-1-启动性能分析" class="headerlink" title="7.7.1 启动性能分析"></a>7.7.1 启动性能分析</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># initcall 时间分析</span></span><br><span class="line">grep <span class="string">&quot;initcall&quot;</span> /var/log/dmesg | \</span><br><span class="line">    awk <span class="string">&#x27;&#123;print $1, $2, $NF&#125;&#x27;</span> | \</span><br><span class="line">    <span class="built_in">sort</span> -k3 -n | \</span><br><span class="line">    <span class="built_in">head</span> -20</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 bootchart</span></span><br><span class="line">systemctl <span class="built_in">enable</span> bootchart</span><br><span class="line">systemctl start bootchart</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 systemd-analyze</span></span><br><span class="line">systemd-analyze time                    <span class="comment"># 总启动时间</span></span><br><span class="line">systemd-analyze blame                   <span class="comment"># 服务启动时间</span></span><br><span class="line">systemd-analyze critical-chain          <span class="comment"># 关键链分析</span></span><br><span class="line">systemd-analyze plot &gt; boot.svg        <span class="comment"># 生成图表</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-7-2-perf-分析"><a href="#7-7-2-perf-分析" class="headerlink" title="7.7.2 perf 分析"></a>7.7.2 perf 分析</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动时 perf 记录</span></span><br><span class="line">perf record -g -a -- <span class="built_in">sleep</span> 30</span><br><span class="line"></span><br><span class="line"><span class="comment"># 报告</span></span><br><span class="line">perf report</span><br><span class="line"></span><br><span class="line"><span class="comment"># 注释性能图</span></span><br><span class="line">perf annotate start_kernel</span><br><span class="line"></span><br><span class="line"><span class="comment"># 时间线</span></span><br><span class="line">perf script</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-8-常见问题和解决方案"><a href="#7-8-常见问题和解决方案" class="headerlink" title="7.8 常见问题和解决方案"></a>7.8 常见问题和解决方案</h2><h3 id="7-8-1-启动卡住"><a href="#7-8-1-启动卡住" class="headerlink" title="7.8.1 启动卡住"></a>7.8.1 启动卡住</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">症状: 系统启动到某处停止</span><br><span class="line"></span><br><span class="line">诊断步骤:</span><br><span class="line">1. 添加 earlyprintk=serial,ttyS0,115200</span><br><span class="line">2. 观察最后输出位置</span><br><span class="line">3. 检查是否缺少驱动或配置</span><br><span class="line">4. 使用 initcall_debug 定位具体函数</span><br><span class="line"></span><br><span class="line">常见原因:</span><br><span class="line">- 缺少必要的驱动 (存储, 网络等)</span><br><span class="line">- 设备树配置错误</span><br><span class="line">- 中断配置问题</span><br><span class="line">- 内存不足</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-8-2-内核恐慌"><a href="#7-8-2-内核恐慌" class="headerlink" title="7.8.2 内核恐慌"></a>7.8.2 内核恐慌</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">症状: 内核崩溃并重启</span><br><span class="line"></span><br><span class="line">诊断步骤:</span><br><span class="line">1. 记录 panic 信息</span><br><span class="line">2. 使用 addr2line 定位代码</span><br><span class="line">3. 检查栈回溯</span><br><span class="line">4. 分析崩溃原因</span><br><span class="line">5. 添加相关调试选项重新编译</span><br><span class="line"></span><br><span class="line">常见原因:</span><br><span class="line">- 空指针解引用</span><br><span class="line">- 内存访问越界</span><br><span class="line">- 断言失败</span><br><span class="line">- 死锁</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-8-3-设备检测失败"><a href="#7-8-3-设备检测失败" class="headerlink" title="7.8.3 设备检测失败"></a>7.8.3 设备检测失败</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">症状: 设备未被识别</span><br><span class="line"></span><br><span class="line">诊断步骤:</span><br><span class="line">1. 检查 dmesg 输出</span><br><span class="line">2. 验证设备树配置</span><br><span class="line">3. 确认驱动已编译</span><br><span class="line">4. 检查硬件连接</span><br><span class="line"></span><br><span class="line">调试命令:</span><br><span class="line">lspci -vvv</span><br><span class="line">lsusb -vvv</span><br><span class="line">cat /proc/interrupts</span><br><span class="line">cat /proc/iomem</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-9-调试工具清单"><a href="#7-9-调试工具清单" class="headerlink" title="7.9 调试工具清单"></a>7.9 调试工具清单</h2><h3 id="调试工具总结"><a href="#调试工具总结" class="headerlink" title="调试工具总结"></a>调试工具总结</h3><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>用途</th>
+<th>阶段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>QEMU</td>
+<td>虚拟化调试</td>
+<td>所有</td>
+</tr>
+<tr>
+<td>GDB</td>
+<td>源码级调试</td>
+<td>汇编&#x2F;C</td>
+</tr>
+<tr>
+<td>crash</td>
+<td>崩溃分析</td>
+<td>运行时</td>
+</tr>
+<tr>
+<td>ftrace</td>
+<td>函数跟踪</td>
+<td>内核</td>
+</tr>
+<tr>
+<td>trace-cmd</td>
+<td>事件跟踪</td>
+<td>内核</td>
+</tr>
+<tr>
+<td>perf</td>
+<td>性能分析</td>
+<td>内核</td>
+</tr>
+<tr>
+<td>SystemTap</td>
+<td>动态插桩</td>
+<td>内核</td>
+</tr>
+<tr>
+<td>eBPF</td>
+<td>运行时跟踪</td>
+<td>内核</td>
+</tr>
+<tr>
+<td>JTAG</td>
+<td>硬件调试</td>
+<td>早期</td>
+</tr>
+</tbody></table>
+<h3 id="实用脚本"><a href="#实用脚本" class="headerlink" title="实用脚本"></a>实用脚本</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># analyze_boot.sh - 启动分析脚本</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;=== Initcall Times ===&quot;</span></span><br><span class="line">grep <span class="string">&quot;initcall&quot;</span> /var/log/dmesg | \</span><br><span class="line">    awk <span class="string">&#x27;&#123;print $NF, $0&#125;&#x27;</span> | \</span><br><span class="line">    <span class="built_in">sort</span> -rn | <span class="built_in">head</span> -20</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;=== Long Boot Services ===&quot;</span></span><br><span class="line">systemd-analyze blame | <span class="built_in">head</span> -20</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;=== Late Initcalls ===&quot;</span></span><br><span class="line">grep <span class="string">&quot;initcall&quot;</span> /var/log/dmesg | \</span><br><span class="line">    awk <span class="string">&#x27;$NF &gt; 100000&#x27;</span> | <span class="built_in">sort</span> -k3 -n</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-10-本章小结"><a href="#7-10-本章小结" class="headerlink" title="7.10 本章小结"></a>7.10 本章小结</h2><h3 id="调试策略"><a href="#调试策略" class="headerlink" title="调试策略"></a>调试策略</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    调试策略树                                │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  问题发生在哪里?                                           │</span><br><span class="line">│       │                                                     │</span><br><span class="line">│       ├─ 无输出 → 早期汇编问题                             │</span><br><span class="line">│       │   - 使用 QEMU/GDB                                  │</span><br><span class="line">│       │   - 添加 earlyprintk                               │</span><br><span class="line">│       │                                                     │</span><br><span class="line">│       ├─ 早期输出后停止 → 解压或早期 C 代码               │</span><br><span class="line">│       │   - 检查 initcall_debug                             │</span><br><span class="line">│       │   - 分析 last printk 位置                           │</span><br><span class="line">│       │                                                     │</span><br><span class="line">│       ├─ 部分驱动初始化失败 → 驱动问题                     │</span><br><span class="line">│       │   - 检查 dmesg                                     │</span><br><span class="line">│       │   - 验证配置                                       │</span><br><span class="line">│       │                                                     │</span><br><span class="line">│       ├─ panic → 崩溃分析                                 │</span><br><span class="line">│       │   - 分析栈回溯                                     │</span><br><span class="line">│       │   - 使用 crash/kdump                               │</span><br><span class="line">│       │                                                     │</span><br><span class="line">│       └─ 系统正常但启动慢 → 性能分析                       │</span><br><span class="line">│           - systemd-analyze                                 │</span><br><span class="line">│           - perf record                                    │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="快速参考"><a href="#快速参考" class="headerlink" title="快速参考"></a>快速参考</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 添加详细日志</span></span><br><span class="line">earlyprintk=serial,ttyS0,115200 loglevel=7 debug</span><br><span class="line"></span><br><span class="line"><span class="comment"># 调试 initcall</span></span><br><span class="line">initcall_debug</span><br><span class="line"></span><br><span class="line"><span class="comment"># QEMU 调试</span></span><br><span class="line">qemu-system-x86_64 -kernel bzImage -s -S</span><br><span class="line"></span><br><span class="line"><span class="comment"># GDB 连接</span></span><br><span class="line">gdb vmlinux</span><br><span class="line">(gdb) target remote :1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 initcall 时间</span></span><br><span class="line">grep initcall /var/log/dmesg | <span class="built_in">sort</span> -k4 -n</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析崩溃</span></span><br><span class="line">crash vmlinux /proc/kcore</span><br></pre></td></tr></table></figure></div>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-7</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-08 02:47:13</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-08 19:02:25
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/08/Linux内核分析之基础知识-7/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-6/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-6</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-7</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC7%E7%AB%A0%EF%BC%9A%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="nav-text">第7章：调试技巧</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E6%A6%82%E8%BF%B0"><span class="nav-text">本章概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E9%98%B6%E6%AE%B5%E5%88%92%E5%88%86"><span class="nav-text">调试阶段划分</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-1-%E6%97%A9%E6%9C%9F%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF"><span class="nav-text">7.1 早期调试技术</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-1-earlyprintk-%E5%92%8C-earlycon"><span class="nav-text">7.1.1 earlyprintk 和 earlycon</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-2-%E8%B0%83%E8%AF%95%E7%BA%A7%E5%88%AB%E6%8E%A7%E5%88%B6"><span class="nav-text">7.1.2 调试级别控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-3-%E5%90%AF%E7%94%A8%E8%B0%83%E8%AF%95%E9%80%89%E9%A1%B9"><span class="nav-text">7.1.3 启用调试选项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-2-QEMU-%E8%B0%83%E8%AF%95"><span class="nav-text">7.2 QEMU 调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-1-QEMU-%E5%9F%BA%E7%A1%80%E8%B0%83%E8%AF%95"><span class="nav-text">7.2.1 QEMU 基础调试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-2-GDB-%E8%BF%9E%E6%8E%A5%E5%92%8C%E8%B0%83%E8%AF%95"><span class="nav-text">7.2.2 GDB 连接和调试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-3-GDB-Python-%E6%89%A9%E5%B1%95"><span class="nav-text">7.2.3 GDB Python 扩展</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-3-ftrace-%E8%B7%9F%E8%B8%AA"><span class="nav-text">7.3 ftrace 跟踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-1-ftrace-%E5%9F%BA%E7%A1%80"><span class="nav-text">7.3.1 ftrace 基础</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-2-trace-cmd-%E5%B7%A5%E5%85%B7"><span class="nav-text">7.3.2 trace-cmd 工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-3-%E5%90%AF%E5%8A%A8%E6%97%B6%E8%B7%9F%E8%B8%AA"><span class="nav-text">7.3.3 启动时跟踪</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-4-initcall-%E8%B0%83%E8%AF%95"><span class="nav-text">7.4 initcall 调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-1-initcall-%E6%97%B6%E9%97%B4%E5%88%86%E6%9E%90"><span class="nav-text">7.4.1 initcall 时间分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-2-%E5%BB%B6%E8%BF%9F%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">7.4.2 延迟初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-5-crash-kdump-%E5%88%86%E6%9E%90"><span class="nav-text">7.5 crash&#x2F;kdump 分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-1-%E9%85%8D%E7%BD%AE-kdump"><span class="nav-text">7.5.1 配置 kdump</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-2-%E4%BD%BF%E7%94%A8-crash-%E5%88%86%E6%9E%90"><span class="nav-text">7.5.2 使用 crash 分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-3-%E5%88%86%E6%9E%90%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.5.3 分析示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-6-ARM64-%E7%89%B9%E5%AE%9A%E8%B0%83%E8%AF%95"><span class="nav-text">7.6 ARM64 特定调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-6-1-ARM64-%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95"><span class="nav-text">7.6.1 ARM64 串口调试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-6-2-ARM64-JTAG-%E8%B0%83%E8%AF%95"><span class="nav-text">7.6.2 ARM64 JTAG 调试</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-7-%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="nav-text">7.7 性能分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-7-1-%E5%90%AF%E5%8A%A8%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="nav-text">7.7.1 启动性能分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-7-2-perf-%E5%88%86%E6%9E%90"><span class="nav-text">7.7.2 perf 分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-8-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E5%92%8C%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="nav-text">7.8 常见问题和解决方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-1-%E5%90%AF%E5%8A%A8%E5%8D%A1%E4%BD%8F"><span class="nav-text">7.8.1 启动卡住</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-2-%E5%86%85%E6%A0%B8%E6%81%90%E6%85%8C"><span class="nav-text">7.8.2 内核恐慌</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-3-%E8%AE%BE%E5%A4%87%E6%A3%80%E6%B5%8B%E5%A4%B1%E8%B4%A5"><span class="nav-text">7.8.3 设备检测失败</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-9-%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7%E6%B8%85%E5%8D%95"><span class="nav-text">7.9 调试工具清单</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7%E6%80%BB%E7%BB%93"><span class="nav-text">调试工具总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%94%A8%E8%84%9A%E6%9C%AC"><span class="nav-text">实用脚本</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-10-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">7.10 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E7%AD%96%E7%95%A5"><span class="nav-text">调试策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E5%8F%82%E8%80%83"><span class="nav-text">快速参考</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        132 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

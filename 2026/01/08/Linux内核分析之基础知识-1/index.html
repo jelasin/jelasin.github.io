@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/08/linux内核分析之基础知识-1/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-1">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-1/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-07T17:17:50.000Z">
+<meta property="article:modified_time" content="2026-01-08T11:01:38.420Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-1 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">39</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">132</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-1</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-08 01:17:50</span>
+        <span class="mobile">2026-01-08 01:17:50</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-08 19:01:38</span>
+            <span class="mobile">2026-01-08 19:01:38</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第1章：x86-64-BIOS-Legacy-启动流程"><a href="#第1章：x86-64-BIOS-Legacy-启动流程" class="headerlink" title="第1章：x86_64 BIOS Legacy 启动流程"></a>第1章：x86_64 BIOS Legacy 启动流程</h1><blockquote>
+<p>从上电到内核引导的完整旅程</p>
+</blockquote>
+<hr>
+<h2 id="本章概述"><a href="#本章概述" class="headerlink" title="本章概述"></a>本章概述</h2><p>BIOS (Basic Input&#x2F;Output System) Legacy 启动是传统 PC 的标准启动方式。本章详细讲解从按下电源键到内核开始执行的完整过程。</p>
+<h3 id="启动流程概览"><a href="#启动流程概览" class="headerlink" title="启动流程概览"></a>启动流程概览</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    BIOS Legacy 启动流程                         │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌──────────────┐   ┌───────────────┐   ┌─────────────────┐   │</span><br><span class="line">│  │  BIOS POST   │ → │  MBR 引导      │ → │  引导程序        │   │</span><br><span class="line">│  │  (固件)       │   │  (512字节)    │   │  (GRUB/LILO)    │   │</span><br><span class="line">│  └──────────────┘   └───────────────┘   └─────────────────┘   │</span><br><span class="line">│          │                   │                   │             │</span><br><span class="line">│          └───────────────────┴───────────────────┘             │</span><br><span class="line">│                              ↓                                 │</span><br><span class="line">│                    ┌──────────────────────┐                    │</span><br><span class="line">│                    │  内核引导头部          │                    │</span><br><span class="line">│                    │  (header.S)          │                    │</span><br><span class="line">│                    └──────────────────────┘                    │</span><br><span class="line">│                              ↓                                 │</span><br><span class="line">│                    ┌──────────────────────┐                    │</span><br><span class="line">│                    │  实模式初始化          │                    │</span><br><span class="line">│                    │  (main.c)            │                    │</span><br><span class="line">│                    └──────────────────────┘                    │</span><br><span class="line">│                              ↓                                 │</span><br><span class="line">│                    ┌──────────────────────┐                    │</span><br><span class="line">│                    │  保护模式切换          │                    │</span><br><span class="line">│                    │  (pm.c)              │                    │</span><br><span class="line">│                    └──────────────────────┘                    │</span><br><span class="line">│                              ↓                                 │</span><br><span class="line">│                    ┌──────────────────────┐                    │</span><br><span class="line">│                    │  压缩内核入口          │                    │</span><br><span class="line">│                    │  (head_64.S)         │                    │</span><br><span class="line">│                    └──────────────────────┘                    │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-1-BIOS-POST-阶段"><a href="#1-1-BIOS-POST-阶段" class="headerlink" title="1.1 BIOS POST 阶段"></a>1.1 BIOS POST 阶段</h2><h3 id="1-1-1-上电自检-Power-On-Self-Test"><a href="#1-1-1-上电自检-Power-On-Self-Test" class="headerlink" title="1.1.1 上电自检 (Power-On Self-Test)"></a>1.1.1 上电自检 (Power-On Self-Test)</h3><p>当按下电源键后，CPU 的重置向量指向 BIOS ROM 的入口点。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">/* 典型的 BIOS 入口 (简化) */</span><br><span class="line">RESET_VECTOR:</span><br><span class="line">    jmp BIOS_INIT</span><br><span class="line"></span><br><span class="line">BIOS_INIT:</span><br><span class="line">    ; 初始化 CPU 寄存器</span><br><span class="line">    xor ax, ax</span><br><span class="line">    mov ds, ax</span><br><span class="line">    mov es, ax</span><br><span class="line"></span><br><span class="line">    ; 检测内存大小</span><br><span class="line">    call detect_memory</span><br><span class="line"></span><br><span class="line">    ; 测试内存</span><br><span class="line">    call test_memory</span><br><span class="line"></span><br><span class="line">    ; 初始化硬件设备</span><br><span class="line">    call init_hardware</span><br><span class="line"></span><br><span class="line">    ; 构建中断向量表</span><br><span class="line">    call setup_IVT</span><br><span class="line"></span><br><span class="line">    ; 读取启动设备配置</span><br><span class="line">    call read_boot_config</span><br><span class="line"></span><br><span class="line">    ; 加载主引导记录</span><br><span class="line">    call load_MBR</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-1-2-实模式内存布局"><a href="#1-1-2-实模式内存布局" class="headerlink" title="1.1.2 实模式内存布局"></a>1.1.2 实模式内存布局</h3><p>BIOS 在 16 位实模式下运行，只能寻址 1MB 内存空间：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">地址范围        大小     用途</span><br><span class="line">────────────────────────────────────────────────</span><br><span class="line">0x00000000 - 0x000003FF   1 KB   中断向量表 (IVT)</span><br><span class="line">                                  - 256 个中断向量</span><br><span class="line">                                  - 每个 4 字节 (段:偏移)</span><br><span class="line"></span><br><span class="line">0x00000400 - 0x000004FF   256 B   BIOS 数据区 (BDA)</span><br><span class="line">                                  - 0x400: 端口地址</span><br><span class="line">                                  - 0x413: 可用内存 (KB)</span><br><span class="line">                                  - 0x417: 键盘状态标志</span><br><span class="line"></span><br><span class="line">0x00000500 - 0x00007BFF   ~30 KB  常规内存可用区域</span><br><span class="line"></span><br><span class="line">0x00007C00 - 0x00007DFF   512 B   MBR 加载位置</span><br><span class="line">                                  - BIOS 将第一个扇区加载到这里</span><br><span class="line"></span><br><span class="line">0x00007E00 - 0x0007FFFF   ~480 KB BIOS/操作系统数据区</span><br><span class="line">                                  - boot_params 将被复制到 0x90000</span><br><span class="line"></span><br><span class="line">0x00080000 - 0x0009FFFF   128 KB  扩展 BIOS 数据区 (EBDA)</span><br><span class="line"></span><br><span class="line">0x000A0000 - 0x000BFFFF   128 KB  视频内存 (VGA)</span><br><span class="line">                                  - 0xA0000: 图形模式</span><br><span class="line">                                  - 0xB8000: 文本模式</span><br><span class="line"></span><br><span class="line">0x000C0000 - 0x000C7FFF   32 KB   视频 BIOS</span><br><span class="line">                                  - 0xC0000: VGA BIOS 入口</span><br><span class="line"></span><br><span class="line">0x000C8000 - 0x000EFFFF   160 KB  各种适配器 ROM</span><br><span class="line"></span><br><span class="line">0x000F0000 - 0x000FFFFF   64 KB   系统 BIOS</span><br><span class="line">                                  - 0xF0000: BIOS 代码</span><br><span class="line">                                  - 0xFFFF0: 重置向量</span><br><span class="line"></span><br><span class="line">0x00100000 -             &gt;1 MB   扩展内存 (XMS)</span><br><span class="line">                                  - 需要保护模式才能访问</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-1-3-BIOS-中断调用-BIOS-Interrupt-Calls"><a href="#1-1-3-BIOS-中断调用-BIOS-Interrupt-Calls" class="headerlink" title="1.1.3 BIOS 中断调用 (BIOS Interrupt Calls)"></a>1.1.3 BIOS 中断调用 (BIOS Interrupt Calls)</h3><p>BIOS 提供软件中断接口，实模式代码可以通过 INT 指令调用：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 常用 BIOS 中断 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* INT 10h - 视频服务 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BIOS_VIDEO_SERVICES     0x10</span></span><br><span class="line">    <span class="comment">/* AH=0x00: 设置视频模式 */</span></span><br><span class="line">    <span class="comment">/* AH=0x02: 设置光标位置 */</span></span><br><span class="line">    <span class="comment">/* AH=0x0E: 写入字符 */</span></span><br><span class="line">    <span class="comment">/* AH=0x12: VBE 扩展功能 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* INT 13h - 磁盘服务 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BIOS_DISK_SERVICES      0x13</span></span><br><span class="line">    <span class="comment">/* AH=0x02: 读扇区到内存 */</span></span><br><span class="line">    <span class="comment">/* AH=0x03: 从内存写扇区 */</span></span><br><span class="line">    <span class="comment">/* AH=0x08: 获取驱动器参数 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* INT 15h - 系统服务 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BIOS_SYSTEM_SERVICES    0x15</span></span><br><span class="line">    <span class="comment">/* AH=0x88: 获取扩展内存大小 */</span></span><br><span class="line">    <span class="comment">/* AH=0xE8: E820 内存映射 */</span></span><br><span class="line">    <span class="comment">/* AH=0xE9: Intel SpeedStep (IST) */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* INT 16h - 键盘服务 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BIOS_KEYBOARD_SERVICES  0x16</span></span><br><span class="line">    <span class="comment">/* AH=0x00: 读取键盘输入 */</span></span><br><span class="line">    <span class="comment">/* AH=0x01: 检查按键状态 */</span></span><br><span class="line">    <span class="comment">/* AH=0x02: 获取键盘标志 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* INT 1Ah - 时钟服务 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BIOS_TIME_SERVICES      0x1A</span></span><br><span class="line">    <span class="comment">/* AH=0x00: 读取系统时钟 */</span></span><br><span class="line">    <span class="comment">/* AH=0x04: 读取日期 */</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>内核中的使用示例</strong> (<code>arch/x86/boot/main.c</code>):</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 查询键盘状态 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">keyboard_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">biosregs</span> <span class="title">ireg</span>, <span class="title">oreg</span>;</span></span><br><span class="line"></span><br><span class="line">    initregs(&amp;ireg);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* AH=0x02: 获取键盘状态 */</span></span><br><span class="line">    ireg.ah = <span class="number">0x02</span>;</span><br><span class="line">    intcall(<span class="number">0x16</span>, &amp;ireg, &amp;oreg);</span><br><span class="line">    boot_params.kbd_status = oreg.al;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* AX=0x0305: 设置键盘重复率 */</span></span><br><span class="line">    ireg.ax = <span class="number">0x0305</span>;</span><br><span class="line">    intcall(<span class="number">0x16</span>, &amp;ireg, <span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 调用 BIOS 中断的通用函数 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">intcall</span><span class="params">(<span class="type">int</span> intno, <span class="keyword">struct</span> biosregs *ireg,</span></span><br><span class="line"><span class="params">                    <span class="keyword">struct</span> biosregs *oreg)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">biosregs</span> <span class="title">tmp</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">asm</span> <span class="title function_">volatile</span><span class="params">(<span class="string">&quot;pushfl; pushw %%fs; &quot;</span></span></span><br><span class="line"><span class="params">                 <span class="string">&quot;movw %%ds, %%ax; movw %%ax, %%fs; &quot;</span></span></span><br><span class="line"><span class="params">                 <span class="string">&quot;pushw %%es; &quot;</span></span></span><br><span class="line"><span class="params">                 <span class="string">&quot;intcall_wrapper: int %2; &quot;</span></span></span><br><span class="line"><span class="params">                 <span class="string">&quot;pushw %%es; popw %%ds; &quot;</span></span></span><br><span class="line"><span class="params">                 <span class="string">&quot;popw %%es; popw %%fs; popfl&quot;</span></span></span><br><span class="line"><span class="params">                 : <span class="string">&quot;=a&quot;</span>(tmp.eax), <span class="string">&quot;=b&quot;</span>(tmp.ebx),</span></span><br><span class="line"><span class="params">                   <span class="string">&quot;=c&quot;</span>(tmp.ecx), <span class="string">&quot;=d&quot;</span>(tmp.edx)</span></span><br><span class="line"><span class="params">                 : <span class="string">&quot;i&quot;</span>(intno), <span class="string">&quot;a&quot;</span>(ireg-&gt;eax),</span></span><br><span class="line"><span class="params">                   <span class="string">&quot;b&quot;</span>(ireg-&gt;ebx), <span class="string">&quot;c&quot;</span>(ireg-&gt;ecx),</span></span><br><span class="line"><span class="params">                   <span class="string">&quot;d&quot;</span>(ireg-&gt;edx)</span></span><br><span class="line"><span class="params">                 : <span class="string">&quot;memory&quot;</span>, <span class="string">&quot;cc&quot;</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (oreg)</span><br><span class="line">        *oreg = tmp;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-1-4-E820-内存映射"><a href="#1-1-4-E820-内存映射" class="headerlink" title="1.1.4 E820 内存映射"></a>1.1.4 E820 内存映射</h3><p>E820 是 BIOS 提供的内存映射查询接口，比传统的 <code>INT 15h/AH=88h</code> 更强大。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* E820 内存类型定义 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_RAM          1  <span class="comment">/* 可用 RAM */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_RESERVED     2  <span class="comment">/* 保留区域 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_ACPI         3  <span class="comment">/* ACPI 可再利用 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_NVS          4  <span class="comment">/* ACPI NVS (非易失性存储) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_UNUSABLE     5  <span class="comment">/* 不可用内存 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> E820_TYPE_PMEM         7  <span class="comment">/* 可保留内存 (Persistent) */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* E820 条目结构 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">e820_entry</span> &#123;</span></span><br><span class="line">    u64 addr;    <span class="comment">/* 基地址 */</span></span><br><span class="line">    u64 size;    <span class="comment">/* 大小 (字节) */</span></span><br><span class="line">    u32 type;    <span class="comment">/* 内存类型 */</span></span><br><span class="line">&#125; __attribute__((packed));</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 典型的 E820 内存映射示例 */</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 0x0000000000000000 - 0x000000000009FC00  RAM (639 KB)</span></span><br><span class="line"><span class="comment"> * 0x000000000009FC00 - 0x00000000000A0000  Reserved</span></span><br><span class="line"><span class="comment"> * 0x00000000000E0000 - 0x0000000000100000  Reserved (BIOS area)</span></span><br><span class="line"><span class="comment"> * 0x0000000000100000 - 0x000000003FFF0000  RAM (约 1 GB)</span></span><br><span class="line"><span class="comment"> * 0x000000003FFF0000 - 0x0000000040000000  Reserved (ACPI NVS)</span></span><br><span class="line"><span class="comment"> * 0x0000000100000000 - 0x0000000420000000  RAM (约 16 GB, 以上)</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure></div>
+
+<p>内核查询 E820 的代码 (<code>arch/x86/boot/memory.c</code>):</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">detect_memory_e820</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">biosregs</span> <span class="title">ireg</span>, <span class="title">oreg</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">e820_entry</span> *<span class="title">desc</span> =</span> boot_params.e820_table;</span><br><span class="line">    u32 buf_size;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* SMAP = 0x534D4150 (&#x27;SMAP&#x27;) */</span></span><br><span class="line">    initregs(&amp;ireg);</span><br><span class="line">    ireg.ax = <span class="number">0xe820</span>;</span><br><span class="line">    ireg.cx = <span class="keyword">sizeof</span>(buf);</span><br><span class="line">    ireg.edx = SMAP;</span><br><span class="line">    ireg.di = (<span class="type">size_t</span>)&amp;buf;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 循环查询所有内存条目 */</span></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="comment">/* INT 15h, AX=E820h: 查询系统地址映射 */</span></span><br><span class="line">        intcall(<span class="number">0x15</span>, &amp;ireg, &amp;oreg);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (oreg.eflags &amp; X86_EFLAGS_CF)</span><br><span class="line">            <span class="keyword">break</span>;  <span class="comment">/* 进位标志设置 = 错误 */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 检查签名 */</span></span><br><span class="line">        <span class="keyword">if</span> (oreg.eax != SMAP) &#123;</span><br><span class="line">            count = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 复制条目到 boot_params */</span></span><br><span class="line">        *desc++ = buf;</span><br><span class="line">        count++;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 下一个条目 */</span></span><br><span class="line">        ireg.bx = oreg.bx;</span><br><span class="line">    &#125; <span class="keyword">while</span> (ireg.bx &amp;&amp; count &lt; E820_MAX_ENTRIES);</span><br><span class="line"></span><br><span class="line">    boot_params.e820_entries = count;</span><br><span class="line">    <span class="keyword">return</span> count;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-2-MBR-引导阶段"><a href="#1-2-MBR-引导阶段" class="headerlink" title="1.2 MBR 引导阶段"></a>1.2 MBR 引导阶段</h2><h3 id="1-2-1-主引导记录-Master-Boot-Record"><a href="#1-2-1-主引导记录-Master-Boot-Record" class="headerlink" title="1.2.1 主引导记录 (Master Boot Record)"></a>1.2.1 主引导记录 (Master Boot Record)</h3><p>MBR 是磁盘的第一个扇区 (512 字节)，BIOS 将其加载到内存 <code>0x7C00</code> 处。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">MBR 结构 (512 字节):</span><br><span class="line">┌─────────────────────────────────────────────────────┐</span><br><span class="line">│  偏移     大小     内容                              │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  0x000    446 B   引导代码 (Boot Code)               │</span><br><span class="line">│                      │                              │</span><br><span class="line">│                      └─ GRUB Stage 1 或其他引导程序   │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  0x1BE    64 B    分区表 (Partition Table)          │</span><br><span class="line">│                      │                              │</span><br><span class="line">│                      ├─ 4 个主分区表项               │</span><br><span class="line">│                      │  每项 16 字节:                │</span><br><span class="line">│                      │  - 0x00: 活动标志 (0x80=活动)  │</span><br><span class="line">│                      │  - 0x01-0x03: 起始 CHS       │</span><br><span class="line">│                      │  - 0x04: 分区类型             │</span><br><span class="line">│                      │  - 0x05-0x07: 结束 CHS       │</span><br><span class="line">│                      │  - 0x08-0x0B: 起始 LBA       │</span><br><span class="line">│                      │  - 0x0C-0x0F: 扇区数         │</span><br><span class="line">├─────────────────────────────────────────────────────┤</span><br><span class="line">│  0x1FE    2 B     签名 (0x55 0xAA)                  │</span><br><span class="line">└─────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-2-2-分区类型代码"><a href="#1-2-2-分区类型代码" class="headerlink" title="1.2.2 分区类型代码"></a>1.2.2 分区类型代码</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 常见分区类型 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_EMPTY          0x00</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_FAT12          0x01</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_FAT16_LBA      0x0E</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_EXTENDED       0x05</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_EXTENDED_LBA   0x0F</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_NTFS           0x07</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_LINUX          0x83</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_LINUX_EXTENDED 0x85</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_LINUX_LVM      0x8E</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_LINUX_SWAP     0x82</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MBR_PARTITION_TYPE_GPT_PROTECTIVE 0xEE</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-2-3-从-MBR-到引导程序"><a href="#1-2-3-从-MBR-到引导程序" class="headerlink" title="1.2.3 从 MBR 到引导程序"></a>1.2.3 从 MBR 到引导程序</h3><p>典型的引导过程：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">; MBR 代码 (简化)</span><br><span class="line">[ORG 0x7C00]</span><br><span class="line"></span><br><span class="line">start:</span><br><span class="line">    cli                     ; 禁用中断</span><br><span class="line">    xor ax, ax</span><br><span class="line">    mov ds, ax</span><br><span class="line">    mov es, ax</span><br><span class="line"></span><br><span class="line">    ; 保存启动驱动器号 (DL 寄存器)</span><br><span class="line">    mov [boot_drive], dl</span><br><span class="line"></span><br><span class="line">    ; 加载分区表中的活动分区</span><br><span class="line">    call load_active_partition</span><br><span class="line"></span><br><span class="line">    ; 跳转到加载的代码</span><br><span class="line">    jmp 0x0000:0x7E00</span><br><span class="line"></span><br><span class="line">boot_drive: db 0</span><br><span class="line"></span><br><span class="line">times 510-($-$$) db 0   ; 填充</span><br><span class="line">dw 0xAA55               ; 签名</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-3-引导程序-GRUB-阶段"><a href="#1-3-引导程序-GRUB-阶段" class="headerlink" title="1.3 引导程序 (GRUB) 阶段"></a>1.3 引导程序 (GRUB) 阶段</h2><h3 id="1-3-1-GRUB-启动阶段"><a href="#1-3-1-GRUB-启动阶段" class="headerlink" title="1.3.1 GRUB 启动阶段"></a>1.3.1 GRUB 启动阶段</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    GRUB 启动流程                            │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  Stage 1: MBR 中的 446 字节                                 │</span><br><span class="line">│    - 加载 Stage 1.5 或 Stage 2                              │</span><br><span class="line">│                                                             │</span><br><span class="line">│  Stage 1.5: 文件系统驱动 (可选)                             │</span><br><span class="line">│    - 存储 /boot 分区的引导区                                │</span><br><span class="line">│    - 包含文件系统驱动                                       │</span><br><span class="line">│                                                             │</span><br><span class="line">│  Stage 2: 完整引导程序                                      │</span><br><span class="line">│    - 显示菜单                                               │</span><br><span class="line">│    - 加载内核配置                                           │</span><br><span class="line">│    - 加载内核镜像到内存                                     │</span><br><span class="line">│                                                             │</span><br><span class="line">│  加载内核后:                                                │</span><br><span class="line">│    - 设置 boot_params 结构                                  │</span><br><span class="line">│    - 跳转到内核入口点                                       │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-3-2-GRUB-配置文件"><a href="#1-3-2-GRUB-配置文件" class="headerlink" title="1.3.2 GRUB 配置文件"></a>1.3.2 GRUB 配置文件</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /boot/grub/grub.cfg</span></span><br><span class="line"></span><br><span class="line">menuentry <span class="string">&quot;Linux 6.12.38&quot;</span> &#123;</span><br><span class="line">    insmod gzio                    <span class="comment"># GZIP 解压支持</span></span><br><span class="line">    insmod part_gpt                <span class="comment"># GPT 分区支持</span></span><br><span class="line">    insmod ext2                    <span class="comment"># ext2 文件系统支持</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 设置根设备</span></span><br><span class="line">    <span class="built_in">set</span> root=<span class="string">&#x27;hd0,gpt2&#x27;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 加载内核</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&#x27;Loading Linux kernel ...&#x27;</span></span><br><span class="line">    linux /vmlinuz-6.12 \</span><br><span class="line">        root=/dev/sda3 \           <span class="comment"># 根文件系统</span></span><br><span class="line">        ro \                       <span class="comment"># 只读挂载</span></span><br><span class="line">        console=ttyS0,115200n8 \   <span class="comment"># 串口控制台</span></span><br><span class="line">        quiet</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 加载 initrd</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&#x27;Loading initial ramdisk ...&#x27;</span></span><br><span class="line">    initrd /initrd.img-6.12</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">menuentry <span class="string">&quot;Linux 6.12.38 (Recovery Mode)&quot;</span> &#123;</span><br><span class="line">    <span class="built_in">set</span> root=<span class="string">&#x27;hd0,gpt2&#x27;</span></span><br><span class="line">    linux /vmlinuz-6.12 \</span><br><span class="line">        root=/dev/sda3 \</span><br><span class="line">        ro \</span><br><span class="line">        single                     <span class="comment"># 单用户模式</span></span><br><span class="line">    initrd /initrd.img-6.12</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-3-3-GRUB-传递给内核的信息"><a href="#1-3-3-GRUB-传递给内核的信息" class="headerlink" title="1.3.3 GRUB 传递给内核的信息"></a>1.3.3 GRUB 传递给内核的信息</h3><p>GRUB 根据启动协议填充 <code>boot_params</code> 结构：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* boot_params.hdr 的关键字段 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">setup_header</span> &#123;</span></span><br><span class="line">    u8 setup_sects;        <span class="comment">/* setup 代码扇区数 */</span></span><br><span class="line">    u16 root_flags;        <span class="comment">/* 根文件系统挂载标志 */</span></span><br><span class="line">    u32 syssize;           <span class="comment">/* 系统代码大小 (16字节对齐) */</span></span><br><span class="line">    u16 ram_size;          <span class="comment">/* 旧式内存大小 (KB) */</span></span><br><span class="line">    u16 video_mode;        <span class="comment">/* 视频模式 */</span></span><br><span class="line">    u16 root_dev;          <span class="comment">/* 根设备号 */</span></span><br><span class="line">    u16 boot_flag;         <span class="comment">/* 启动标志 (0xAA55) */</span></span><br><span class="line">    u16 jump;              <span class="comment">/* 跳转指令 */</span></span><br><span class="line">    u32 header;            <span class="comment">/* 头部签名 (&quot;HdrS&quot;) */</span></span><br><span class="line">    u16 version;           <span class="comment">/* 启动协议版本 */</span></span><br><span class="line">    u32 type_of_loader;    <span class="comment">/* 引导程序类型 (0xFF=GRUB) */</span></span><br><span class="line">    u32 loadflags;         <span class="comment">/* 加载标志 */</span></span><br><span class="line">    u32 setup_move_size;   <span class="comment">/* 需要移动的大小 */</span></span><br><span class="line">    u32 code32_start;      <span class="comment">/* 32位入口点 (0x100000) */</span></span><br><span class="line">    u32 cmd_line_ptr;      <span class="comment">/* 命令行指针 */</span></span><br><span class="line">    u32 initrd_addr_max;   <span class="comment">/* initrd 最大地址 */</span></span><br><span class="line">    u32 kernel_alignment;  <span class="comment">/* 内核对齐要求 */</span></span><br><span class="line">    u8 relocatable_kernel; <span class="comment">/* 可重定位内核 */</span></span><br><span class="line">    u8 min_alignment;      <span class="comment">/* 最小对齐 */</span></span><br><span class="line">    u32 cmdline_size;      <span class="comment">/* 命令行大小 */</span></span><br><span class="line">    <span class="comment">/* ... 更多字段 ... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-4-内核引导头部-header-S"><a href="#1-4-内核引导头部-header-S" class="headerlink" title="1.4 内核引导头部 (header.S)"></a>1.4 内核引导头部 (header.S)</h2><h3 id="1-4-1-header-S-完整结构"><a href="#1-4-1-header-S-完整结构" class="headerlink" title="1.4.1 header.S 完整结构"></a>1.4.1 header.S 完整结构</h3><p><code>arch/x86/boot/header.S</code> 是内核映像的第一部分，被 BIOS&#x2F;引导程序加载。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br></pre></td><td class="code"><pre><span class="line">/* arch/x86/boot/header.S */</span><br><span class="line"></span><br><span class="line">    .code16</span><br><span class="line">    .section &quot;.bstext&quot;, &quot;ax&quot;</span><br><span class="line"></span><br><span class="line">/* ============================================================================</span><br><span class="line"> * 第一部分: MSDOS/PE 头部 (用于 EFI Stub)</span><br><span class="line"> * ============================================================================ */</span><br><span class="line"></span><br><span class="line">#ifdef CONFIG_EFI_STUB</span><br><span class="line">    .word MZ_MAGIC               /* &quot;MZ&quot; DOS 签名 */</span><br><span class="line">    .org 0x18</span><br><span class="line">    .long PE_MAGIC               /* 指向 PE 头的偏移 */</span><br><span class="line"></span><br><span class="line">    /* PE 头从这里开始 */</span><br><span class="line">pe_header:</span><br><span class="line">    .long PE_MAGIC               /* PE\0\0 */</span><br><span class="line"></span><br><span class="line">coff_header:</span><br><span class="line">    #ifdef CONFIG_X86_64</span><br><span class="line">        .word IMAGE_FILE_MACHINE_AMD64  /* AMD64 */</span><br><span class="line">    #else</span><br><span class="line">        .word IMAGE_FILE_MACHINE_I386   /* i386 */</span><br><span class="line">    #endif</span><br><span class="line">    .word section_count          /* 节数量 */</span><br><span class="line">    .long 0                      /* 时间戳 */</span><br><span class="line">    .long 1                      /* 符号表指针 */</span><br><span class="line">    .word section_table - optional_header  /* 可选头大小 */</span><br><span class="line">    .word IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_DEBUG_STRIPPED</span><br><span class="line"></span><br><span class="line">optional_header:</span><br><span class="line">    #ifdef CONFIG_X86_64</span><br><span class="line">        .word PE_OPT_MAGIC_PE32PLUS   /* PE32+ 格式 */</span><br><span class="line">    #else</span><br><span class="line">        .word PE_OPT_MAGIC_PE32       /* PE32 格式 */</span><br><span class="line">    #endif</span><br><span class="line">    .byte 0x02                   /* 主版本号 */</span><br><span class="line">    .byte 0x14                   /* 次版本号 */</span><br><span class="line">    .long ZO__data               /* 代码大小 */</span><br><span class="line">    .long ZO__end - ZO__data     /* 已初始化数据大小 */</span><br><span class="line">    .long 0                      /* 未初始化数据大小 */</span><br><span class="line">    .long setup_size + ZO_efi_pe_entry  /* 入口点地址 */</span><br><span class="line">    .long setup_size             /* 代码基址 */</span><br><span class="line"></span><br><span class="line">extra_header_fields:</span><br><span class="line">    #ifdef CONFIG_X86_64</span><br><span class="line">        .quad 0                  /* ImageBase */</span><br><span class="line">    #else</span><br><span class="line">        .long 0</span><br><span class="line">    #endif</span><br><span class="line">    .long salign                 /* SectionAlignment */</span><br><span class="line">    .long falign                 /* FileAlignment */</span><br><span class="line">    .word 0, 0                   /* OS 版本 */</span><br><span class="line">    .word LINUX_EFISTUB_MAJOR_VERSION</span><br><span class="line">    .word LINUX_EFISTUB_MINOR_VERSION</span><br><span class="line">    .word 0, 0                   /* Subsystem 版本 */</span><br><span class="line">    .long 0                      /* Win32VersionValue */</span><br><span class="line">    .long setup_size + ZO__end   /* SizeOfImage */</span><br><span class="line">    .long salign                 /* SizeOfHeaders */</span><br><span class="line">    .long 0                      /* CheckSum */</span><br><span class="line">    .word IMAGE_SUBSYSTEM_EFI_APPLICATION</span><br><span class="line">    .word IMAGE_DLLCHARACTERISTICS_NX_COMPAT</span><br><span class="line">    #ifdef CONFIG_X86_64</span><br><span class="line">        .quad 0, 0, 0, 0         /* 栈/堆保留 */</span><br><span class="line">    #else</span><br><span class="line">        .long 0, 0, 0, 0</span><br><span class="line">    #endif</span><br><span class="line">    .long 0                      /* LoaderFlags */</span><br><span class="line">    .long (section_table - .) / 8  /* NumberOfRvaAndSizes */</span><br><span class="line"></span><br><span class="line">    /* 数据目录 */</span><br><span class="line">    .quad 0                      /* ExportTable */</span><br><span class="line">    .quad 0                      /* ImportTable */</span><br><span class="line">    .quad 0                      /* ResourceTable */</span><br><span class="line">    .quad 0                      /* ExceptionTable */</span><br><span class="line">    .quad 0                      /* CertificationTable */</span><br><span class="line">    .quad 0                      /* BaseRelocationTable */</span><br><span class="line"></span><br><span class="line">/* 节表 */</span><br><span class="line">section_table:</span><br><span class="line">    .ascii &quot;.setup&quot;</span><br><span class="line">    .byte 0, 0</span><br><span class="line">    .long pecompat_fstart - salign</span><br><span class="line">    .long salign</span><br><span class="line">    .long pecompat_fstart - salign</span><br><span class="line">    .long salign</span><br><span class="line">    .long 0, 0, 0</span><br><span class="line">    .long IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_DISCARDABLE</span><br><span class="line"></span><br><span class="line">    .ascii &quot;.text&quot;</span><br><span class="line">    .byte 0, 0, 0</span><br><span class="line">    .long ZO__end - ZO__data</span><br><span class="line">    .long salign</span><br><span class="line">    .long ZO__edata - ZO__data</span><br><span class="line">    .long salign</span><br><span class="line">    .long 0, 0, 0</span><br><span class="line">    .long IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_EXECUTE</span><br><span class="line">#endif /* CONFIG_EFI_STUB */</span><br><span class="line"></span><br><span class="line">/* ============================================================================</span><br><span class="line"> * 第二部分: 引导协议头部</span><br><span class="line"> * ============================================================================ */</span><br><span class="line"></span><br><span class="line">    .globl hdr</span><br><span class="line">hdr:</span><br><span class="line">setup_sects:</span><br><span class="line">    .byte 0                       /* 默认为 4 */</span><br><span class="line">root_flags:</span><br><span class="line">    .byte ROOT_RDONLY</span><br><span class="line">syssize:</span><br><span class="line">    .long 0</span><br><span class="line">ram_size:</span><br><span class="line">    .word 0</span><br><span class="line">vid_mode:</span><br><span class="line">    .word SVGA_MODE</span><br><span class="line">root_dev:</span><br><span class="line">    .word 0</span><br><span class="line">boot_flag:</span><br><span class="line">    .word 0xAA55                  /* 必须是这个值 */</span><br><span class="line"></span><br><span class="line">/* 跳转到 setup 代码 */</span><br><span class="line">    .globl _start</span><br><span class="line">_start:</span><br><span class="line">    #ifdef CONFIG_EFI_STUB</span><br><span class="line">        /*</span><br><span class="line">         * 对于 EFI Stub, 我们需要执行 setup 代码</span><br><span class="line">         * EFI 入口点在 efi_pe_entry</span><br><span class="line">         */</span><br><span class="line">        jmp start_of_setup</span><br><span class="line">    #else</span><br><span class="line">        /* 非 EFI 情况: 直接跳转到 start_of_setup */</span><br><span class="line">        jmp start_of_setup</span><br><span class="line">    #endif</span><br><span class="line"></span><br><span class="line">/* ============================================================================</span><br><span class="line"> * 第三部分: setup 头部扩展 (版本 2.10+)</span><br><span class="line"> * ============================================================================ */</span><br><span class="line"></span><br><span class="line">    .ascii &quot;HdrS&quot;</span><br><span class="line">    .word 0x021F                  /* 启动协议版本 2.15 */</span><br><span class="line">    .globl realmode_swtch</span><br><span class="line">realmode_swtch: .word 0</span><br><span class="line">start_sys_seg:</span><br><span class="line">    .word 0</span><br><span class="line">kernel_version:</span><br><span class="line">    .word 0</span><br><span class="line">    .globl type_of_loader</span><br><span class="line">type_of_loader:</span><br><span class="line">    .byte 0                       /* 0xFF = GRUB */</span><br><span class="line">    .globl loadflags</span><br><span class="line">loadflags:</span><br><span class="line">    .byte LOADED_HIGH | CAN_USE_HEAP | QUIET_FLAG</span><br><span class="line">setup_move_size:</span><br><span class="line">    .long 0x8000</span><br><span class="line">code32_start:</span><br><span class="line">    .long 0x100000                /* 32/64 位入口点 */</span><br><span class="line">ramdisk_image:</span><br><span class="line">    .long 0</span><br><span class="line">ramdisk_size:</span><br><span class="line">    .long 0</span><br><span class="line">bootsect_kludge:</span><br><span class="line">    .word 0</span><br><span class="line">heap_end_ptr:</span><br><span class="line">    .word _end</span><br><span class="line">    .globl ext_loader_ver</span><br><span class="line">ext_loader_ver:</span><br><span class="line">    .byte 0</span><br><span class="line">    .globl ext_loader_type</span><br><span class="line">ext_loader_type:</span><br><span class="line">    .byte 0</span><br><span class="line">cmd_line_ptr:</span><br><span class="line">    .long 0                       /* 命令行指针 */</span><br><span class="line">initrd_addr_max:</span><br><span class="line">    .long 0x7fffffff</span><br><span class="line">kernel_alignment:</span><br><span class="line">    .long CONFIG_PHYSICAL_ALIGN</span><br><span class="line">relocatable_kernel:</span><br><span class="line">    .byte 1</span><br><span class="line">min_alignment:</span><br><span class="line">    .byte 0</span><br><span class="line">xloadflags:</span><br><span class="line">    .word 0</span><br><span class="line">cmdline_size:</span><br><span class="line">    .long COMMAND_LINE_SIZE</span><br><span class="line">hardware_subarch:</span><br><span class="line">    .long 0</span><br><span class="line">hardware_subarch_data:</span><br><span class="line">    .quad 0</span><br><span class="line">payload_offset:</span><br><span class="line">    .long 0</span><br><span class="line">payload_length:</span><br><span class="line">    .long 0</span><br><span class="line">setup_data:</span><br><span class="line">    .quad 0</span><br><span class="line">pref_address:</span><br><span class="line">    .quad CONFIG_PHYSICAL_START</span><br><span class="line">init_size:</span><br><span class="line">    .long 0</span><br><span class="line">handover_offset:</span><br><span class="line">    .long 0</span><br><span class="line"></span><br><span class="line">/* ============================================================================</span><br><span class="line"> * 第四部分: 实模式代码和数据</span><br><span class="line"> * ============================================================================ */</span><br><span class="line"></span><br><span class="line">    .code16</span><br><span class="line">    .globl start_of_setup</span><br><span class="line">start_of_setup:</span><br><span class="line">    /* 保存 DS:SI (boot_params 指针) */</span><br><span class="line">    pushw %ds</span><br><span class="line">    pushw %si</span><br><span class="line"></span><br><span class="line">    /* 设置栈 */</span><br><span class="line">    movw $stack_start, %sp</span><br><span class="line">    movw %ss, %ax</span><br><span class="line">    movw %ax, %ds</span><br><span class="line"></span><br><span class="line">    /* 调用 main.c 中的 main() 函数 */</span><br><span class="line">    call main</span><br><span class="line"></span><br><span class="line">    /* main 不应该返回, 如果返回则等待 */</span><br><span class="line">    call keyboard_wait</span><br><span class="line">    jmp .Lhlt</span><br><span class="line"></span><br><span class="line">.Lhlt:</span><br><span class="line">    hlt</span><br><span class="line">    jmp .Lhlt</span><br><span class="line"></span><br><span class="line">/* 栈定义 */</span><br><span class="line">    .bss</span><br><span class="line">    .balign 16</span><br><span class="line">stack_start:</span><br><span class="line">    .fill 512, 1, 0               /* 512 字节栈 */</span><br><span class="line">stack_end:</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-4-2-启动协议版本"><a href="#1-4-2-启动协议版本" class="headerlink" title="1.4.2 启动协议版本"></a>1.4.2 启动协议版本</h3><p>Linux 内核启动协议版本演进：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 版本历史 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BOOT_PROTO_V1    0x0102  <span class="comment">/* Linux 1.3.73 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BOOT_PROTO_V2    0x0200  <span class="comment">/* Linux 2.4.0 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BOOT_PROTO_V2_10 0x0201  <span class="comment">/* Linux 2.6.x - 引入 type_of_loader */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BOOT_PROTO_V2_12 0x020C  <span class="comment">/* 支持 EFI */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BOOT_PROTO_V2_15 0x020F  <span class="comment">/* 当前版本 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 关键版本特性 */</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 2.00+: 支持大内核 (bzImage)</span></span><br><span class="line"><span class="comment"> * 2.01+: 添加 type_of_loader 字段</span></span><br><span class="line"><span class="comment"> * 2.02+: 支持内核模块</span></span><br><span class="line"><span class="comment"> * 2.03+: 支持/initrd= 参数</span></span><br><span class="line"><span class="comment"> * 2.04+: 支持视频模式选择</span></span><br><span class="line"><span class="comment"> * 2.05+: 支持 mem= 参数</span></span><br><span class="line"><span class="comment"> * 2.06+: 支持 SATA/AHCI</span></span><br><span class="line"><span class="comment"> * 2.10+: EFI 支持</span></span><br><span class="line"><span class="comment"> * 2.11+: 支持可重定位内核</span></span><br><span class="line"><span class="comment"> * 2.12+: 支持 64 位 EFI</span></span><br><span class="line"><span class="comment"> * 2.13+: 支持 xsave</span></span><br><span class="line"><span class="comment"> * 2.14+: 支持加载任意地址</span></span><br><span class="line"><span class="comment"> * 2.15+: 改进的 EFI handover 协议</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-4-3-引导程序类型标识"><a href="#1-4-3-引导程序类型标识" class="headerlink" title="1.4.3 引导程序类型标识"></a>1.4.3 引导程序类型标识</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* boot_params.hdr.type_of_loader 值 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_NONE          0  <span class="comment">/* 未加载 (直接启动) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_LOADBIN       1  <span class="comment">/* loadlin */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_BOOTSECT_LOADER  2  <span class="comment">/* bootsect-loader */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_SYSLINUX      3  <span class="comment">/* SYSLINUX */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_ETHBOOT       4  <span class="comment">/* Etherboot */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_KERNEL        5  <span class="comment">/* 内核自解压 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_GRUB          6  <span class="comment">/* GRUB */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_UBOOT         7  <span class="comment">/* U-Boot */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_TILO          8  <span class="comment">/* tilo */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_ZIPL          9  <span class="comment">/* zIPL (s390) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LOADER_TYPE_KEXEC         10 <span class="comment">/* kexec */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 扩展引导程序类型 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXT_LOADER_TYPE_NONE      0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXT_LOADER_TYPE_QEMU      1  <span class="comment">/* QEMU */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXT_LOADER_TYPE_EDK2      2  <span class="comment">/* EDK2/UEFI */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXT_LOADER_TYPE_FIRMWARE  3  <span class="comment">/* 固件 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-5-实模式初始化-main-c"><a href="#1-5-实模式初始化-main-c" class="headerlink" title="1.5 实模式初始化 (main.c)"></a>1.5 实模式初始化 (main.c)</h2><h3 id="1-5-1-main-函数流程"><a href="#1-5-1-main-函数流程" class="headerlink" title="1.5.1 main() 函数流程"></a>1.5.1 main() 函数流程</h3><p><code>arch/x86/boot/main.c</code> 的 <code>main()</code> 函数是实模式下的 C 入口点：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 1. 复制引导参数 */</span></span><br><span class="line">    copy_boot_params();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 初始化堆 (用于后续内存分配) */</span></span><br><span class="line">    init_heap();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 查询硬件信息 */</span></span><br><span class="line">    keyboard_init();        <span class="comment">/* 键盘状态 */</span></span><br><span class="line">    query_ist();            <span class="comment">/* Intel SpeedStep */</span></span><br><span class="line">    query_vbe();            <span class="comment">/* VESA BIOS Extensions */</span></span><br><span class="line">    query_mca();            <span class="comment">/* Micro Channel Architecture */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 设置视频模式 */</span></span><br><span class="line">    set_video();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 5. 内存检测 */</span></span><br><span class="line">    detect_memory();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 6. 切换到保护模式 */</span></span><br><span class="line">    go_to_protected_mode();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-5-2-copy-boot-params"><a href="#1-5-2-copy-boot-params" class="headerlink" title="1.5.2 copy_boot_params()"></a>1.5.2 copy_boot_params()</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">copy_boot_params</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">old_cmdline</span> &#123;</span></span><br><span class="line">        u16 cl_magic;         <span class="comment">/* 魔数 0xA33F */</span></span><br><span class="line">        u16 cl_offset;        <span class="comment">/* 命令行偏移 */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">old_cmdline</span> * <span class="title">const</span> <span class="title">oldcmd</span> =</span></span><br><span class="line">        absolute_pointer(OLD_CL_ADDRESS);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 确保 boot_params 结构正确 */</span></span><br><span class="line">    BUILD_BUG_ON(<span class="keyword">sizeof</span>(boot_params) != <span class="number">4096</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 复制头部信息 */</span></span><br><span class="line">    <span class="built_in">memcpy</span>(&amp;boot_params.hdr, &amp;hdr, <span class="keyword">sizeof</span>(hdr));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 处理旧式命令行协议 */</span></span><br><span class="line">    <span class="keyword">if</span> (!boot_params.hdr.cmd_line_ptr &amp;&amp;</span><br><span class="line">        oldcmd-&gt;cl_magic == OLD_CL_MAGIC) &#123;</span><br><span class="line"></span><br><span class="line">        u16 cmdline_seg;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 确定命令行所在的段 */</span></span><br><span class="line">        <span class="keyword">if</span> (oldcmd-&gt;cl_offset &lt; boot_params.hdr.setup_move_size)</span><br><span class="line">            cmdline_seg = ds();    <span class="comment">/* 在 setup 区域内 */</span></span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            cmdline_seg = <span class="number">0x9000</span>;  <span class="comment">/* 在加载的高位区域 */</span></span><br><span class="line"></span><br><span class="line">        boot_params.hdr.cmd_line_ptr =</span><br><span class="line">            (cmdline_seg &lt;&lt; <span class="number">4</span>) + oldcmd-&gt;cl_offset;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-5-3-init-heap"><a href="#1-5-3-init-heap" class="headerlink" title="1.5.3 init_heap()"></a>1.5.3 init_heap()</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 堆初始化 - 后续内存分配的基础 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">init_heap</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">char</span> *stack_end;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 栈结束位置 (向上增长) */</span></span><br><span class="line">    stack_end = (<span class="type">char</span> *)&amp;stack_start;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 堆开始位置 = 当前堆结束位置 */</span></span><br><span class="line">    heap_end = (<span class="type">char</span> *)((<span class="type">size_t</span>)heap_end - <span class="number">0x200</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 确保堆结束位置不超过栈开始位置 */</span></span><br><span class="line">    <span class="keyword">if</span> (heap_end &gt; stack_end)</span><br><span class="line">        heap_end = stack_end;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* HEAP 指向堆开始 */</span></span><br><span class="line">    HEAP = _end;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-5-4-内存检测"><a href="#1-5-4-内存检测" class="headerlink" title="1.5.4 内存检测"></a>1.5.4 内存检测</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">detect_memory</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 尝试各种内存检测方法 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. E820 查询 (最优先) */</span></span><br><span class="line">    <span class="keyword">if</span> (detect_memory_e820() &gt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. E801 查询 */</span></span><br><span class="line">    <span class="keyword">if</span> (detect_memory_e801() &gt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 88h 查询 (最古老) */</span></span><br><span class="line">    detect_memory_88();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 如果所有方法都失败, 使用默认值 */</span></span><br><span class="line">    boot_params.alt_mem_k = <span class="number">0</span>;</span><br><span class="line">    boot_params.mem_size = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-5-5-视频初始化"><a href="#1-5-5-视频初始化" class="headerlink" title="1.5.5 视频初始化"></a>1.5.5 视频初始化</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">set_video</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 根据配置设置视频模式 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查用户是否指定了视频模式 */</span></span><br><span class="line">    <span class="keyword">if</span> (video_mode == <span class="number">0xFFFF</span>) &#123;</span><br><span class="line">        <span class="comment">/* 自动检测最佳模式 */</span></span><br><span class="line">        probe_cards(<span class="number">0</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (video_mode == <span class="number">0x0</span>) &#123;</span><br><span class="line">        <span class="comment">/* 标准 VGA 文本模式 */</span></span><br><span class="line">        do_restore();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* 用户指定的模式 */</span></span><br><span class="line">        set_mode(video_mode);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 保存视频信息到 boot_params */</span></span><br><span class="line">    store_video_mode();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-6-保护模式切换-pm-c"><a href="#1-6-保护模式切换-pm-c" class="headerlink" title="1.6 保护模式切换 (pm.c)"></a>1.6 保护模式切换 (pm.c)</h2><h3 id="1-6-1-go-to-protected-mode"><a href="#1-6-1-go-to-protected-mode" class="headerlink" title="1.6.1 go_to_protected_mode()"></a>1.6.1 go_to_protected_mode()</h3><p><code>arch/x86/boot/pm.c</code> 负责从实模式切换到保护模式：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">go_to_protected_mode</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 1. 调用实模式切换钩子 (如果存在) */</span></span><br><span class="line">    realmode_switch_hook();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 启用 A20 地址线 */</span></span><br><span class="line">    <span class="keyword">if</span> (enable_a20()) &#123;</span><br><span class="line">        <span class="built_in">puts</span>(<span class="string">&quot;A20 gate not responding, unable to boot...\n&quot;</span>);</span><br><span class="line">        die();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 重置协处理器 */</span></span><br><span class="line">    reset_coprocessor();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 屏蔽所有中断 */</span></span><br><span class="line">    mask_all_interrupts();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 5. 设置 IDT 和 GDT */</span></span><br><span class="line">    setup_idt();</span><br><span class="line">    setup_gdt();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 6. 跳转到保护模式 */</span></span><br><span class="line">    protected_mode_jump(boot_params.hdr.code32_start,</span><br><span class="line">                        (u32)&amp;boot_params + (ds() &lt;&lt; <span class="number">4</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-6-2-A20-地址线启用"><a href="#1-6-2-A20-地址线启用" class="headerlink" title="1.6.2 A20 地址线启用"></a>1.6.2 A20 地址线启用</h3><p>A20 Gate 控制第 21 条地址线 (A20)，允许访问超过 1MB 的内存：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">enable_a20</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 尝试多种方法启用 A20 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 方法 1: BIOS 函数 (INT 15h, AH=0x24) */</span></span><br><span class="line">    <span class="keyword">if</span> (a20_bios())</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 方法 2: 键盘控制器 (0x92) */</span></span><br><span class="line">    <span class="keyword">if</span> (a20_kbc())</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 方法 3: 快速 A20 门 */</span></span><br><span class="line">    <span class="keyword">if</span> (a20_fast())</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;  <span class="comment">/* 失败 */</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 快速 A20 实现 (端口 0x92) */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">enable_a20_fast</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    u8 port_a;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 读取当前值 */</span></span><br><span class="line">    port_a = inb(<span class="number">0x92</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设置 bit 1 (A20 enable) */</span></span><br><span class="line">    port_a |= <span class="number">0x02</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 清除 bit 0 (fast reset) */</span></span><br><span class="line">    port_a &amp;= ~<span class="number">0x01</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 写回 */</span></span><br><span class="line">    outb(port_a, <span class="number">0x92</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 验证 */</span></span><br><span class="line">    <span class="keyword">return</span> a20_test();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-6-3-GDT-设置"><a href="#1-6-3-GDT-设置" class="headerlink" title="1.6.3 GDT 设置"></a>1.6.3 GDT 设置</h3><p>全局描述符表 (GDT) 定义了内存段：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">setup_gdt</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* GDT 必须对齐到 16 字节 */</span></span><br><span class="line">    <span class="type">static</span> <span class="type">const</span> u64 boot_gdt[] __attribute__((aligned(<span class="number">16</span>))) = &#123;</span><br><span class="line">        <span class="comment">/* 描述符 0: 空描述符 (必须存在) */</span></span><br><span class="line">        [GDT_ENTRY_BOOT_CS] = GDT_ENTRY(DESC_CODE32, <span class="number">0</span>, <span class="number">0xfffff</span>),</span><br><span class="line">        <span class="comment">/* 描述符 1: 代码段 (可读可执行, 4GB) */</span></span><br><span class="line"></span><br><span class="line">        [GDT_ENTRY_BOOT_DS] = GDT_ENTRY(DESC_DATA32, <span class="number">0</span>, <span class="number">0xfffff</span>),</span><br><span class="line">        <span class="comment">/* 描述符 2: 数据段 (可读可写, 4GB) */</span></span><br><span class="line"></span><br><span class="line">        [GDT_ENTRY_BOOT_TSS] = GDT_ENTRY(DESC_TSS32, <span class="number">4096</span>, <span class="number">103</span>),</span><br><span class="line">        <span class="comment">/* 描述符 3: TSS (任务状态段) */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">gdt_ptr</span> <span class="title">gdt</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 加载 GDTR */</span></span><br><span class="line">    gdt.len = <span class="keyword">sizeof</span>(boot_gdt) - <span class="number">1</span>;</span><br><span class="line">    gdt.ptr = (u32)&amp;boot_gdt + (ds() &lt;&lt; <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">asm</span> <span class="title function_">volatile</span><span class="params">(<span class="string">&quot;lgdtl %0&quot;</span> : : <span class="string">&quot;m&quot;</span> (gdt))</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-6-4-protected-mode-jump"><a href="#1-6-4-protected-mode-jump" class="headerlink" title="1.6.4 protected_mode_jump()"></a>1.6.4 protected_mode_jump()</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">/* arch/x86/boot/pm.S */</span><br><span class="line">    .code16</span><br><span class="line">    .globl protected_mode_jump</span><br><span class="line">protected_mode_jump:</span><br><span class="line">    /* 参数:</span><br><span class="line">     * eax = 32位入口点</span><br><span class="line">     * edx = boot_params 指针</span><br><span class="line">     */</span><br><span class="line"></span><br><span class="line">    /* 设置数据段 */</span><br><span class="line">    movw $__BOOT_DS, %ecx</span><br><span class="line">    movw %cx, %ds</span><br><span class="line">    movw %cx, %es</span><br><span class="line">    movw %cx, %fs</span><br><span class="line">    movw %cx, %gs</span><br><span class="line">    movw %cx, %ss</span><br><span class="line"></span><br><span class="line">    /* 设置页目录基址寄存器 (为 64 位准备) */</span><br><span class="line">    xorl %edx, %edx</span><br><span class="line">    movl %edx, %cr3</span><br><span class="line"></span><br><span class="line">    /* 启用保护模式 (CR0.PE = 1) */</span><br><span class="line">    movl %cr0, %edx</span><br><span class="line">    orl $X86_CR0_PE, %edx</span><br><span class="line">    movl %edx, %cr0</span><br><span class="line"></span><br><span class="line">    /* 远跳转到 32 位代码 */</span><br><span class="line">    .byte 0x66, 0xea      /* jmp far ptr */</span><br><span class="line">    .long 0               /* 偏移 (由调用者设置) */</span><br><span class="line">    .word __BOOT_CS       /* 段选择子 */</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-7-本章小结"><a href="#1-7-本章小结" class="headerlink" title="1.7 本章小结"></a>1.7 本章小结</h2><h3 id="启动流程回顾"><a href="#启动流程回顾" class="headerlink" title="启动流程回顾"></a>启动流程回顾</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">BIOS POST</span><br><span class="line">    ↓</span><br><span class="line">检测硬件, 构建 IVT</span><br><span class="line">    ↓</span><br><span class="line">加载 MBR 到 0x7C00</span><br><span class="line">    ↓</span><br><span class="line">GRUB Stage 1 执行</span><br><span class="line">    ↓</span><br><span class="line">GRUB Stage 2 加载内核</span><br><span class="line">    ↓</span><br><span class="line">header.S 被执行</span><br><span class="line">    ↓</span><br><span class="line">main.c 实模式初始化</span><br><span class="line">    ↓</span><br><span class="line">pm.c 保护模式切换</span><br><span class="line">    ↓</span><br><span class="line">跳转到 head_64.S</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="关键数据结构"><a href="#关键数据结构" class="headerlink" title="关键数据结构"></a>关键数据结构</h3><ol>
+<li><strong>boot_params</strong> - 4KB 的启动参数结构</li>
+<li><strong>e820_entry</strong> - 内存映射条目</li>
+<li><strong>setup_header</strong> - 启动协议头部</li>
+<li><strong>GDT</strong> - 全局描述符表</li>
+</ol>
+<h3 id="关键内存位置"><a href="#关键内存位置" class="headerlink" title="关键内存位置"></a>关键内存位置</h3><table>
+<thead>
+<tr>
+<th>地址</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x7C00</td>
+<td>MBR 加载位置</td>
+</tr>
+<tr>
+<td>0x90000</td>
+<td>boot_params 目标位置</td>
+</tr>
+<tr>
+<td>0x100000</td>
+<td>32&#x2F;64 位内核入口点</td>
+</tr>
+</tbody></table>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-1</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-08 01:17:50</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-08 19:01:38
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/08/Linux内核分析之基础知识-1/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-2/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-2</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2025/12/23/Rust%E8%99%9A%E6%8B%9F%E5%8C%96%E5%BC%80%E5%8F%91/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Rust虚拟化开发</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-1</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC1%E7%AB%A0%EF%BC%9Ax86-64-BIOS-Legacy-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">第1章：x86_64 BIOS Legacy 启动流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E6%A6%82%E8%BF%B0"><span class="nav-text">本章概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E6%A6%82%E8%A7%88"><span class="nav-text">启动流程概览</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-BIOS-POST-%E9%98%B6%E6%AE%B5"><span class="nav-text">1.1 BIOS POST 阶段</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-1-%E4%B8%8A%E7%94%B5%E8%87%AA%E6%A3%80-Power-On-Self-Test"><span class="nav-text">1.1.1 上电自检 (Power-On Self-Test)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-2-%E5%AE%9E%E6%A8%A1%E5%BC%8F%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="nav-text">1.1.2 实模式内存布局</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-3-BIOS-%E4%B8%AD%E6%96%AD%E8%B0%83%E7%94%A8-BIOS-Interrupt-Calls"><span class="nav-text">1.1.3 BIOS 中断调用 (BIOS Interrupt Calls)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-4-E820-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84"><span class="nav-text">1.1.4 E820 内存映射</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-MBR-%E5%BC%95%E5%AF%BC%E9%98%B6%E6%AE%B5"><span class="nav-text">1.2 MBR 引导阶段</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-1-%E4%B8%BB%E5%BC%95%E5%AF%BC%E8%AE%B0%E5%BD%95-Master-Boot-Record"><span class="nav-text">1.2.1 主引导记录 (Master Boot Record)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-2-%E5%88%86%E5%8C%BA%E7%B1%BB%E5%9E%8B%E4%BB%A3%E7%A0%81"><span class="nav-text">1.2.2 分区类型代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-3-%E4%BB%8E-MBR-%E5%88%B0%E5%BC%95%E5%AF%BC%E7%A8%8B%E5%BA%8F"><span class="nav-text">1.2.3 从 MBR 到引导程序</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-%E5%BC%95%E5%AF%BC%E7%A8%8B%E5%BA%8F-GRUB-%E9%98%B6%E6%AE%B5"><span class="nav-text">1.3 引导程序 (GRUB) 阶段</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-1-GRUB-%E5%90%AF%E5%8A%A8%E9%98%B6%E6%AE%B5"><span class="nav-text">1.3.1 GRUB 启动阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-2-GRUB-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-text">1.3.2 GRUB 配置文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-3-GRUB-%E4%BC%A0%E9%80%92%E7%BB%99%E5%86%85%E6%A0%B8%E7%9A%84%E4%BF%A1%E6%81%AF"><span class="nav-text">1.3.3 GRUB 传递给内核的信息</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-%E5%86%85%E6%A0%B8%E5%BC%95%E5%AF%BC%E5%A4%B4%E9%83%A8-header-S"><span class="nav-text">1.4 内核引导头部 (header.S)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-1-header-S-%E5%AE%8C%E6%95%B4%E7%BB%93%E6%9E%84"><span class="nav-text">1.4.1 header.S 完整结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-2-%E5%90%AF%E5%8A%A8%E5%8D%8F%E8%AE%AE%E7%89%88%E6%9C%AC"><span class="nav-text">1.4.2 启动协议版本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-3-%E5%BC%95%E5%AF%BC%E7%A8%8B%E5%BA%8F%E7%B1%BB%E5%9E%8B%E6%A0%87%E8%AF%86"><span class="nav-text">1.4.3 引导程序类型标识</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-%E5%AE%9E%E6%A8%A1%E5%BC%8F%E5%88%9D%E5%A7%8B%E5%8C%96-main-c"><span class="nav-text">1.5 实模式初始化 (main.c)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-1-main-%E5%87%BD%E6%95%B0%E6%B5%81%E7%A8%8B"><span class="nav-text">1.5.1 main() 函数流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-2-copy-boot-params"><span class="nav-text">1.5.2 copy_boot_params()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-3-init-heap"><span class="nav-text">1.5.3 init_heap()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-4-%E5%86%85%E5%AD%98%E6%A3%80%E6%B5%8B"><span class="nav-text">1.5.4 内存检测</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-5-%E8%A7%86%E9%A2%91%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">1.5.5 视频初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-%E4%BF%9D%E6%8A%A4%E6%A8%A1%E5%BC%8F%E5%88%87%E6%8D%A2-pm-c"><span class="nav-text">1.6 保护模式切换 (pm.c)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-1-go-to-protected-mode"><span class="nav-text">1.6.1 go_to_protected_mode()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-2-A20-%E5%9C%B0%E5%9D%80%E7%BA%BF%E5%90%AF%E7%94%A8"><span class="nav-text">1.6.2 A20 地址线启用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-3-GDT-%E8%AE%BE%E7%BD%AE"><span class="nav-text">1.6.3 GDT 设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-4-protected-mode-jump"><span class="nav-text">1.6.4 protected_mode_jump()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-7-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">1.7 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%9B%9E%E9%A1%BE"><span class="nav-text">启动流程回顾</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">关键数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E5%86%85%E5%AD%98%E4%BD%8D%E7%BD%AE"><span class="nav-text">关键内存位置</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        132 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

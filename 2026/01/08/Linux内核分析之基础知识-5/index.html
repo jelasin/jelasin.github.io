@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/08/linux内核分析之基础知识-5/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-5">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-5/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-07T18:47:03.000Z">
+<meta property="article:modified_time" content="2026-01-08T11:02:25.777Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-5 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">39</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">132</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-5</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-08 02:47:03</span>
+        <span class="mobile">2026-01-08 02:47:03</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-08 19:02:25</span>
+            <span class="mobile">2026-01-08 19:02:25</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第5章：通用启动流程-start-kernel"><a href="#第5章：通用启动流程-start-kernel" class="headerlink" title="第5章：通用启动流程 start_kernel"></a>第5章：通用启动流程 start_kernel</h1><blockquote>
+<p>所有架构的 C 语言初始化入口</p>
+</blockquote>
+<hr>
+<h2 id="本章概述"><a href="#本章概述" class="headerlink" title="本章概述"></a>本章概述</h2><p><code>start_kernel()</code> 是 Linux 内核的通用 C 语言入口点，所有架构最终都会跳转到这个函数。本章详细讲解这个核心初始化函数的执行流程。</p>
+<h3 id="start-kernel-调用链"><a href="#start-kernel-调用链" class="headerlink" title="start_kernel 调用链"></a>start_kernel 调用链</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│              start_kernel() 调用流程                        │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  startup_64() / __primary_switch()                          │</span><br><span class="line">│      │                                                      │</span><br><span class="line">│      ↓                                                      │</span><br><span class="line">│  start_kernel() ────────────────────────┐                   │</span><br><span class="line">│      │                                  │                   │</span><br><span class="line">│      ├─ setup_arch()                   │                   │</span><br><span class="line">│      ├─ trap_init()                    │                   │</span><br><span class="line">│      ├─ mm_core_init()                 │                   │</span><br><span class="line">│      ├─ sched_init()                   │                   │</span><br><span class="line">│      ├─ early_irq_init()               │                   │</span><br><span class="line">│      ├─ init_IRQ()                     │                   │</span><br><span class="line">│      ├─ console_init()                 │                   │</span><br><span class="line">│      ├─ security_init()                │                   │</span><br><span class="line">│      └─ rest_init()                    │                   │</span><br><span class="line">│              │                          │                   │</span><br><span class="line">│              ├─ rcu_scheduler_starting()│                   │</span><br><span class="line">│              ├─ kernel_init() ────────┐│                   │</span><br><span class="line">│              │   │                    └─ do_initcalls()    │</span><br><span class="line">│              │   └─ run_init_process()                      │</span><br><span class="line">│              └─ kthreadd()                                   │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-1-start-kernel-入口"><a href="#5-1-start-kernel-入口" class="headerlink" title="5.1 start_kernel 入口"></a>5.1 start_kernel 入口</h2><h3 id="5-1-1-函数定义和初始化"><a href="#5-1-1-函数定义和初始化" class="headerlink" title="5.1.1 函数定义和初始化"></a>5.1.1 函数定义和初始化</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* init/main.c */</span></span><br><span class="line"></span><br><span class="line">asmlinkage __visible __init __no_sanitize_address __noreturn __no_stack_protector</span><br><span class="line"><span class="type">void</span> <span class="title function_">start_kernel</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">char</span> *command_line;</span><br><span class="line">    <span class="type">char</span> *after_dashes;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化任务栈</span></span><br><span class="line"><span class="comment">     * 设置栈魔数以检测栈溢出</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    set_task_stack_end_magic(&amp;init_task);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 设置处理器 ID</span></span><br><span class="line"><span class="comment">     * SMP 系统中初始化 CPU 编号</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    smp_setup_processor_id();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 早期调试对象初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    debug_objects_early_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化构建 ID</span></span><br><span class="line"><span class="comment">     * 用于唯一标识内核构建</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    init_vmlinux_build_id();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ... 更多初始化 ... */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-1-2-栈魔数机制"><a href="#5-1-2-栈魔数机制" class="headerlink" title="5.1.2 栈魔数机制"></a>5.1.2 栈魔数机制</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 内核栈魔数定义 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> STACK_END_MAGIC    0x57AC6E9D</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">set_task_stack_end_magic</span><span class="params">(<span class="keyword">struct</span> task_struct *task)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> *stackend;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 栈的底部位置 */</span></span><br><span class="line">    stackend = end_of_stack(task);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设置魔数 */</span></span><br><span class="line">    *stackend = STACK_END_MAGIC;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 当栈增长到这个位置时, 魔数会被覆盖</span></span><br><span class="line"><span class="comment">     * 可以通过检查魔数来检测栈溢出</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查栈溢出 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">stack_is_overflowed</span><span class="params">(<span class="keyword">struct</span> thread_info *ti)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> ti-&gt;stack_canary != STACK_END_MAGIC;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-2-早期初始化"><a href="#5-2-早期初始化" class="headerlink" title="5.2 早期初始化"></a>5.2 早期初始化</h2><h3 id="5-2-1-完整的早期初始化序列"><a href="#5-2-1-完整的早期初始化序列" class="headerlink" title="5.2.1 完整的早期初始化序列"></a>5.2.1 完整的早期初始化序列</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">start_kernel</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* ... 前面的初始化 ... */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Cgroup 早期初始化</span></span><br><span class="line"><span class="comment">     * 必须在内存分配之前完成</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cgroup_init_early();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 禁用中断</span></span><br><span class="line"><span class="comment">     * 早期阶段不处理中断</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    local_irq_disable();</span><br><span class="line">    early_boot_irqs_disabled = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Boot CPU 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    boot_cpu_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 页地址初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    page_address_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 打印内核横幅</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pr_notice(<span class="string">&quot;%s&quot;</span>, linux_banner);</span><br><span class="line">    <span class="comment">/* 输出: Linux version 6.12.38 ... */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 架构特定初始化</span></span><br><span class="line"><span class="comment">     * 这是架构相关的第一个重要调用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    setup_arch(&amp;command_line);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 静态键和静态调用初始化</span></span><br><span class="line"><span class="comment">     * 这些是内核性能优化的基础</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    jump_label_init();</span><br><span class="line">    static_call_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 早期安全初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    early_security_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Boot 配置</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    setup_boot_config();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 处理命令行参数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    setup_command_line(command_line);</span><br><span class="line">    setup_nr_cpu_ids();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ... 更多初始化 ... */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-3-setup-arch-架构特定初始化"><a href="#5-3-setup-arch-架构特定初始化" class="headerlink" title="5.3 setup_arch() - 架构特定初始化"></a>5.3 setup_arch() - 架构特定初始化</h2><h3 id="5-3-1-x86-64-的-setup-arch"><a href="#5-3-1-x86-64-的-setup-arch" class="headerlink" title="5.3.1 x86_64 的 setup_arch()"></a>5.3.1 x86_64 的 setup_arch()</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* arch/x86/kernel/setup.c */</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">setup_arch</span><span class="params">(<span class="type">char</span> **cmdline_p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 保存命令行指针</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    *cmdline_p = boot_command_line;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化页地址映射</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    page_address_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化内核内存布局</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    init_mem_mapping();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 解析 e820 内存映射</span></span><br><span class="line"><span class="comment">     * 从 BIOS/UEFI 获取的内存信息</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    parse_e820_table();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化 memblock</span></span><br><span class="line"><span class="comment">     * 早期内存分配器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    initmem_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化内存资源</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    e820__memory_setup();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ACPI/设备树初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    acpi_boot_table_init();</span><br><span class="line">    unflatten_device_tree();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * APIC 初始化</span></span><br><span class="line"><span class="comment">     * 中断控制器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    init_apic_mappings();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * KASLR (内核地址空间随机化)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (kaslr_enabled()) &#123;</span><br><span class="line">        randomize_base();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 分页初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    paging_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 早期微码加载</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    load_microcode();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 更多架构特定初始化...</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-3-2-ARM64-的-setup-arch"><a href="#5-3-2-ARM64-的-setup-arch" class="headerlink" title="5.3.2 ARM64 的 setup_arch()"></a>5.3.2 ARM64 的 setup_arch()</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* arch/arm64/kernel/setup.c */</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">setup_arch</span><span class="params">(<span class="type">char</span> **cmdline_p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 保存命令行</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    *cmdline_p = boot_command_line;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化栈 canary</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    boot_init_stack_canary();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 处理设备树</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    setup_machine_fdt(__va(__fdt_pointer));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化 memblock</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    arm64_memblock_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 设置页表</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    paging_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 初始化 CPU 特性</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cpuinfo_store_cpu();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 中断控制器初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    acpi_boot_init();</span><br><span class="line">    irqchip_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * SMP 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    smp_init_cpus();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 更多架构特定初始化...</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-4-核心子系统初始化"><a href="#5-4-核心子系统初始化" class="headerlink" title="5.4 核心子系统初始化"></a>5.4 核心子系统初始化</h2><h3 id="5-4-1-完整的-start-kernel-序列"><a href="#5-4-1-完整的-start-kernel-序列" class="headerlink" title="5.4.1 完整的 start_kernel 序列"></a>5.4.1 完整的 start_kernel 序列</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br><span class="line">373</span><br><span class="line">374</span><br><span class="line">375</span><br><span class="line">376</span><br><span class="line">377</span><br><span class="line">378</span><br><span class="line">379</span><br><span class="line">380</span><br><span class="line">381</span><br><span class="line">382</span><br><span class="line">383</span><br><span class="line">384</span><br><span class="line">385</span><br><span class="line">386</span><br><span class="line">387</span><br><span class="line">388</span><br><span class="line">389</span><br><span class="line">390</span><br><span class="line">391</span><br><span class="line">392</span><br><span class="line">393</span><br><span class="line">394</span><br><span class="line">395</span><br><span class="line">396</span><br><span class="line">397</span><br><span class="line">398</span><br><span class="line">399</span><br><span class="line">400</span><br><span class="line">401</span><br><span class="line">402</span><br><span class="line">403</span><br><span class="line">404</span><br><span class="line">405</span><br><span class="line">406</span><br><span class="line">407</span><br><span class="line">408</span><br><span class="line">409</span><br><span class="line">410</span><br><span class="line">411</span><br><span class="line">412</span><br><span class="line">413</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">start_kernel</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* ... setup_arch 之前的初始化 ... */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 中断和陷阱初始化                                   │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 陷阱初始化</span></span><br><span class="line"><span class="comment">     * 设置中断和异常向量表</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    trap_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 内存管理核心初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    mm_core_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * poking_init</span></span><br><span class="line"><span class="comment">     * 用于修改只读内存的机制</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    poking_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ftrace 初始化</span></span><br><span class="line"><span class="comment">     * 函数跟踪基础设施</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ftrace_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 早期跟踪初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    early_trace_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 调度器和并发控制                                   │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 调度器初始化</span></span><br><span class="line"><span class="comment">     * 在启用中断之前必须完成</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    sched_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 检查中断是否意外启用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (WARN(!irqs_disabled(),</span><br><span class="line">            <span class="string">&quot;Interrupts were enabled *very* early, fixing it\n&quot;</span>))</span><br><span class="line">        local_irq_disable();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 基数树和映射树初始化</span></span><br><span class="line"><span class="comment">     * 用于数据结构管理</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    radix_tree_init();</span><br><span class="line">    maple_tree_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Housekeeping 初始化</span></span><br><span class="line"><span class="comment">     * 用于隔离管理任务</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    housekeeping_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 工作队列早期初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    workqueue_init_early();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * RCU (Read-Copy-Update) 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    rcu_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 跟踪初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    trace_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * initcall 调试支持</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (initcall_debug)</span><br><span class="line">        initcall_debug_enable();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 上下文跟踪初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    context_tracking_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 中断和定时器                                       │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 早期中断初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    early_irq_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 中断控制器初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    init_IRQ();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * tick 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    tick_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * RCU nohz 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    rcu_init_nohz();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 定时器初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    init_timers();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * SRCU 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    srcu_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 高精度定时器初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    hrtimers_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 软中断初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    softirq_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 时间保持初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    timekeeping_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 架构特定时间初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    time_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 随机数生成器初始化 (需要时间)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    random_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * KFENCE 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    kfence_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 栈 canary 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    boot_init_stack_canary();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 性能事件初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    perf_event_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 性能分析初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    profile_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 函数调用初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    call_function_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 启用中断</span></span><br><span class="line"><span class="comment">     * 这是关键的转换点</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    WARN(!irqs_disabled(), <span class="string">&quot;Interrupts were enabled early\n&quot;</span>);</span><br><span class="line">    early_boot_irqs_disabled = <span class="literal">false</span>;</span><br><span class="line">    local_irq_enable();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * slab 分配器后期初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    kmem_cache_init_late();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 控制台和设备                                       │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 控制台初始化</span></span><br><span class="line"><span class="comment">     * 注意: 这时中断已启用, 设备可能产生输出</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    console_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 检查 panic 参数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (panic_later)</span><br><span class="line">        panic(<span class="string">&quot;Too many boot %s vars at `%s&#x27;&quot;</span>, panic_later, panic_param);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 锁依赖检查器初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    lockdep_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 锁自我测试</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    locking_selftest();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 内存和进程管理                                     │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_BLK_DEV_INITRD</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * initrd 检查</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (initrd_start &amp;&amp; !initrd_below_start_ok &amp;&amp;</span><br><span class="line">        page_to_pfn(virt_to_page((<span class="type">void</span> *)initrd_start)) &lt; min_low_pfn) &#123;</span><br><span class="line">        pr_crit(<span class="string">&quot;initrd overwritten (0x%08lx &lt; 0x%08lx) - disabling it.\n&quot;</span>,</span><br><span class="line">            page_to_pfn(virt_to_page((<span class="type">void</span> *)initrd_start)), min_low_pfn);</span><br><span class="line">        initrd_start = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * per-CPU 页面集初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    setup_per_cpu_pageset();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * NUMA 策略初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    numa_policy_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ACPI 早期初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    acpi_early_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 后期时间初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (late_time_init)</span><br><span class="line">        late_time_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 调度时钟初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    sched_clock_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * calibrate_delay</span></span><br><span class="line"><span class="comment">     * 用于 BogoMIPS 计算</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    calibrate_delay();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * CPU 最终化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    arch_cpu_finalize_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * PID IDR 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pid_idr_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 匿名 VMA 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    anon_vma_init();</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_X86</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * EFI 运行时服务</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (efi_enabled(EFI_RUNTIME_SERVICES))</span><br><span class="line">        efi_enter_virtual_mode();</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 线程栈缓存初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    thread_stack_cache_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 凭证初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cred_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * fork 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    fork_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 进程缓存初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    proc_caches_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * UTS 命名空间初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    uts_ns_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 密钥管理初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    key_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 安全框架初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    security_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 调试后期初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    dbg_late_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 网络命名空间初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    net_ns_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * VFS 缓存初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    vfs_caches_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 页面缓存初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pagecache_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 信号初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    signals_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * seq_file 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    seq_file_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * proc 根目录初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    proc_root_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * nsfs 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    nsfs_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * pidfs 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pidfs_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * cpuset 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cpuset_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * cgroup 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cgroup_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 任务统计初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    taskstats_init_early();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 延迟计费初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    delayacct_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ACPI 子系统初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    acpi_subsystem_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 架构后期 ACPI 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    arch_post_acpi_subsys_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * KCSAN 初始化</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    kcsan_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ┌────────────────────────────────────────────────────┐ */</span></span><br><span class="line">    <span class="comment">/* │ 最终初始化和用户空间启动                             │ */</span></span><br><span class="line">    <span class="comment">/* └────────────────────────────────────────────────────┘ */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 剩余初始化</span></span><br><span class="line"><span class="comment">     * 不返回, 最终启动用户空间</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    rest_init();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 不应该到达这里 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-5-rest-init-最终初始化"><a href="#5-5-rest-init-最终初始化" class="headerlink" title="5.5 rest_init() - 最终初始化"></a>5.5 rest_init() - 最终初始化</h2><h3 id="5-5-1-rest-init-函数"><a href="#5-5-1-rest-init-函数" class="headerlink" title="5.5.1 rest_init 函数"></a>5.5.1 rest_init 函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* init/main.c */</span></span><br><span class="line"></span><br><span class="line">noinline __init <span class="type">void</span> <span class="title function_">rest_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * RCU 调度器启动</span></span><br><span class="line"><span class="comment">     * 启用 RCU 响应式调度</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    rcu_scheduler_starting();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 创建 kernel_init 线程</span></span><br><span class="line"><span class="comment">     * 执行剩余的初始化并启动用户空间</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pid = kernel_thread(kernel_init, <span class="literal">NULL</span>, CLONE_FS);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 创建 kthreadd 线程</span></span><br><span class="line"><span class="comment">     * 管理内核线程的创建</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pid = kernel_thread(kthreadd, <span class="literal">NULL</span>, CLONE_FS | CLONE_FILES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 系统进入空闲状态</span></span><br><span class="line"><span class="comment">     * CPU 0 现在可以被调度器使用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    cpu_startup_entry(CPUHP_ONLINE);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-5-2-kernel-init-线程"><a href="#5-5-2-kernel-init-线程" class="headerlink" title="5.5.2 kernel_init 线程"></a>5.5.2 kernel_init 线程</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* init/main.c */</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __ref <span class="title function_">kernel_init</span><span class="params">(<span class="type">void</span> *unused)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 设置完成标志</span></span><br><span class="line"><span class="comment">     * 内核初始化完成</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    system_state = SYSTEM_BOOTING;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 等待 kthreadd 完成</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    wait_for_completion(&amp;kthreadd_done);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 设置当前命名空间</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    set_sysctl_init(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 执行基本的设置</span></span><br><span class="line"><span class="comment">     * 包括 do_initcalls()</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    do_basic_setup();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 打开 /dev/console</span></span><br><span class="line"><span class="comment">     * 标准输入/输出/错误</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    console_on_rootfs();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 尝试执行指定的 init 进程</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (execute_command) &#123;</span><br><span class="line">        run_init_process(execute_command);</span><br><span class="line">        panic(<span class="string">&quot;Requested init %s failed.\n&quot;</span>, execute_command);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 尝试默认的 init 进程</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (!try_to_run_init_process(<span class="string">&quot;/sbin/init&quot;</span>) ||</span><br><span class="line">        !try_to_run_init_process(<span class="string">&quot;/etc/init&quot;</span>) ||</span><br><span class="line">        !try_to_run_init_process(<span class="string">&quot;/bin/init&quot;</span>) ||</span><br><span class="line">        !try_to_run_init_process(<span class="string">&quot;/bin/sh&quot;</span>))</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 所有尝试都失败</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    panic(<span class="string">&quot;No working init found.  Try passing init= option to kernel. &quot;</span></span><br><span class="line">          <span class="string">&quot;See Linux Documentation/admin-guide/init.rst for guidance.&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-6-initcall-机制"><a href="#5-6-initcall-机制" class="headerlink" title="5.6 initcall 机制"></a>5.6 initcall 机制</h2><h3 id="5-6-1-initcall-级别"><a href="#5-6-1-initcall-级别" class="headerlink" title="5.6.1 initcall 级别"></a>5.6.1 initcall 级别</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* init/main.c */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* initcall 级别定义 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">initcall_entry_t</span> *initcall_levels[] __initdata = &#123;</span><br><span class="line">    __initcall0_start,</span><br><span class="line">    __initcall1_start,</span><br><span class="line">    __initcall2_start,</span><br><span class="line">    __initcall3_start,</span><br><span class="line">    __initcall4_start,</span><br><span class="line">    __initcall5_start,</span><br><span class="line">    __initcall6_start,</span><br><span class="line">    __initcall7_start,</span><br><span class="line">    __initcall_end,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 对应的宏定义 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pure_initcall(fn)      __define_initcall(<span class="string">&quot;0&quot;</span>, fn, 0)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> core_initcall(fn)      __define_initcall(<span class="string">&quot;1&quot;</span>, fn, 1)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> postcore_initcall(fn)  __define_initcall(<span class="string">&quot;2&quot;</span>, fn, 2)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> arch_initcall(fn)      __define_initcall(<span class="string">&quot;3&quot;</span>, fn, 3)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> subsys_initcall(fn)    __define_initcall(<span class="string">&quot;4&quot;</span>, fn, 4)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> fs_initcall(fn)        __define_initcall(<span class="string">&quot;5&quot;</span>, fn, 5)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> device_initcall(fn)    __define_initcall(<span class="string">&quot;6&quot;</span>, fn, 6)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> late_initcall(fn)      __define_initcall(<span class="string">&quot;7&quot;</span>, fn, 7)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-6-2-do-initcalls-执行"><a href="#5-6-2-do-initcalls-执行" class="headerlink" title="5.6.2 do_initcalls() 执行"></a>5.6.2 do_initcalls() 执行</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* init/main.c */</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> __init <span class="title function_">do_initcalls</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> level;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 按顺序执行所有 initcall</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">for</span> (level = <span class="number">0</span>; level &lt; ARRAY_SIZE(initcall_levels); level++)</span><br><span class="line">        do_initcall_level(level);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 执行单个级别 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> __init <span class="title function_">do_initcall_level</span><span class="params">(<span class="type">int</span> level)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">initcall_entry_t</span> *fn;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 遍历该级别的所有 initcall</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">for</span> (fn = initcall_levels[level]; fn &lt; initcall_levels[level+<span class="number">1</span>]; fn++)</span><br><span class="line">        do_one_initcall(initcall_from_entry(fn));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 执行单个 initcall */</span></span><br><span class="line"><span class="type">int</span> __init_or_module <span class="title function_">do_one_initcall</span><span class="params">(<span class="type">initcall_t</span> fn)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> count = preempt_count();</span><br><span class="line">    <span class="type">char</span> msgbuf[<span class="number">64</span>];</span><br><span class="line">    <span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查黑名单 */</span></span><br><span class="line">    <span class="keyword">if</span> (initcall_blacklisted(fn))</span><br><span class="line">        <span class="keyword">return</span> -EPERM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 开始跟踪 */</span></span><br><span class="line">    do_trace_initcall_start(fn);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 执行 initcall */</span></span><br><span class="line">    ret = fn();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 结束跟踪 */</span></span><br><span class="line">    do_trace_initcall_finish(fn, ret);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查抢占和中断状态 */</span></span><br><span class="line">    msgbuf[<span class="number">0</span>] = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (preempt_count() != count) &#123;</span><br><span class="line">        <span class="built_in">sprintf</span>(msgbuf, <span class="string">&quot;preemption imbalance &quot;</span>);</span><br><span class="line">        preempt_count_set(count);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (irqs_disabled()) &#123;</span><br><span class="line">        strlcat(msgbuf, <span class="string">&quot;disabled interrupts &quot;</span>, <span class="keyword">sizeof</span>(msgbuf));</span><br><span class="line">        local_irq_enable();</span><br><span class="line">    &#125;</span><br><span class="line">    WARN(msgbuf[<span class="number">0</span>], <span class="string">&quot;initcall %pS returned with %s\n&quot;</span>, fn, msgbuf);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-6-3-常见-initcall-示例"><a href="#5-6-3-常见-initcall-示例" class="headerlink" title="5.6.3 常见 initcall 示例"></a>5.6.3 常见 initcall 示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* core_initcall 示例 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">example_core_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    pr_info(<span class="string">&quot;Core initcall executed\n&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line">core_initcall(example_core_init);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* device_initcall 示例 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">example_device_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 初始化设备 */</span></span><br><span class="line">    platform_device_register(&amp;example_device);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line">device_initcall(example_device_init);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* late_initcall 示例 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">example_late_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 后期初始化 */</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line">late_initcall(example_late_init);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-6-4-initcall-调试"><a href="#5-6-4-initcall-调试" class="headerlink" title="5.6.4 initcall 调试"></a>5.6.4 initcall 调试</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 启用 initcall 调试 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 方法1: 内核参数 */</span></span><br><span class="line">initcall_debug</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 方法2: 黑名单特定 initcall */</span></span><br><span class="line">initcall_blacklist=example_initcall,another_initcall</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 方法3: 检查 initcall 执行时间 */</span></span><br><span class="line"><span class="comment">/* 输出示例:</span></span><br><span class="line"><span class="comment"> * calling  example_initcall+0x0/0x0 @ 1</span></span><br><span class="line"><span class="comment"> * initcall example_initcall+0x0/0x0 returned 0 after 123 usecs</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-7-系统状态转换"><a href="#5-7-系统状态转换" class="headerlink" title="5.7 系统状态转换"></a>5.7 系统状态转换</h2><h3 id="5-7-1-系统状态枚举"><a href="#5-7-1-系统状态枚举" class="headerlink" title="5.7.1 系统状态枚举"></a>5.7.1 系统状态枚举</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* include/linux/kernel.h */</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">system_states</span> &#123;</span></span><br><span class="line">    SYSTEM_BOOTING,</span><br><span class="line">    SYSTEM_SCHEDULING,</span><br><span class="line">    SYSTEM_RUNNING,</span><br><span class="line">    SYSTEM_HALT,</span><br><span class="line">    SYSTEM_POWER_OFF,</span><br><span class="line">    SYSTEM_RESTART,</span><br><span class="line">    SYSTEM_SUSPEND,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 当前系统状态 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">system_states</span> <span class="title">system_state</span> __<span class="title">read_mostly</span>;</span></span><br><span class="line">EXPORT_SYMBOL(system_state);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-7-2-状态转换图"><a href="#5-7-2-状态转换图" class="headerlink" title="5.7.2 状态转换图"></a>5.7.2 状态转换图</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    系统状态转换                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  SYSTEM_BOOTING                                            │</span><br><span class="line">│      │                                                     │</span><br><span class="line">│      │ start_kernel() 开始                                 │</span><br><span class="line">│      ↓                                                     │</span><br><span class="line">│  SYSTEM_SCHEDULING                                         │</span><br><span class="line">│      │                                                     │</span><br><span class="line">│      │ 调度器初始化完成                                     │</span><br><span class="line">│      ↓                                                     │</span><br><span class="line">│  SYSTEM_RUNNING                                            │</span><br><span class="line">│      │                                                     │</span><br><span class="line">│      │ 系统完全运行                                        │</span><br><span class="line">│      │                                                     │</span><br><span class="line">│      └─→ SYSTEM_HALT     (halt)                           │</span><br><span class="line">│      └─→ SYSTEM_POWER_OFF (poweroff)                       │</span><br><span class="line">│      └─→ SYSTEM_RESTART  (reboot)                         │</span><br><span class="line">│      └─→ SYSTEM_SUSPEND  (suspend)                        │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-8-本章小结"><a href="#5-8-本章小结" class="headerlink" title="5.8 本章小结"></a>5.8 本章小结</h2><h3 id="start-kernel-流程回顾"><a href="#start-kernel-流程回顾" class="headerlink" title="start_kernel 流程回顾"></a>start_kernel 流程回顾</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">start_kernel()</span><br><span class="line">    ├─ setup_arch()          [架构特定]</span><br><span class="line">    ├─ trap_init()           [中断向量]</span><br><span class="line">    ├─ mm_core_init()        [内存管理]</span><br><span class="line">    ├─ sched_init()          [调度器]</span><br><span class="line">    ├─ early_irq_init()      [早期中断]</span><br><span class="line">    ├─ init_IRQ()            [中断控制器]</span><br><span class="line">    ├─ console_init()        [控制台]</span><br><span class="line">    ├─ security_init()       [安全框架]</span><br><span class="line">    └─ rest_init()           [最终初始化]</span><br><span class="line">        ├─ kernel_init()</span><br><span class="line">        │   └─ do_initcalls()</span><br><span class="line">        │       ├─ core_initcall</span><br><span class="line">        │       ├─ postcore_initcall</span><br><span class="line">        │       ├─ arch_initcall</span><br><span class="line">        │       ├─ subsys_initcall</span><br><span class="line">        │       ├─ fs_initcall</span><br><span class="line">        │       ├─ device_initcall</span><br><span class="line">        │       └─ late_initcall</span><br><span class="line">        └─ kthreadd()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="时间线总结"><a href="#时间线总结" class="headerlink" title="时间线总结"></a>时间线总结</h3><table>
+<thead>
+<tr>
+<th>时刻</th>
+<th>事件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>~1s</td>
+<td>startup_64&#x2F;__primary_switch 完成</td>
+</tr>
+<tr>
+<td>~1.2s</td>
+<td>start_kernel 开始</td>
+</tr>
+<tr>
+<td>~1.5s</td>
+<td>setup_arch 完成</td>
+</tr>
+<tr>
+<td>~2s</td>
+<td>sched_init 完成, 调度器启动</td>
+</tr>
+<tr>
+<td>~2.5s</td>
+<td>console_init, 可以看到输出</td>
+</tr>
+<tr>
+<td>~3s</td>
+<td>initcalls 开始执行</td>
+</tr>
+<tr>
+<td>~3s-5s</td>
+<td>设备驱动初始化</td>
+</tr>
+<tr>
+<td>~5s</td>
+<td>用户空间 init 启动</td>
+</tr>
+</tbody></table>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-5</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-08 02:47:03</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-08 19:02:25
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/08/Linux内核分析之基础知识-5/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-6/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-6</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-4/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-4</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-5</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC5%E7%AB%A0%EF%BC%9A%E9%80%9A%E7%94%A8%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B-start-kernel"><span class="nav-text">第5章：通用启动流程 start_kernel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E6%A6%82%E8%BF%B0"><span class="nav-text">本章概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#start-kernel-%E8%B0%83%E7%94%A8%E9%93%BE"><span class="nav-text">start_kernel 调用链</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-1-start-kernel-%E5%85%A5%E5%8F%A3"><span class="nav-text">5.1 start_kernel 入口</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-1-%E5%87%BD%E6%95%B0%E5%AE%9A%E4%B9%89%E5%92%8C%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">5.1.1 函数定义和初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-2-%E6%A0%88%E9%AD%94%E6%95%B0%E6%9C%BA%E5%88%B6"><span class="nav-text">5.1.2 栈魔数机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-%E6%97%A9%E6%9C%9F%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">5.2 早期初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-1-%E5%AE%8C%E6%95%B4%E7%9A%84%E6%97%A9%E6%9C%9F%E5%88%9D%E5%A7%8B%E5%8C%96%E5%BA%8F%E5%88%97"><span class="nav-text">5.2.1 完整的早期初始化序列</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-setup-arch-%E6%9E%B6%E6%9E%84%E7%89%B9%E5%AE%9A%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">5.3 setup_arch() - 架构特定初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-1-x86-64-%E7%9A%84-setup-arch"><span class="nav-text">5.3.1 x86_64 的 setup_arch()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-2-ARM64-%E7%9A%84-setup-arch"><span class="nav-text">5.3.2 ARM64 的 setup_arch()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-%E6%A0%B8%E5%BF%83%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">5.4 核心子系统初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-1-%E5%AE%8C%E6%95%B4%E7%9A%84-start-kernel-%E5%BA%8F%E5%88%97"><span class="nav-text">5.4.1 完整的 start_kernel 序列</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-5-rest-init-%E6%9C%80%E7%BB%88%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">5.5 rest_init() - 最终初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-1-rest-init-%E5%87%BD%E6%95%B0"><span class="nav-text">5.5.1 rest_init 函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-2-kernel-init-%E7%BA%BF%E7%A8%8B"><span class="nav-text">5.5.2 kernel_init 线程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-6-initcall-%E6%9C%BA%E5%88%B6"><span class="nav-text">5.6 initcall 机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-1-initcall-%E7%BA%A7%E5%88%AB"><span class="nav-text">5.6.1 initcall 级别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-2-do-initcalls-%E6%89%A7%E8%A1%8C"><span class="nav-text">5.6.2 do_initcalls() 执行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-3-%E5%B8%B8%E8%A7%81-initcall-%E7%A4%BA%E4%BE%8B"><span class="nav-text">5.6.3 常见 initcall 示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-4-initcall-%E8%B0%83%E8%AF%95"><span class="nav-text">5.6.4 initcall 调试</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-7-%E7%B3%BB%E7%BB%9F%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="nav-text">5.7 系统状态转换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-7-1-%E7%B3%BB%E7%BB%9F%E7%8A%B6%E6%80%81%E6%9E%9A%E4%B8%BE"><span class="nav-text">5.7.1 系统状态枚举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-7-2-%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2%E5%9B%BE"><span class="nav-text">5.7.2 状态转换图</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">5.8 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#start-kernel-%E6%B5%81%E7%A8%8B%E5%9B%9E%E9%A1%BE"><span class="nav-text">start_kernel 流程回顾</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%B6%E9%97%B4%E7%BA%BF%E6%80%BB%E7%BB%93"><span class="nav-text">时间线总结</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        132 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>
