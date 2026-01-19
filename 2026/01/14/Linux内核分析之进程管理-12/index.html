@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-12/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-12">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-12/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:20:39.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:22.541Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-12 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-12</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:20:39</span>
+        <span class="mobile">2026-01-14 19:20:39</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:22</span>
+            <span class="mobile">2026-01-19 13:40:22</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第12章-进程调试与监控"><a href="#第12章-进程调试与监控" class="headerlink" title="第12章 进程调试与监控"></a>第12章 进程调试与监控</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="12-1-ptrace-机制"><a href="#12-1-ptrace-机制" class="headerlink" title="12.1 ptrace 机制"></a>12.1 ptrace 机制</h2><h3 id="12-1-1-ptrace-概述"><a href="#12-1-1-ptrace-概述" class="headerlink" title="12.1.1 ptrace 概述"></a>12.1.1 ptrace 概述</h3><p><strong>定义：</strong> ptrace 是 Linux 提供的进程跟踪机制，允许一个进程观察和控制另一个进程的执行。</p>
+<p><strong>用途：</strong></p>
+<ul>
+<li>调试器 (gdb)</li>
+<li>系统调用追踪 (strace)</li>
+<li>进程监控</li>
+</ul>
+<h3 id="12-1-2-ptrace-系统调用"><a href="#12-1-2-ptrace-系统调用" class="headerlink" title="12.1.2 ptrace 系统调用"></a>12.1.2 ptrace 系统调用</h3><p><strong>位置：</strong> <code>kernel/ptrace.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE4(ptrace, <span class="type">long</span>, request, <span class="type">long</span>, pid,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, addr, <span class="type">unsigned</span> <span class="type">long</span>, data)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">child</span>;</span></span><br><span class="line">    <span class="type">long</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找目标进程</span></span><br><span class="line">    child = find_get_task_by_vpid(pid);</span><br><span class="line">    <span class="keyword">if</span> (!child)</span><br><span class="line">        <span class="keyword">return</span> -ESRCH;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查权限</span></span><br><span class="line">    <span class="keyword">if</span> (!may_attach(child)) &#123;</span><br><span class="line">        put_task_struct(child);</span><br><span class="line">        <span class="keyword">return</span> -EPERM;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 根据请求类型处理</span></span><br><span class="line">    ret = ptrace_check_attach(child, request == PTRACE_KILL);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">switch</span> (request) &#123;</span><br><span class="line">    <span class="keyword">case</span> PTRACE_TRACEME:</span><br><span class="line">        <span class="comment">// 当前进程被父进程跟踪</span></span><br><span class="line">        ret = ptrace_traceme();</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_ATTACH:</span><br><span class="line">        <span class="comment">// 附加到目标进程</span></span><br><span class="line">        ret = ptrace_attach(child, data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_SETOPTIONS:</span><br><span class="line">        <span class="comment">// 设置跟踪选项</span></span><br><span class="line">        ret = ptrace_set_options(child, data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_GETREGS:</span><br><span class="line">        <span class="comment">// 获取寄存器</span></span><br><span class="line">        ret = ptrace_get_regs(child, (<span class="type">void</span> __user *)data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_SETREGS:</span><br><span class="line">        <span class="comment">// 设置寄存器</span></span><br><span class="line">        ret = ptrace_set_regs(child, (<span class="type">void</span> __user *)data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_CONT:</span><br><span class="line">        <span class="comment">// 继续执行</span></span><br><span class="line">        ret = ptrace_resume(child, data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_SINGLESTEP:</span><br><span class="line">        <span class="comment">// 单步执行</span></span><br><span class="line">        ret = ptrace_singlestep(child, data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_PEEKTEXT:</span><br><span class="line">    <span class="keyword">case</span> PTRACE_PEEKDATA:</span><br><span class="line">        <span class="comment">// 读取内存</span></span><br><span class="line">        ret = ptrace_peek_data(child, addr, (<span class="type">void</span> __user *)data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> PTRACE_POKETEXT:</span><br><span class="line">    <span class="keyword">case</span> PTRACE_POKEDATA:</span><br><span class="line">        <span class="comment">// 写入内存</span></span><br><span class="line">        ret = ptrace_poke_data(child, addr, (<span class="type">void</span> __user *)data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        ret = arch_ptrace(child, request, addr, data);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    put_task_struct(child);</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-1-3-ptrace-请求类型"><a href="#12-1-3-ptrace-请求类型" class="headerlink" title="12.1.3 ptrace 请求类型"></a>12.1.3 ptrace 请求类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/uapi/linux/ptrace.h</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_TRACEME        0   <span class="comment">/* 被父进程跟踪 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_PEEKTEXT       1   <span class="comment">/* 读取代码段 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_PEEKDATA       2   <span class="comment">/* 读取数据段 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_PEEKUSER       3   <span class="comment">/* 读取用户区 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_POKETEXT       4   <span class="comment">/* 写入代码段 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_POKEDATA       5   <span class="comment">/* 写入数据段 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_POKEUSER       6   <span class="comment">/* 写入用户区 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_CONT          7   <span class="comment">/* 继续执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_KILL          8   <span class="comment">/* 杀死进程 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_SINGLESTEP    9   <span class="comment">/* 单步执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_ATTACH       16   <span class="comment">/* 附加到进程 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_DETACH       17   <span class="comment">/* 分离进程 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_SETOPTIONS    0x4200  <span class="comment">/* 设置选项 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_GETREGS      0x4201  <span class="comment">/* 获取寄存器 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_SETREGS      0x4202  <span class="comment">/* 设置寄存器 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-1-4-ptrace-选项"><a href="#12-1-4-ptrace-选项" class="headerlink" title="12.1.4 ptrace 选项"></a>12.1.4 ptrace 选项</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// PTRACE_O_* 选项</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACESYSGOOD   0x00000001  <span class="comment">/* 生成 SIGTRAP | 0x80 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACEFORK     0x00000002  <span class="comment">/* 跟踪 fork */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACEVFORK    0x00000004  <span class="comment">/* 跟踪 vfork */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACECLONE    0x00000008  <span class="comment">/* 跟踪 clone */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACEEXEC     0x00000010  <span class="comment">/* 跟踪 exec */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACEVFORKDONE 0x00000020 <span class="comment">/* 跟踪 vfork 完成 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACEEXIT     0x00000040  <span class="comment">/* 跟踪 exit */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTRACE_O_TRACESECCOMP  0x00000080  <span class="comment">/* 跟踪 seccomp */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-2-进程状态监控"><a href="#12-2-进程状态监控" class="headerlink" title="12.2 进程状态监控"></a>12.2 进程状态监控</h2><h3 id="12-2-1-proc-pid-stat"><a href="#12-2-1-proc-pid-stat" class="headerlink" title="12.2.1 &#x2F;proc&#x2F;[pid]&#x2F;stat"></a>12.2.1 &#x2F;proc&#x2F;[pid]&#x2F;stat</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程状态</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/1234/stat</span><br><span class="line">1234 (<span class="built_in">sleep</span>) S 1000 1000 1000 0 -1 4194304 45 0 0 0 12 8 0 0 20 0 1 0 123456789 123456 18446744073709551615</span><br><span class="line"></span><br><span class="line"><span class="comment"># 状态字符含义:</span></span><br><span class="line"><span class="comment"># R (Running)      - 正在运行或可运行</span></span><br><span class="line"><span class="comment"># S (Sleeping)     - 可中断睡眠</span></span><br><span class="line"><span class="comment"># D (Disk sleep)   - 不可中断睡眠</span></span><br><span class="line"><span class="comment"># Z (Zombie)       - 僵尸进程</span></span><br><span class="line"><span class="comment"># T (Stopped)      - 已停止</span></span><br><span class="line"><span class="comment"># t (Tracing)      - 被跟踪</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-2-2-proc-pid-status"><a href="#12-2-2-proc-pid-status" class="headerlink" title="12.2.2 &#x2F;proc&#x2F;[pid]&#x2F;status"></a>12.2.2 &#x2F;proc&#x2F;[pid]&#x2F;status</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看详细状态</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/1234/status</span><br><span class="line">Name:   <span class="built_in">sleep</span></span><br><span class="line">State:  S (sleeping)</span><br><span class="line">Tgid:   1234</span><br><span class="line">Pid:    1234</span><br><span class="line">PPid:   1000</span><br><span class="line">TracerPid:  0</span><br><span class="line">Uid:    1000    1000    1000    1000</span><br><span class="line">Gid:    1000    1000    1000    1000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 性能统计</span></span><br><span class="line">voluntary_ctxt_switches:    123</span><br><span class="line">nonvoluntary_ctxt_switches: 45</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-2-3-proc-pid-stack"><a href="#12-2-3-proc-pid-stack" class="headerlink" title="12.2.3 &#x2F;proc&#x2F;[pid]&#x2F;stack"></a>12.2.3 &#x2F;proc&#x2F;[pid]&#x2F;stack</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程内核栈</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/1234/stack</span><br><span class="line">[&lt;0&gt;] do_wait+0x1a3/0x260</span><br><span class="line">[&lt;0&gt;] sys_wait4+0x8a/0xe0</span><br><span class="line">[&lt;0&gt;] do_syscall_64+0x3a/0x80</span><br><span class="line">[&lt;0&gt;] entry_SYSCALL_64_after_hwframe+0x44/0xae</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-2-4-proc-pid-wchan"><a href="#12-2-4-proc-pid-wchan" class="headerlink" title="12.2.4 &#x2F;proc&#x2F;[pid]&#x2F;wchan"></a>12.2.4 &#x2F;proc&#x2F;[pid]&#x2F;wchan</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程等待的内核函数</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/1234/wchan</span><br><span class="line">do_wait</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-3-strace-系统调用追踪"><a href="#12-3-strace-系统调用追踪" class="headerlink" title="12.3 strace 系统调用追踪"></a>12.3 strace 系统调用追踪</h2><h3 id="12-3-1-strace-使用"><a href="#12-3-1-strace-使用" class="headerlink" title="12.3.1 strace 使用"></a>12.3.1 strace 使用</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 追踪系统调用</span></span><br><span class="line">$ strace <span class="built_in">ls</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪特定系统调用</span></span><br><span class="line">$ strace -e trace=open,close,<span class="built_in">read</span>,write <span class="built_in">ls</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 统计系统调用时间</span></span><br><span class="line">$ strace -c <span class="built_in">ls</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪子进程</span></span><br><span class="line">$ strace -f <span class="built_in">command</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪特定进程</span></span><br><span class="line">$ strace -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 显示时间戳</span></span><br><span class="line">$ strace -t <span class="built_in">ls</span></span><br><span class="line">$ strace -tt <span class="built_in">ls</span>        <span class="comment"># 微秒级</span></span><br><span class="line">$ strace -T <span class="built_in">ls</span>         <span class="comment"># 显示调用耗时</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪信号</span></span><br><span class="line">$ strace -e trace=signal <span class="built_in">ls</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-3-2-strace-输出示例"><a href="#12-3-2-strace-输出示例" class="headerlink" title="12.3.2 strace 输出示例"></a>12.3.2 strace 输出示例</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ strace <span class="built_in">ls</span></span><br><span class="line">execve(<span class="string">&quot;/bin/ls&quot;</span>, [<span class="string">&quot;ls&quot;</span>], 0x7ffeb1234567 /* 73 vars */) = 0</span><br><span class="line">brk(NULL)                               = 0x567890000000</span><br><span class="line">access(<span class="string">&quot;/etc/ld.so.nohwcap&quot;</span>, F_OK)      = -1 ENOENT (No such file or directory)</span><br><span class="line">mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f1234567000</span><br><span class="line">open(<span class="string">&quot;/etc/ld.so.cache&quot;</span>, O_RDONLY|O_CLOEXEC) = 3</span><br><span class="line">fstat(3, &#123;st_mode=S_IFREG|0644, st_size=12345, ...&#125;) = 0</span><br><span class="line">mmap(NULL, 12345, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f1234543000</span><br><span class="line">close(3)                                = 0</span><br><span class="line">...</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-4-ftrace-函数追踪"><a href="#12-4-ftrace-函数追踪" class="headerlink" title="12.4 ftrace 函数追踪"></a>12.4 ftrace 函数追踪</h2><h3 id="12-4-1-ftrace-接口"><a href="#12-4-1-ftrace-接口" class="headerlink" title="12.4.1 ftrace 接口"></a>12.4.1 ftrace 接口</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 ftrace 可用性</span></span><br><span class="line">$ mount | debugfs</span><br><span class="line">debugfs on /sys/kernel/debug <span class="built_in">type</span> debugfs</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看可用追踪器</span></span><br><span class="line">$ <span class="built_in">cat</span> /sys/kernel/debug/tracing/available_tracers</span><br><span class="line">hwlat blk mmiotrace function_graph wakeup_dl wakeup_rt wakeup <span class="keyword">function</span> nop</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看当前追踪器</span></span><br><span class="line">$ <span class="built_in">cat</span> /sys/kernel/debug/tracing/current_tracer</span><br><span class="line">nop</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-4-2-函数追踪"><a href="#12-4-2-函数追踪" class="headerlink" title="12.4.2 函数追踪"></a>12.4.2 函数追踪</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用函数追踪</span></span><br><span class="line">$ <span class="built_in">echo</span> <span class="keyword">function</span> &gt; /sys/kernel/debug/tracing/current_tracer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看追踪结果</span></span><br><span class="line">$ <span class="built_in">cat</span> /sys/kernel/debug/tracing/trace</span><br><span class="line"><span class="comment"># tracer: function</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># entries-in-buffer/entries-written: 1234/1234   #P:4</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment">#                              _-----=&gt; irqs-off</span></span><br><span class="line"><span class="comment">#                             / _----=&gt; need-resched</span></span><br><span class="line"><span class="comment">#                            | / _---=&gt; hardirq/softirq</span></span><br><span class="line"><span class="comment">#                            || / _--=&gt; preempt-depth</span></span><br><span class="line"><span class="comment">#                            ||| /     delay</span></span><br><span class="line"><span class="comment">#           TASK-PID   CPU#  ||||    TIMESTAMP  FUNCTION</span></span><br><span class="line"><span class="comment">#              | |       |   ||||       |         |</span></span><br><span class="line">            bash-1234  [001] .... 12345.678901: sys_write &lt;-syscall_return_slowpath</span><br><span class="line">            bash-1234  [001] .... 12345.678902: vfs_write &lt;-sys_write</span><br><span class="line">            bash-1234  [001] .... 12345.678903: ksys_write &lt;-vfs_write</span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪特定函数</span></span><br><span class="line">$ <span class="built_in">echo</span> sched_fork &gt; /sys/kernel/debug/tracing/set_ftrace_filter</span><br><span class="line">$ <span class="built_in">echo</span> do_fork &gt;&gt; /sys/kernel/debug/tracing/set_ftrace_filter</span><br><span class="line"></span><br><span class="line"><span class="comment"># 清空追踪</span></span><br><span class="line">$ <span class="built_in">echo</span> &gt; /sys/kernel/debug/tracing/trace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 停止追踪</span></span><br><span class="line">$ <span class="built_in">echo</span> nop &gt; /sys/kernel/debug/tracing/current_tracer</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-4-3-函数图追踪"><a href="#12-4-3-函数图追踪" class="headerlink" title="12.4.3 函数图追踪"></a>12.4.3 函数图追踪</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用函数图追踪</span></span><br><span class="line">$ <span class="built_in">echo</span> function_graph &gt; /sys/kernel/debug/tracing/current_tracer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看追踪结果</span></span><br><span class="line">$ <span class="built_in">cat</span> /sys/kernel/debug/tracing/trace</span><br><span class="line"> 2)               |  <span class="function"><span class="title">sys_fork</span></span>() &#123;</span><br><span class="line"> 2)               |    <span class="function"><span class="title">do_fork</span></span>() &#123;</span><br><span class="line"> 2)               |      <span class="function"><span class="title">copy_process</span></span>() &#123;</span><br><span class="line"> 2)   0.123 us    |        _copy_from_user();</span><br><span class="line"> 2)   0.456 us    |        dup_task_struct();</span><br><span class="line"> 2)               |        <span class="function"><span class="title">alloc_pid</span></span>() &#123;</span><br><span class="line"> 2)   0.789 us    |          spin_lock();</span><br><span class="line"> 2)   0.234 us    |          spin_unlock();</span><br><span class="line"> 2)   1.234 us    |        &#125;</span><br><span class="line"> 2)               |      &#125;</span><br><span class="line"> 2)   5.678 us    |    &#125;</span><br><span class="line"> 2) + 12.345 us   |  &#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-5-perf-性能分析"><a href="#12-5-perf-性能分析" class="headerlink" title="12.5 perf 性能分析"></a>12.5 perf 性能分析</h2><h3 id="12-5-1-perf-基本使用"><a href="#12-5-1-perf-基本使用" class="headerlink" title="12.5.1 perf 基本使用"></a>12.5.1 perf 基本使用</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列出可用事件</span></span><br><span class="line">$ perf list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 统计 CPU 事件</span></span><br><span class="line">$ perf <span class="built_in">stat</span> <span class="built_in">ls</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 记录性能数据</span></span><br><span class="line">$ perf record <span class="built_in">ls</span></span><br><span class="line">$ perf report</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实时监控</span></span><br><span class="line">$ perf top</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看调度事件</span></span><br><span class="line">$ perf <span class="built_in">sched</span> record -- <span class="built_in">sleep</span> 60</span><br><span class="line">$ perf <span class="built_in">sched</span> latency</span><br><span class="line">$ perf <span class="built_in">sched</span> map</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-5-2-perf-sched-延迟分析"><a href="#12-5-2-perf-sched-延迟分析" class="headerlink" title="12.5.2 perf sched 延迟分析"></a>12.5.2 perf sched 延迟分析</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 记录调度事件</span></span><br><span class="line">$ perf <span class="built_in">sched</span> record -- <span class="built_in">sleep</span> 60</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析调度延迟</span></span><br><span class="line">$ perf <span class="built_in">sched</span> latency</span><br><span class="line">  Task            |   Runtime ms  | Switches | Avg delay ms | Max delay ms</span><br><span class="line">  firefox:1234    |      1234.56  |     5678 |        0.123 |       45.678</span><br><span class="line">  chrome:2345     |      2345.67  |     6789 |        0.234 |       56.789</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析调度映射</span></span><br><span class="line">$ perf <span class="built_in">sched</span> map</span><br><span class="line">            *A0  123456.123456  1234  A0:2345/234567</span><br><span class="line">            *B0  123456.123567  2345  B0:3456/345678</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-5-3-perf-trace"><a href="#12-5-3-perf-trace" class="headerlink" title="12.5.3 perf trace"></a>12.5.3 perf trace</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 追踪系统调用 (类似 strace)</span></span><br><span class="line">$ perf trace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪特定事件</span></span><br><span class="line">$ perf trace -e <span class="built_in">sched</span>:sched_switch</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-6-eBPF-BCC-动态追踪"><a href="#12-6-eBPF-BCC-动态追踪" class="headerlink" title="12.6 eBPF&#x2F;BCC 动态追踪"></a>12.6 eBPF&#x2F;BCC 动态追踪</h2><h3 id="12-6-1-BCC-工具"><a href="#12-6-1-BCC-工具" class="headerlink" title="12.6.1 BCC 工具"></a>12.6.1 BCC 工具</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 追踪进程创建</span></span><br><span class="line">$ execsnoop</span><br><span class="line">PCOMM            PID    PPID   RET ARGS</span><br><span class="line">bash             1234   1000     0 <span class="built_in">ls</span></span><br><span class="line">bash             1235   1000     0 <span class="built_in">sleep</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪进程退出</span></span><br><span class="line">$ exitsnoop</span><br><span class="line">PCOMM            PID    PPID   RET ARGS</span><br><span class="line"><span class="built_in">sleep</span>            1234   1000     0</span><br><span class="line"><span class="built_in">ls</span>               1235   1000     0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪调度延迟</span></span><br><span class="line">$ runqlat</span><br><span class="line">usecs               : count      distribution</span><br><span class="line">0 -&gt; 1              : 123        |***********                                     |</span><br><span class="line">2 -&gt; 3              : 456        |**********************************************    |</span><br><span class="line">4 -&gt; 7              : 789        |**************************************************************************|</span><br><span class="line">8 -&gt; 15             : 1234       |******************************************************************************************************************|</span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪 CPU 使用</span></span><br><span class="line">$ profile</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-6-2-bpftrace"><a href="#12-6-2-bpftrace" class="headerlink" title="12.6.2 bpftrace"></a>12.6.2 bpftrace</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 追踪系统调用频率</span></span><br><span class="line">$ bpftrace -e <span class="string">&#x27;tracepoint:syscalls:sys_enter_* &#123; @[comm] = count(); &#125;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪进程调度</span></span><br><span class="line">$ bpftrace -e <span class="string">&#x27;tracepoint:sched:sched_switch &#123; @[comm] = count(); &#125;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 追踪页面错误</span></span><br><span class="line">$ bpftrace -e <span class="string">&#x27;software:fault:.* &#123; @[comm] = count(); &#125;&#x27;</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-7-proc-sys-kernel-调优参数"><a href="#12-7-proc-sys-kernel-调优参数" class="headerlink" title="12.7 &#x2F;proc&#x2F;sys&#x2F;kernel 调优参数"></a>12.7 &#x2F;proc&#x2F;sys&#x2F;kernel 调优参数</h2><h3 id="12-7-1-进程相关参数"><a href="#12-7-1-进程相关参数" class="headerlink" title="12.7.1 进程相关参数"></a>12.7.1 进程相关参数</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 最大 PID</span></span><br><span class="line">/proc/sys/kernel/pid_max</span><br><span class="line"><span class="comment"># 默认: 32768 (32位) 或 4194304 (64位)</span></span><br><span class="line"><span class="built_in">echo</span> 4194304 &gt; /proc/sys/kernel/pid_max</span><br><span class="line"></span><br><span class="line"><span class="comment"># 最大线程数</span></span><br><span class="line">/proc/sys/kernel/threads-max</span><br><span class="line"><span class="comment"># 默认: 根据内存计算</span></span><br><span class="line"><span class="built_in">echo</span> 123456 &gt; /proc/sys/kernel/threads-max</span><br><span class="line"></span><br><span class="line"><span class="comment"># 地址空间随机化</span></span><br><span class="line">/proc/sys/kernel/randomize_va_space</span><br><span class="line"><span class="comment"># 0 = 关闭, 1 = 部分随机化, 2 = 完全随机化</span></span><br><span class="line"><span class="built_in">echo</span> 2 &gt; /proc/sys/kernel/randomize_va_space</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-7-2-调度器参数"><a href="#12-7-2-调度器参数" class="headerlink" title="12.7.2 调度器参数"></a>12.7.2 调度器参数</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 实时调度周期 (微秒)</span></span><br><span class="line">/proc/sys/kernel/sched_rt_period_us</span><br><span class="line"><span class="built_in">echo</span> 1000000 &gt; /proc/sys/kernel/sched_rt_period_us</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实时调度运行时间 (微秒)</span></span><br><span class="line">/proc/sys/kernel/sched_rt_runtime_us</span><br><span class="line"><span class="built_in">echo</span> 950000 &gt; /proc/sys/kernel/sched_rt_runtime_us</span><br><span class="line"><span class="built_in">echo</span> -1 &gt; /proc/sys/kernel/sched_rt_runtime_us  <span class="comment"># 无限制</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># CFS 调度参数</span></span><br><span class="line">/proc/sys/kernel/sched_min_granularity_ns</span><br><span class="line">/proc/sys/kernel/sched_wakeup_granularity_ns</span><br><span class="line">/proc/sys/kernel/sched_latency_ns</span><br><span class="line"></span><br><span class="line"><span class="comment"># RR 时间片 (毫秒)</span></span><br><span class="line">/proc/sys/kernel/sched_rr_timeslice_ms</span><br><span class="line"><span class="built_in">echo</span> 100 &gt; /proc/sys/kernel/sched_rr_timeslice_ms</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-7-3-信号相关参数"><a href="#12-7-3-信号相关参数" class="headerlink" title="12.7.3 信号相关参数"></a>12.7.3 信号相关参数</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Core 文件名模式</span></span><br><span class="line">/proc/sys/kernel/core_pattern</span><br><span class="line"><span class="built_in">echo</span> /var/crash/core.%e.%p &gt; /proc/sys/kernel/core_pattern</span><br><span class="line"></span><br><span class="line"><span class="comment"># Core 文件大小限制</span></span><br><span class="line">/proc/sys/kernel/core_uses_pid</span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/kernel/core_uses_pid</span><br><span class="line"></span><br><span class="line"><span class="comment"># 打印致命信号</span></span><br><span class="line">/proc/sys/kernel/print_fatal_signals</span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/kernel/print_fatal_signals</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-8-进程转储-Core-Dump"><a href="#12-8-进程转储-Core-Dump" class="headerlink" title="12.8 进程转储 (Core Dump)"></a>12.8 进程转储 (Core Dump)</h2><h3 id="12-8-1-生成-Core-Dump"><a href="#12-8-1-生成-Core-Dump" class="headerlink" title="12.8.1 生成 Core Dump"></a>12.8.1 生成 Core Dump</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/resource.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;signal.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rlimit</span> <span class="title">lim</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 启用 core dump</span></span><br><span class="line">    lim.rlim_cur = RLIM_INFINITY;</span><br><span class="line">    lim.rlim_max = RLIM_INFINITY;</span><br><span class="line">    setrlimit(RLIMIT_CORE, &amp;lim);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 触发段错误生成 core</span></span><br><span class="line">    raise(SIGSEGV);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-8-2-Core-文件配置"><a href="#12-8-2-Core-文件配置" class="headerlink" title="12.8.2 Core 文件配置"></a>12.8.2 Core 文件配置</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 配置 core 文件路径</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;/var/crash/core.%e.%p.%h.%t&quot;</span> &gt; /proc/sys/kernel/core_pattern</span><br><span class="line"></span><br><span class="line"><span class="comment"># %e = 可执行文件名</span></span><br><span class="line"><span class="comment"># %p = PID</span></span><br><span class="line"><span class="comment"># %h = 主机名</span></span><br><span class="line"><span class="comment"># %t = 时间戳</span></span><br><span class="line"><span class="comment"># %u = UID</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 在 core 文件名中包含 PID</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/kernel/core_uses_pid</span><br><span class="line"></span><br><span class="line"><span class="comment"># 限制 core 文件大小</span></span><br><span class="line"><span class="built_in">ulimit</span> -c unlimited</span><br><span class="line"><span class="built_in">ulimit</span> -c 1000000</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-8-3-分析-Core-Dump"><a href="#12-8-3-分析-Core-Dump" class="headerlink" title="12.8.3 分析 Core Dump"></a>12.8.3 分析 Core Dump</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 gdb 分析 core 文件</span></span><br><span class="line">$ gdb executable core</span><br><span class="line">(gdb) bt        <span class="comment"># 回溯</span></span><br><span class="line">(gdb) info registers</span><br><span class="line">(gdb) info threads</span><br><span class="line">(gdb) thread apply all bt</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-9-进程监控工具"><a href="#12-9-进程监控工具" class="headerlink" title="12.9 进程监控工具"></a>12.9 进程监控工具</h2><h3 id="12-9-1-ps"><a href="#12-9-1-ps" class="headerlink" title="12.9.1 ps"></a>12.9.1 ps</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看所有进程</span></span><br><span class="line">ps aux</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看进程树</span></span><br><span class="line">ps axjf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看特定进程</span></span><br><span class="line">ps -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看线程</span></span><br><span class="line">ps -eLf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看调度信息</span></span><br><span class="line">ps -eo pid,tid,pri,psr,<span class="built_in">comm</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-9-2-top"><a href="#12-9-2-top" class="headerlink" title="12.9.2 top"></a>12.9.2 top</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 实时进程监控</span></span><br><span class="line">top</span><br><span class="line"></span><br><span class="line"><span class="comment"># 显示线程</span></span><br><span class="line">top -H</span><br><span class="line"></span><br><span class="line"><span class="comment"># 显示 CPU 数</span></span><br><span class="line">top -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 批处理模式</span></span><br><span class="line">top -b -n 1 &gt; top.log</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-9-3-htop"><a href="#12-9-3-htop" class="headerlink" title="12.9.3 htop"></a>12.9.3 htop</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 更友好的进程监控</span></span><br><span class="line">htop</span><br><span class="line"></span><br><span class="line"><span class="comment"># 显示进程树</span></span><br><span class="line">htop -t</span><br><span class="line"></span><br><span class="line"><span class="comment"># 特定用户进程</span></span><br><span class="line">htop -u username</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-9-4-pidstat"><a href="#12-9-4-pidstat" class="headerlink" title="12.9.4 pidstat"></a>12.9.4 pidstat</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># CPU 统计</span></span><br><span class="line">$ pidstat -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 上下文切换</span></span><br><span class="line">$ pidstat -w -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 缺页统计</span></span><br><span class="line">$ pidstat -r -p 1234</span><br><span class="line"></span><br><span class="line"><span class="comment"># 堆栈使用</span></span><br><span class="line">$ pidstat -s -p 1234</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-10-内核调试"><a href="#12-10-内核调试" class="headerlink" title="12.10 内核调试"></a>12.10 内核调试</h2><h3 id="12-10-1-Magic-SysRq"><a href="#12-10-1-Magic-SysRq" class="headerlink" title="12.10.1 Magic SysRq"></a>12.10.1 Magic SysRq</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 Magic SysRq</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/kernel/sysrq</span><br><span class="line"></span><br><span class="line"><span class="comment"># 常用命令</span></span><br><span class="line">Alt + SysRq + t    <span class="comment"># 显示任务状态</span></span><br><span class="line">Alt + SysRq + m    <span class="comment"># 显示内存信息</span></span><br><span class="line">Alt + SysRq + p    <span class="comment"># 显示寄存器</span></span><br><span class="line">Alt + SysRq + c    <span class="comment"># 触发系统崩溃 (用于 kdump 测试)</span></span><br><span class="line">Alt + SysRq + s    <span class="comment"># 同步所有文件系统</span></span><br><span class="line">Alt + SysRq + u    <span class="comment"># 重新挂载只读</span></span><br><span class="line">Alt + SysRq + b    <span class="comment"># 立即重启</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 通过 /proc 触发</span></span><br><span class="line"><span class="built_in">echo</span> t &gt; /proc/sysrq-trigger</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-10-2-kprobe"><a href="#12-10-2-kprobe" class="headerlink" title="12.10.2 kprobe"></a>12.10.2 kprobe</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 内核模块中使用 kprobe</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/kprobes.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">handler_pre</span><span class="params">(<span class="keyword">struct</span> kprobe *p, <span class="keyword">struct</span> pt_regs *regs)</span></span><br><span class="line">&#123;</span><br><span class="line">    printk(<span class="string">&quot;pre_handler: p-&gt;addr = 0x%p, ip = %lx\n&quot;</span>,</span><br><span class="line">           p-&gt;addr, regs-&gt;ip);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">kprobe</span> <span class="title">kp</span> =</span> &#123;</span><br><span class="line">    .symbol_name = <span class="string">&quot;do_fork&quot;</span>,</span><br><span class="line">    .pre_handler = handler_pre,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">kprobe_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    register_kprobe(&amp;kp);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-11-本章小结"><a href="#12-11-本章小结" class="headerlink" title="12.11 本章小结"></a>12.11 本章小结</h2><p>本章介绍了 Linux 进程调试与监控：</p>
+<ol>
+<li><strong>ptrace 机制</strong>：进程跟踪、断点、单步执行</li>
+<li><strong>strace</strong>：系统调用追踪</li>
+<li><strong>ftrace</strong>：内核函数追踪</li>
+<li><strong>perf</strong>：性能分析工具</li>
+<li><strong>eBPF&#x2F;BCC</strong>：动态追踪</li>
+<li><strong>&#x2F;proc 接口</strong>：stat、status、stack、wchan</li>
+<li><strong>调优参数</strong>：&#x2F;proc&#x2F;sys&#x2F;kernel</li>
+<li><strong>Core Dump</strong>：进程转储与分析</li>
+<li><strong>监控工具</strong>：ps、top、htop、pidstat</li>
+<li><strong>内核调试</strong>：Magic SysRq、kprobe</li>
+</ol>
+<p>至此，Linux 6.12.38 进程管理的内容已全部介绍完毕，后续会进行补充其他相关知识。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-12</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:20:39</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:22
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-12/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-13/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-13</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-11/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-11</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-12</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC12%E7%AB%A0-%E8%BF%9B%E7%A8%8B%E8%B0%83%E8%AF%95%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="nav-text">第12章 进程调试与监控</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#12-1-ptrace-%E6%9C%BA%E5%88%B6"><span class="nav-text">12.1 ptrace 机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-1-ptrace-%E6%A6%82%E8%BF%B0"><span class="nav-text">12.1.1 ptrace 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-2-ptrace-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">12.1.2 ptrace 系统调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-3-ptrace-%E8%AF%B7%E6%B1%82%E7%B1%BB%E5%9E%8B"><span class="nav-text">12.1.3 ptrace 请求类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-4-ptrace-%E9%80%89%E9%A1%B9"><span class="nav-text">12.1.4 ptrace 选项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-2-%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81%E7%9B%91%E6%8E%A7"><span class="nav-text">12.2 进程状态监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-1-proc-pid-stat"><span class="nav-text">12.2.1 &#x2F;proc&#x2F;[pid]&#x2F;stat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-2-proc-pid-status"><span class="nav-text">12.2.2 &#x2F;proc&#x2F;[pid]&#x2F;status</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-3-proc-pid-stack"><span class="nav-text">12.2.3 &#x2F;proc&#x2F;[pid]&#x2F;stack</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-4-proc-pid-wchan"><span class="nav-text">12.2.4 &#x2F;proc&#x2F;[pid]&#x2F;wchan</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-3-strace-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BF%BD%E8%B8%AA"><span class="nav-text">12.3 strace 系统调用追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-3-1-strace-%E4%BD%BF%E7%94%A8"><span class="nav-text">12.3.1 strace 使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-3-2-strace-%E8%BE%93%E5%87%BA%E7%A4%BA%E4%BE%8B"><span class="nav-text">12.3.2 strace 输出示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-4-ftrace-%E5%87%BD%E6%95%B0%E8%BF%BD%E8%B8%AA"><span class="nav-text">12.4 ftrace 函数追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-1-ftrace-%E6%8E%A5%E5%8F%A3"><span class="nav-text">12.4.1 ftrace 接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-2-%E5%87%BD%E6%95%B0%E8%BF%BD%E8%B8%AA"><span class="nav-text">12.4.2 函数追踪</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-3-%E5%87%BD%E6%95%B0%E5%9B%BE%E8%BF%BD%E8%B8%AA"><span class="nav-text">12.4.3 函数图追踪</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-5-perf-%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="nav-text">12.5 perf 性能分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-1-perf-%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8"><span class="nav-text">12.5.1 perf 基本使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-2-perf-sched-%E5%BB%B6%E8%BF%9F%E5%88%86%E6%9E%90"><span class="nav-text">12.5.2 perf sched 延迟分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-3-perf-trace"><span class="nav-text">12.5.3 perf trace</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-6-eBPF-BCC-%E5%8A%A8%E6%80%81%E8%BF%BD%E8%B8%AA"><span class="nav-text">12.6 eBPF&#x2F;BCC 动态追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-6-1-BCC-%E5%B7%A5%E5%85%B7"><span class="nav-text">12.6.1 BCC 工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-6-2-bpftrace"><span class="nav-text">12.6.2 bpftrace</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-7-proc-sys-kernel-%E8%B0%83%E4%BC%98%E5%8F%82%E6%95%B0"><span class="nav-text">12.7 &#x2F;proc&#x2F;sys&#x2F;kernel 调优参数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-7-1-%E8%BF%9B%E7%A8%8B%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0"><span class="nav-text">12.7.1 进程相关参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-7-2-%E8%B0%83%E5%BA%A6%E5%99%A8%E5%8F%82%E6%95%B0"><span class="nav-text">12.7.2 调度器参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-7-3-%E4%BF%A1%E5%8F%B7%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0"><span class="nav-text">12.7.3 信号相关参数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-8-%E8%BF%9B%E7%A8%8B%E8%BD%AC%E5%82%A8-Core-Dump"><span class="nav-text">12.8 进程转储 (Core Dump)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-8-1-%E7%94%9F%E6%88%90-Core-Dump"><span class="nav-text">12.8.1 生成 Core Dump</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-8-2-Core-%E6%96%87%E4%BB%B6%E9%85%8D%E7%BD%AE"><span class="nav-text">12.8.2 Core 文件配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-8-3-%E5%88%86%E6%9E%90-Core-Dump"><span class="nav-text">12.8.3 分析 Core Dump</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-9-%E8%BF%9B%E7%A8%8B%E7%9B%91%E6%8E%A7%E5%B7%A5%E5%85%B7"><span class="nav-text">12.9 进程监控工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-9-1-ps"><span class="nav-text">12.9.1 ps</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-9-2-top"><span class="nav-text">12.9.2 top</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-9-3-htop"><span class="nav-text">12.9.3 htop</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-9-4-pidstat"><span class="nav-text">12.9.4 pidstat</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-10-%E5%86%85%E6%A0%B8%E8%B0%83%E8%AF%95"><span class="nav-text">12.10 内核调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-10-1-Magic-SysRq"><span class="nav-text">12.10.1 Magic SysRq</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-10-2-kprobe"><span class="nav-text">12.10.2 kprobe</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-11-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">12.11 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

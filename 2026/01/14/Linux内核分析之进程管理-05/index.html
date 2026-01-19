@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-05/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-05">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-05/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:20:07.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:43.843Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-05 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-05</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:20:07</span>
+        <span class="mobile">2026-01-14 19:20:07</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:43</span>
+            <span class="mobile">2026-01-19 13:40:43</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第5章-进程调度"><a href="#第5章-进程调度" class="headerlink" title="第5章 进程调度"></a>第5章 进程调度</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="5-1-调度器架构"><a href="#5-1-调度器架构" class="headerlink" title="5.1 调度器架构"></a>5.1 调度器架构</h2><h3 id="5-1-1-调度器设计原则"><a href="#5-1-1-调度器设计原则" class="headerlink" title="5.1.1 调度器设计原则"></a>5.1.1 调度器设计原则</h3><p>Linux 调度器采用模块化设计，支持多种调度策略：</p>
+<ul>
+<li><strong>公平性</strong>：确保每个进程获得公平的 CPU 时间</li>
+<li><strong>高效性</strong>：最小化调度开销</li>
+<li><strong>可扩展性</strong>：支持多核 SMP 架构</li>
+<li><strong>实时性</strong>：支持实时任务调度</li>
+<li><strong>灵活性</strong>：支持多种调度策略共存</li>
+</ul>
+<h3 id="5-1-2-调度类层次"><a href="#5-1-2-调度类层次" class="headerlink" title="5.1.2 调度类层次"></a>5.1.2 调度类层次</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      调度器核心架构                            │</span><br><span class="line">│                  (kernel/sched/core.c)                        │</span><br><span class="line">├────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │              Core Scheduler                              │  │</span><br><span class="line">│  │                                                          │  │</span><br><span class="line">│  │   schedule()         主调度函数                          │  │</span><br><span class="line">│  │   pick_next_task()   选择下一个任务                      │  │</span><br><span class="line">│  │   context_switch()   上下文切换                          │  │</span><br><span class="line">│  │   load_balance()     负载均衡                            │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                            │                                   │</span><br><span class="line">│         ┌──────────────────┼──────────────────┐               │</span><br><span class="line">│         │                  │                  │               │</span><br><span class="line">│         ↓                  ↓                  ↓               │</span><br><span class="line">│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │</span><br><span class="line">│  │  stop_      │  │   dl_       │  │   rt_       │          │</span><br><span class="line">│  │  sched_     │  │  sched_     │  │  sched_     │          │</span><br><span class="line">│  │  class      │  │  class      │  │  class      │          │</span><br><span class="line">│  │             │  │             │  │             │          │</span><br><span class="line">│  │ 停机任务     │  │ Deadline    │  │ 实时        │          │</span><br><span class="line">│  │ 最高优先级   │  │ EDF 算法    │  │ FIFO/RR     │          │</span><br><span class="line">│  └─────────────┘  └─────────────┘  └─────────────┘          │</span><br><span class="line">│                                              │                 │</span><br><span class="line">│                                              ↓                 │</span><br><span class="line">│                                      ┌─────────────┐          │</span><br><span class="line">│                                      │   fair_     │          │</span><br><span class="line">│                                      │  sched_     │          │</span><br><span class="line">│                                      │  class      │          │</span><br><span class="line">│                                      │             │          │</span><br><span class="line">│                                      │ CFS         │          │</span><br><span class="line">│                                      │ 完全公平     │          │</span><br><span class="line">│                                      └─────────────┘          │</span><br><span class="line">│                                              │                 │</span><br><span class="line">│                                              ↓                 │</span><br><span class="line">│                                      ┌─────────────┐          │</span><br><span class="line">│                                      │   idle_     │          │</span><br><span class="line">│                                      │  sched_     │          │</span><br><span class="line">│                                      │  class      │          │</span><br><span class="line">│                                      │             │          │</span><br><span class="line">│                                      │ 空闲        │          │</span><br><span class="line">│                                      │ 最低优先级   │          │</span><br><span class="line">│                                      └─────────────┘          │</span><br><span class="line">│                                                                 │</span><br><span class="line">└────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-1-3-调度类优先级"><a href="#5-1-3-调度类优先级" class="headerlink" title="5.1.3 调度类优先级"></a>5.1.3 调度类优先级</h3><p><strong>位置：</strong> <code>kernel/sched/core.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">stop_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">dl_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">rt_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">fair_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">idle_sched_class</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> sched_class_highest (&amp;stop_sched_class)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> sched_class_lowest  (&amp;idle_sched_class)</span></span><br></pre></td></tr></table></figure></div>
+
+<table>
+<thead>
+<tr>
+<th>调度类</th>
+<th>优先级</th>
+<th>策略</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>stop_sched_class</td>
+<td>最高</td>
+<td>-</td>
+<td>停机&#x2F;CPU 热迁移</td>
+</tr>
+<tr>
+<td>dl_sched_class</td>
+<td>2</td>
+<td>SCHED_DEADLINE</td>
+<td>严格实时任务</td>
+</tr>
+<tr>
+<td>rt_sched_class</td>
+<td>3</td>
+<td>SCHED_FIFO&#x2F;RR</td>
+<td>软实时任务</td>
+</tr>
+<tr>
+<td>fair_sched_class</td>
+<td>4</td>
+<td>SCHED_NORMAL&#x2F;BATCH</td>
+<td>普通进程</td>
+</tr>
+<tr>
+<td>idle_sched_class</td>
+<td>最低</td>
+<td>SCHED_IDLE</td>
+<td>空闲任务</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-2-运行队列-Run-Queue"><a href="#5-2-运行队列-Run-Queue" class="headerlink" title="5.2 运行队列 (Run Queue)"></a>5.2 运行队列 (Run Queue)</h2><h3 id="5-2-1-struct-rq"><a href="#5-2-1-struct-rq" class="headerlink" title="5.2.1 struct rq"></a>5.2.1 struct rq</h3><p><strong>位置：</strong> <code>kernel/sched/sched.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * This is the main, per-CPU runqueue data structure.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Locking rule: those places that want to lock multiple runqueues</span></span><br><span class="line"><span class="comment"> * (such as the load balancing or the migration code) lock grab</span></span><br><span class="line"><span class="comment"> * the rq lock in the order: src_rq-&gt;lock, dst_rq-&gt;lock.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rq</span> &#123;</span></span><br><span class="line">    <span class="comment">/* runqueue lock */</span></span><br><span class="line">    <span class="type">raw_spinlock_t</span> lock;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * nr_running and cpu_load should be in the same cacheline because</span></span><br><span class="line"><span class="comment">     * remote CPUs use these fields for load balancing.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> nr_running;            <span class="comment">// 可运行任务数</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* CPU load of this runqueue */</span></span><br><span class="line">    u64 nr_switches;                    <span class="comment">// 上下文切换次数</span></span><br><span class="line">    u64 nr_load_updates;                <span class="comment">// 负载更新次数</span></span><br><span class="line"></span><br><span class="line">    u64 nr_uninterruptible;             <span class="comment">// 不可中断睡眠任务数</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Per-CPU load tracking */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cpu_load</span> <span class="title">load</span>;</span>               <span class="comment">// CPU 负载</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cpu_load_history</span> <span class="title">load_history</span>[14];</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* The next load balancing period */</span></span><br><span class="line">    u64 next_balance;                   <span class="comment">// 下次负载均衡时间</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* For active balancing */</span></span><br><span class="line">    <span class="type">int</span> active_balance;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Sched statistics */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_statistics</span> <span class="title">stats</span>;</span>      <span class="comment">// 调度统计</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Scheduling classes */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span> <span class="title">cfs</span>;</span>                  <span class="comment">// CFS 运行队列</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_rq</span> <span class="title">rt</span>;</span>                    <span class="comment">// 实时运行队列</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dl_rq</span> <span class="title">dl</span>;</span>                    <span class="comment">// Deadline 运行队列</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Idle task */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">idle</span>;</span>           <span class="comment">// 空闲任务</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Stop task */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">stop</span>;</span>           <span class="comment">// 停机任务</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Clock */</span></span><br><span class="line">    u64 clock;                          <span class="comment">// 调度时钟</span></span><br><span class="line">    u64 clock_task;                     <span class="comment">// 任务时钟</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Context switch */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> nr_context_switches;   <span class="comment">// 上下文切换统计</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Various flags */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> clock_update_flags;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> clock_update_flags_mask;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* CPU */</span></span><br><span class="line">    <span class="type">int</span> cpu;                            <span class="comment">// CPU 编号</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* For active load balancing */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cpu_stop_work</span> <span class="title">stop_work</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* More fields... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-2-2-Per-CPU-运行队列"><a href="#5-2-2-Per-CPU-运行队列" class="headerlink" title="5.2.2 Per-CPU 运行队列"></a>5.2.2 Per-CPU 运行队列</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Per-CPU runqueues */</span></span><br><span class="line"><span class="type">static</span> <span class="title function_">DEFINE_PER_CPU_SHARED_ALIGNED</span><span class="params">(<span class="keyword">struct</span> rq, runqueues)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取指定 CPU 的运行队列</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> rq *<span class="title function_">cpu_rq</span><span class="params">(<span class="type">int</span> cpu)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> &amp;per_cpu(runqueues, cpu);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取当前 CPU 的运行队列</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> rq *<span class="title function_">this_rq</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> this_cpu_ptr(&amp;runqueues);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取任务所在 CPU 的运行队列</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> rq *<span class="title function_">task_rq</span><span class="params">(<span class="keyword">struct</span> task_struct *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> cpu_rq(task_cpu(p));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-3-完全公平调度器-CFS"><a href="#5-3-完全公平调度器-CFS" class="headerlink" title="5.3 完全公平调度器 (CFS)"></a>5.3 完全公平调度器 (CFS)</h2><h3 id="5-3-1-核心思想"><a href="#5-3-1-核心思想" class="headerlink" title="5.3.1 核心思想"></a>5.3.1 核心思想</h3><p>CFS 基于虚拟运行时间 (vruntime) 调度：</p>
+<ul>
+<li>vruntime 越小，表示获得 CPU 时间越少，优先调度</li>
+<li>vruntime 越大，表示已获得较多 CPU 时间，延后调度</li>
+<li>通过红-黑树维护按 vruntime 排序的任务队列</li>
+</ul>
+<h3 id="5-3-2-调度实体"><a href="#5-3-2-调度实体" class="headerlink" title="5.3.2 调度实体"></a>5.3.2 调度实体</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> &#123;</span></span><br><span class="line">    <span class="comment">/* For load-balancing: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">load_weight</span>      <span class="title">load</span>;</span>            <span class="comment">// 权重</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           runnable_weight; <span class="comment">// 可运行权重</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Entity execution state */</span></span><br><span class="line">    u64                     exec_start;      <span class="comment">// 执行开始时间</span></span><br><span class="line">    u64                     sum_exec_runtime; <span class="comment">// 总执行时间</span></span><br><span class="line">    u64                     vruntime;        <span class="comment">// 虚拟运行时间</span></span><br><span class="line">    u64                     vruntime_copy;   <span class="comment">// vruntime 副本</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Scheduling flag */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            on_rq;          <span class="comment">// 是否在队列中</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* RB-tree node */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span>          <span class="title">run_node</span>;</span>       <span class="comment">// 红-黑树节点</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Group scheduling */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">group_node</span>;</span>     <span class="comment">// 组节点</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            depth;           <span class="comment">// 组深度</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span>           *<span class="title">cfs_rq</span>;</span>         <span class="comment">// 所属 CFS 队列</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span>           *<span class="title">my_q</span>;</span>           <span class="comment">// 自己的 CFS 队列</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Statistics */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_statistics</span> <span class="title">stats</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// CFS 运行队列</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">load_weight</span> <span class="title">load</span>;</span>                <span class="comment">// 队列负载</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> runnable_weight;          <span class="comment">// 可运行权重</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> nr_running;                <span class="comment">// 可运行任务数</span></span><br><span class="line">    u64 exec_clock;                         <span class="comment">// 执行时钟</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* RB-tree */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_root_cached</span> <span class="title">timeline</span>;</span>         <span class="comment">// 任务时间线 (红-黑树)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* &#x27;curr&#x27; points to currently running entity on this cfs_rq. */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">curr</span>;</span>              <span class="comment">// 当前执行实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">next</span>;</span>              <span class="comment">// 下一个实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">last</span>;</span>              <span class="comment">// 上一个实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">skip</span>;</span>              <span class="comment">// 跳过的实体</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Statistics */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_statistics</span> <span class="title">stats</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* min_vruntime */</span></span><br><span class="line">    u64 min_vruntime;                       <span class="comment">// 最小 vruntime</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> CONFIG_64BIT</span></span><br><span class="line">    u64 min_vruntime_copy;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* More fields... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-3-3-vruntime-计算"><a href="#5-3-3-vruntime-计算" class="headerlink" title="5.3.3 vruntime 计算"></a>5.3.3 vruntime 计算</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/fair.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 虚拟运行时间更新:</span></span><br><span class="line"><span class="comment"> * vruntime += delta_exec * (NICE_0_LOAD / weight)</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * weight 越大 (nice 值越小), vruntime 增长越慢</span></span><br><span class="line"><span class="comment"> * weight 越小 (nice 值越大), vruntime 增长越快</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">update_curr</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">curr</span> =</span> cfs_rq-&gt;curr;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">rq</span> =</span> rq_of(cfs_rq);</span><br><span class="line">    u64 now = rq_clock_task(rq);</span><br><span class="line">    u64 delta_exec;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (unlikely(!curr))</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算执行时间</span></span><br><span class="line">    delta_exec = now - curr-&gt;exec_start;</span><br><span class="line">    <span class="keyword">if</span> (unlikely((s64)delta_exec &lt;= <span class="number">0</span>))</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    curr-&gt;exec_start = now;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新 vruntime</span></span><br><span class="line">    curr-&gt;vruntime += calc_delta_fair(delta_exec, curr);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新最小 vruntime</span></span><br><span class="line">    update_min_vruntime(cfs_rq);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 根据 nice 值计算权重</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="type">int</span> prio_to_weight[<span class="number">40</span>] = &#123;</span><br><span class="line">     <span class="comment">/* -20 */</span>     <span class="number">88761</span>,     <span class="number">71755</span>,     <span class="number">56483</span>,     <span class="number">46273</span>,     <span class="number">36291</span>,</span><br><span class="line">     <span class="comment">/* -15 */</span>     <span class="number">29154</span>,     <span class="number">23254</span>,     <span class="number">18705</span>,     <span class="number">14949</span>,     <span class="number">11916</span>,</span><br><span class="line">     <span class="comment">/* -10 */</span>      <span class="number">9548</span>,      <span class="number">7620</span>,      <span class="number">6100</span>,      <span class="number">4904</span>,      <span class="number">3906</span>,</span><br><span class="line">     <span class="comment">/*  -5 */</span>      <span class="number">3121</span>,      <span class="number">2501</span>,      <span class="number">1991</span>,      <span class="number">1586</span>,      <span class="number">1277</span>,</span><br><span class="line">     <span class="comment">/*   0 */</span>      <span class="number">1024</span>,       <span class="number">820</span>,       <span class="number">655</span>,       <span class="number">526</span>,       <span class="number">423</span>,</span><br><span class="line">     <span class="comment">/*   5 */</span>       <span class="number">335</span>,       <span class="number">272</span>,       <span class="number">223</span>,       <span class="number">183</span>,       <span class="number">149</span>,</span><br><span class="line">     <span class="comment">/*  10 */</span>       <span class="number">120</span>,        <span class="number">97</span>,        <span class="number">79</span>,        <span class="number">64</span>,        <span class="number">52</span>,</span><br><span class="line">     <span class="comment">/*  15 */</span>        <span class="number">42</span>,        <span class="number">35</span>,        <span class="number">29</span>,        <span class="number">24</span>,        <span class="number">20</span>,</span><br><span class="line">     <span class="comment">/*  20 */</span>        <span class="number">17</span>,        <span class="number">15</span>,        <span class="number">13</span>,        <span class="number">11</span>,        <span class="number">10</span>,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> u32 prio_to_wmult[<span class="number">40</span>] = &#123;</span><br><span class="line">     <span class="comment">/* -20 */</span>     <span class="number">48388</span>,     <span class="number">59856</span>,     <span class="number">76040</span>,     <span class="number">92818</span>,    <span class="number">118348</span>,</span><br><span class="line">     <span class="comment">/* -15 */</span>    <span class="number">147320</span>,    <span class="number">184698</span>,    <span class="number">229616</span>,    <span class="number">287308</span>,    <span class="number">360437</span>,</span><br><span class="line">     <span class="comment">/* -10 */</span>    <span class="number">449829</span>,    <span class="number">563644</span>,    <span class="number">704093</span>,    <span class="number">875809</span>,   <span class="number">1099582</span>,</span><br><span class="line">     <span class="comment">/*  -5 */</span>   <span class="number">1376151</span>,   <span class="number">1717300</span>,   <span class="number">2157191</span>,   <span class="number">2700508</span>,   <span class="number">3363326</span>,</span><br><span class="line">     <span class="comment">/*   0 */</span>   <span class="number">4169527</span>,   <span class="number">5162522</span>,   <span class="number">6370289</span>,   <span class="number">7834114</span>,   <span class="number">9572043</span>,</span><br><span class="line">     <span class="comment">/*   5 */</span>  <span class="number">11623260</span>,  <span class="number">13980761</span>,  <span class="number">16760363</span>,  <span class="number">19939293</span>,  <span class="number">23554169</span>,</span><br><span class="line">     <span class="comment">/*  10 */</span>  <span class="number">27601913</span>,  <span class="number">31993729</span>,  <span class="number">36801900</span>,  <span class="number">42040296</span>,  <span class="number">47658321</span>,</span><br><span class="line">     <span class="comment">/*  15 */</span>  <span class="number">53657806</span>,  <span class="number">59848281</span>,  <span class="number">66040189</span>,  <span class="number">72169807</span>,  <span class="number">78093426</span>,</span><br><span class="line">     <span class="comment">/*  20 */</span>  <span class="number">83635190</span>,  <span class="number">88542949</span>,  <span class="number">93182142</span>,  <span class="number">97387254</span>, <span class="number">101170328</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-3-4-红-黑树调度队列"><a href="#5-3-4-红-黑树调度队列" class="headerlink" title="5.3.4 红-黑树调度队列"></a>5.3.4 红-黑树调度队列</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">CFS 运行队列的红-黑树:</span><br><span class="line"></span><br><span class="line">                ┌─────────────────────────────────────┐</span><br><span class="line">                │          timeline (rb_root)         │</span><br><span class="line">                └─────────────────────────────────────┘</span><br><span class="line">                              │</span><br><span class="line">                              ↓</span><br><span class="line">        ┌─────────────────────────────────────────────┐</span><br><span class="line">        │              红黑树结构                      │</span><br><span class="line">        │                                             │</span><br><span class="line">        │  ┌──────────────────────┐                  │</span><br><span class="line">        │  │    rb_leftmost       │ ← 最小 vruntime   │</span><br><span class="line">        │  │      (Task A)        │   下一个被调度      │</span><br><span class="line">        │  │   vruntime = 100      │                  │</span><br><span class="line">        │  └──────────┬───────────┘                  │</span><br><span class="line">        │             │                                  │</span><br><span class="line">        │    ┌────────┴────────┐                      │</span><br><span class="line">        │    ↓                 ↓                      │</span><br><span class="line">        │  ┌─────────┐     ┌─────────┐                │</span><br><span class="line">        │  │  左子树 │     │  右子树 │                │</span><br><span class="line">        │  │vruntime│     │vruntime│                │</span><br><span class="line">        │  │  &lt; 100  │     │  &gt; 100  │                │</span><br><span class="line">        │  └─────────┘     └─────────┘                │</span><br><span class="line">        │                                             │</span><br><span class="line">        └─────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-3-5-任务选择"><a href="#5-3-5-任务选择" class="headerlink" title="5.3.5 任务选择"></a>5.3.5 任务选择</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/fair.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 选择下一个要执行的任务</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> sched_entity *</span><br><span class="line"><span class="title function_">pick_next_entity</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *curr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 获取最左节点 (最小 vruntime)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">left</span> =</span> __pick_first_entity(cfs_rq);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">se</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 如果当前任务仍在队列中且 vruntime 更小，</span></span><br><span class="line"><span class="comment">     * 则继续执行当前任务</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (!left || (curr &amp;&amp; entity_before(curr, left)))</span><br><span class="line">        se = curr;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        se = left;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 跳过被标记跳过的任务</span></span><br><span class="line">    <span class="keyword">if</span> (cfs_rq-&gt;skip == se) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">second</span>;</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (se == curr)</span><br><span class="line">            second = __pick_first_entity(cfs_rq);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            second = __pick_next_entity(se);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (second &amp;&amp; wakeup_preempt_entity(second, left) &lt; <span class="number">1</span>)</span><br><span class="line">            se = second;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> se;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 将任务加入运行队列</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">enqueue_entity</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 更新统计</span></span><br><span class="line">    update_curr(cfs_rq);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新负载</span></span><br><span class="line">    account_entity_enqueue(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 插入红-黑树</span></span><br><span class="line">    <span class="keyword">if</span> (se != cfs_rq-&gt;curr) &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * 更新 vruntime: 新任务的 vruntime 至少</span></span><br><span class="line"><span class="comment">         * 等于队列的最小 vruntime</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        place_entity(cfs_rq, se, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 插入红-黑树</span></span><br><span class="line">        __enqueue_entity(cfs_rq, se);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新可运行任务数</span></span><br><span class="line">    se-&gt;on_rq = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 将任务从运行队列移除</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">dequeue_entity</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 更新统计</span></span><br><span class="line">    update_curr(cfs_rq);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从红-黑树移除</span></span><br><span class="line">    <span class="keyword">if</span> (se != cfs_rq-&gt;curr)</span><br><span class="line">        __dequeue_entity(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新负载</span></span><br><span class="line">    account_entity_dequeue(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新状态</span></span><br><span class="line">    se-&gt;on_rq = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-4-实时调度器"><a href="#5-4-实时调度器" class="headerlink" title="5.4 实时调度器"></a>5.4 实时调度器</h2><h3 id="5-4-1-实时策略"><a href="#5-4-1-实时策略" class="headerlink" title="5.4.1 实时策略"></a>5.4.1 实时策略</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_NORMAL        0   <span class="comment">// 普通进程</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_FIFO          1   <span class="comment">// 实时 FIFO</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_RR            2   <span class="comment">// 实时 RR (轮转)</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_BATCH         3   <span class="comment">// 批处理</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_IDLE          5   <span class="comment">// 空闲</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCHED_DEADLINE      6   <span class="comment">// Deadline 调度</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-4-2-实时调度实体"><a href="#5-4-2-实时调度实体" class="headerlink" title="5.4.2 实时调度实体"></a>5.4.2 实时调度实体</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">run_list</span>;</span>        <span class="comment">// 运行队列</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> timeout;            <span class="comment">// 超时时间</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> time_slice;          <span class="comment">// 时间片</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span> *<span class="title">back</span>;</span>     <span class="comment">// 后备</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span> *<span class="title">parent</span>;</span>   <span class="comment">// 父实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_rq</span> *<span class="title">rt_rq</span>;</span>              <span class="comment">// 所属 RT 队列</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// RT 运行队列</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rt_rq</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_prio_array</span> <span class="title">active</span>;</span>      <span class="comment">// 优先级数组</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> rt_nr_running;       <span class="comment">// 可运行任务数</span></span><br><span class="line">    u64 rt_time;                       <span class="comment">// 运行时间</span></span><br><span class="line">    u64 rt_runtime;                    <span class="comment">// 运行时间预算</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> rt_throttled;                  <span class="comment">// 是否被限流</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-4-3-优先级数组"><a href="#5-4-3-优先级数组" class="headerlink" title="5.4.3 优先级数组"></a>5.4.3 优先级数组</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 100 个优先级队列 (0-99)</span></span><br><span class="line"><span class="comment"> * 每个优先级一个链表</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rt_prio_array</span> &#123;</span></span><br><span class="line">    DECLARE_BITMAP(bitmap, MAX_RT_PRIO); <span class="comment">// 优先级位图</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">queue</span>[<span class="title">MAX_RT_PRIO</span>];</span> <span class="comment">// 100 个队列</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找最高优先级非空队列 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> task_struct *</span><br><span class="line"><span class="title function_">pick_next_task_rt</span><span class="params">(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *prev)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_rq</span> *<span class="title">rt_rq</span> =</span> &amp;rq-&gt;rt;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_prio_array</span> *<span class="title">array</span> =</span> &amp;rt_rq-&gt;active;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span> *<span class="title">rt_se</span>;</span></span><br><span class="line">    <span class="type">int</span> idx;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找最高优先级非空队列</span></span><br><span class="line">    idx = sched_find_first_bit(<span class="built_in">array</span>-&gt;bitmap);</span><br><span class="line">    BUG_ON(idx &gt;= MAX_RT_PRIO);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取队列第一个任务</span></span><br><span class="line">    rt_se = pick_next_rt_entity(rq, rt_rq, idx);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> rt_task_of(rt_se);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-4-4-FIFO-vs-RR"><a href="#5-4-4-FIFO-vs-RR" class="headerlink" title="5.4.4 FIFO vs RR"></a>5.4.4 FIFO vs RR</h3><p><strong>SCHED_FIFO：</strong></p>
+<ul>
+<li>先进先出调度</li>
+<li>任务运行直到主动让出或被更高优先级任务抢占</li>
+<li>没有时间片概念</li>
+</ul>
+<p><strong>SCHED_RR：</strong></p>
+<ul>
+<li>轮转调度</li>
+<li>每个任务有时间片</li>
+<li>时间片用完后重新排队到同优先级队尾</li>
+</ul>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/rt.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">task_tick_rt</span><span class="params">(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">int</span> queued)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span> *<span class="title">rt_se</span> =</span> &amp;p-&gt;rt;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新运行时间</span></span><br><span class="line">    update_curr_rt(rq);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// SCHED_RR 时间片用完</span></span><br><span class="line">    <span class="keyword">if</span> (p-&gt;policy != SCHED_RR)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (--p-&gt;rt.time_slice)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重新排队</span></span><br><span class="line">    requeue_task_rt(rq, p);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-5-Deadline-调度器"><a href="#5-5-Deadline-调度器" class="headerlink" title="5.5 Deadline 调度器"></a>5.5 Deadline 调度器</h2><h3 id="5-5-1-EDF-算法"><a href="#5-5-1-EDF-算法" class="headerlink" title="5.5.1 EDF 算法"></a>5.5.1 EDF 算法</h3><p>Deadline 调度器采用最早截止时间优先 (Earliest Deadline First) 算法：</p>
+<ul>
+<li>每个任务有：运行时间、截止时间、周期</li>
+<li>调度截止时间最近的任务</li>
+<li>保证任务在截止时间前完成</li>
+</ul>
+<h3 id="5-5-2-Deadline-调度实体"><a href="#5-5-2-Deadline-调度实体" class="headerlink" title="5.5.2 Deadline 调度实体"></a>5.5.2 Deadline 调度实体</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sched_dl_entity</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span> <span class="title">rb_node</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Original scheduling parameters */</span></span><br><span class="line">    u64 dl_runtime;       <span class="comment">// 运行时间预算</span></span><br><span class="line">    u64 dl_deadline;      <span class="comment">// 相对截止时间</span></span><br><span class="line">    u64 dl_period;        <span class="comment">// 周期</span></span><br><span class="line">    u64 dl_bw;            <span class="comment">// 带宽 (runtime/period)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Actual scheduling parameters */</span></span><br><span class="line">    s64 runtime;          <span class="comment">// 剩余运行时间</span></span><br><span class="line">    u64 deadline;         <span class="comment">// 绝对截止时间</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> flags;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* State flags */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> dl_throttled:<span class="number">1</span>;    <span class="comment">// 是否被限流</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> dl_boosted:<span class="number">1</span>;      <span class="comment">// 是否被提升</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> dl_yielded:<span class="number">1</span>;      <span class="comment">// 是否主动让出</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> dl_non_contending:<span class="number">1</span>; <span class="comment">// 是否非竞争</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Bandwidth enforcement timer */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">hrtimer</span> <span class="title">dl_timer</span>;</span>         <span class="comment">// 带宽定时器</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Inactive timer */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">hrtimer</span> <span class="title">inactive_timer</span>;</span>   <span class="comment">// 非活跃定时器</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Queue */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dl_rq</span> *<span class="title">dl_rq</span>;</span>             <span class="comment">// 所属 DL 队列</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-5-3-Deadline-运行队列"><a href="#5-5-3-Deadline-运行队列" class="headerlink" title="5.5.3 Deadline 运行队列"></a>5.5.3 Deadline 运行队列</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dl_rq</span> &#123;</span></span><br><span class="line">    <span class="comment">/* run queue */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_root_cached</span> <span class="title">rb_root</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> dl_nr_running;      <span class="comment">// 可运行任务数</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Bandwidth */</span></span><br><span class="line">    u64 dl_bw;                       <span class="comment">// 总带宽</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dl_bw</span> <span class="title">dl_bw</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Statistics */</span></span><br><span class="line">    u64 running_bw;                  <span class="comment">// 运行中带宽</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 选择 deadline 最早的任务 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> sched_dl_entity *</span><br><span class="line"><span class="title function_">pick_next_task_dl</span><span class="params">(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dl_rq</span> *<span class="title">dl_rq</span> =</span> &amp;rq-&gt;dl;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_dl_entity</span> *<span class="title">dl_se</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取红-黑树最左节点 (最早截止时间)</span></span><br><span class="line">    dl_se = rb_entry(dl_rq-&gt;rb_root.rb_leftmost,</span><br><span class="line">                    <span class="keyword">struct</span> sched_dl_entity, rb_node);</span><br><span class="line"></span><br><span class="line">    BUG_ON(!dl_se || dl_se-&gt;dl_nr_running == <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> dl_se;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-6-上下文切换"><a href="#5-6-上下文切换" class="headerlink" title="5.6 上下文切换"></a>5.6 上下文切换</h2><h3 id="5-6-1-切换流程"><a href="#5-6-1-切换流程" class="headerlink" title="5.6.1 切换流程"></a>5.6.1 切换流程</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/core.c</span></span><br><span class="line"><span class="type">static</span> __always_inline <span class="keyword">struct</span> rq *</span><br><span class="line"><span class="title function_">context_switch</span><span class="params">(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *prev,</span></span><br><span class="line"><span class="params">               <span class="keyword">struct</span> task_struct *next, <span class="keyword">struct</span> rq_flags *rf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span>, *<span class="title">oldmm</span>;</span></span><br><span class="line"></span><br><span class="line">    prepare_task_switch(rq, prev, next);</span><br><span class="line"></span><br><span class="line">    mm = next-&gt;mm;</span><br><span class="line">    oldmm = prev-&gt;active_mm;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 切换地址空间</span></span><br><span class="line"><span class="comment">     * 内核线程: mm = NULL, 借用 prev 的 active_mm</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    switch_mm_irqs_off(oldmm, mm, next);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 切换寄存器状态</span></span><br><span class="line"><span class="comment">     * 体系相关，调用 switch_to 宏</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    switch_to(prev, next, prev);</span><br><span class="line"></span><br><span class="line">    finish_task_switch(rq, prev);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> rq;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-6-2-switch-to-x86-64"><a href="#5-6-2-switch-to-x86-64" class="headerlink" title="5.6.2 switch_to (x86_64)"></a>5.6.2 switch_to (x86_64)</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">/* arch/x86/include/asm/switch_to.h */</span><br><span class="line">#define switch_to(prev, next, last)                    \</span><br><span class="line">    asm volatile(&quot;pushq %%rbp\n\t&quot;                     \</span><br><span class="line">                 &quot;movq %%rsp, %P[thread_rsp](%[prev])\n\t&quot; \</span><br><span class="line">                 &quot;movq %P[thread_rsp](%[next]), %%rsp\n\t&quot; \</span><br><span class="line">                 &quot;call __switch_to\n\t&quot;                \</span><br><span class="line">                 &quot;popq %%rbp\n\t&quot;                      \</span><br><span class="line">                 : &quot;=a&quot; (last)                         \</span><br><span class="line">                 : [prev] &quot;D&quot; (prev),                  \</span><br><span class="line">                   [next] &quot;S&quot; (next)                   \</span><br><span class="line">                 : &quot;memory&quot;, &quot;rcx&quot;, &quot;rbx&quot;, &quot;r8&quot;, &quot;r9&quot;, \</span><br><span class="line">                   &quot;r10&quot;, &quot;r11&quot;, &quot;r12&quot;, &quot;r13&quot;, &quot;r14&quot;, &quot;r15&quot;);</span><br><span class="line"></span><br><span class="line">/* arch/x86/kernel/process_64.c */</span><br><span class="line">__visible __notrace_funcgraph struct task_struct *</span><br><span class="line">__switch_to(struct task_struct *prev_p, struct task_struct *next_p)</span><br><span class="line">&#123;</span><br><span class="line">    struct thread_struct *prev = &amp;prev_p-&gt;thread;</span><br><span class="line">    struct thread_struct *next = &amp;next_p-&gt;thread;</span><br><span class="line">    struct fpu *prev_fpu = &amp;prev-&gt;fpu;</span><br><span class="line">    struct fpu *next_fpu = &amp;next-&gt;fpu;</span><br><span class="line">    int cpu = smp_processor_id();</span><br><span class="line"></span><br><span class="line">    // 保存 FPU 状态</span><br><span class="line">    if (test_thread_flag(TIF_NEED_FPU_LOAD))</span><br><span class="line">        switch_fpu_finish(prev_fpu, next_fpu, cpu);</span><br><span class="line"></span><br><span class="line">    // 切换 GS 段</span><br><span class="line">    load_TLS(next, cpu);</span><br><span class="line"></span><br><span class="line">    // 返回上一个任务</span><br><span class="line">    return prev_p;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-7-schedule-主调度函数"><a href="#5-7-schedule-主调度函数" class="headerlink" title="5.7 schedule() 主调度函数"></a>5.7 schedule() 主调度函数</h2><h3 id="5-7-1-入口点"><a href="#5-7-1-入口点" class="headerlink" title="5.7.1 入口点"></a>5.7.1 入口点</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/core.c</span></span><br><span class="line">asmlinkage __visible <span class="type">void</span> __sched <span class="title function_">schedule</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">tsk</span> =</span> current;</span><br><span class="line"></span><br><span class="line">    sched_submit_work(tsk);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        __schedule(SM_NONE);</span><br><span class="line">    &#125; <span class="keyword">while</span> (need_resched());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 抢占式调度</span></span><br><span class="line">asmlinkage __visible <span class="type">void</span> __sched <span class="title function_">schedule_preempt_disabled</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    __schedule(SM_PREEMPT);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-7-2-schedule-实现"><a href="#5-7-2-schedule-实现" class="headerlink" title="5.7.2 __schedule() 实现"></a>5.7.2 __schedule() 实现</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/core.c:6599</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> __sched notrace __schedule(<span class="type">int</span> sched_mode)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">prev</span>, *<span class="title">next</span>;</span></span><br><span class="line">    <span class="type">bool</span> preempt = sched_mode &gt; SM_NONE;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> *switch_count;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> prev_state;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rq_flags</span> <span class="title">rf</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">rq</span>;</span></span><br><span class="line">    <span class="type">int</span> cpu;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取当前 CPU 运行队列和当前任务</span></span><br><span class="line">    cpu = smp_processor_id();</span><br><span class="line">    rq = cpu_rq(cpu);</span><br><span class="line">    prev = rq-&gt;curr;</span><br><span class="line"></span><br><span class="line">    schedule_debug(prev, preempt);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 禁用中断</span></span><br><span class="line">    local_irq_disable();</span><br><span class="line">    rcu_note_context_switch(preempt);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 锁定运行队列</span></span><br><span class="line">    rq_lock(rq, &amp;rf);</span><br><span class="line">    smp_mb__after_spinlock();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新时钟</span></span><br><span class="line">    rq-&gt;clock_update_flags &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">    update_rq_clock(rq);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 选择下一个任务</span></span><br><span class="line">    next = pick_next_task(rq, prev, &amp;rf);</span><br><span class="line">    clear_tsk_need_resched(prev);</span><br><span class="line">    clear_preempt_need_resched();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (likely(prev != next)) &#123;</span><br><span class="line">        <span class="comment">// 更新统计</span></span><br><span class="line">        rq-&gt;nr_switches++;</span><br><span class="line">        rcu_switch_count++;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 切换任务</span></span><br><span class="line">        rq = context_switch(rq, prev, next, &amp;rf);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 没有可运行任务，运行空闲任务</span></span><br><span class="line">        next = pick_next_task(rq, prev, &amp;rf);</span><br><span class="line">        rq = context_switch(rq, prev, next, &amp;rf);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-8-负载均衡"><a href="#5-8-负载均衡" class="headerlink" title="5.8 负载均衡"></a>5.8 负载均衡</h2><h3 id="5-8-1-负载均衡时机"><a href="#5-8-1-负载均衡时机" class="headerlink" title="5.8.1 负载均衡时机"></a>5.8.1 负载均衡时机</h3><ol>
+<li><strong>周期性负载均衡</strong> - 时钟中断触发</li>
+<li><strong>CPU 空闲时</strong> - 本 CPU 没有任务时从其他 CPU 偷任务</li>
+<li><strong>创建新进程时</strong> - 选择最空闲的 CPU</li>
+<li><strong>CPU 热迁移时</strong> - CPU 下线前迁移任务</li>
+</ol>
+<h3 id="5-8-2-PELT-负载跟踪"><a href="#5-8-2-PELT-负载跟踪" class="headerlink" title="5.8.2 PELT 负载跟踪"></a>5.8.2 PELT 负载跟踪</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Per-Entity Load Tracking</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 负载衰减模型:</span></span><br><span class="line"><span class="comment"> * load = load * y^N</span></span><br><span class="line"><span class="comment"> * 其中 y = 0.5 (每 1ms)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> __always_inline u64</span><br><span class="line">___update_load_sum(u64 now, u64 last_update, u64 period)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">long</span> delta = now - last_update;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (delta &gt; period) &#123;</span><br><span class="line">        <span class="comment">// 负载衰减</span></span><br><span class="line">        u64 y = calc_load_n(period / <span class="number">2</span>, last_update, now);</span><br><span class="line">        delta *= y;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> delta;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-8-3-load-balance"><a href="#5-8-3-load-balance" class="headerlink" title="5.8.3 load_balance()"></a>5.8.3 load_balance()</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/fair.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">load_balance</span><span class="params">(<span class="type">int</span> this_cpu, <span class="keyword">struct</span> rq *this_rq,</span></span><br><span class="line"><span class="params">                       <span class="keyword">struct</span> rq_flags *rf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> busiest, active;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_group</span> *<span class="title">group</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">busiest_rq</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找最繁忙的 CPU 组</span></span><br><span class="line">    group = find_busiest_group(&amp;env, sds);</span><br><span class="line">    <span class="keyword">if</span> (!group)</span><br><span class="line">        <span class="keyword">goto</span> out_balanced;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找最繁忙的运行队列</span></span><br><span class="line">    busiest_rq = find_busiest_queue(&amp;env, group);</span><br><span class="line">    <span class="keyword">if</span> (!busiest_rq)</span><br><span class="line">        <span class="keyword">goto</span> out_balanced;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从繁忙队列迁移任务</span></span><br><span class="line">    <span class="keyword">if</span> (busiest_rq-&gt;nr_running &gt; <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="comment">// 移动任务到当前 CPU</span></span><br><span class="line">        detach_tasks(&amp;env);</span><br><span class="line">        attach_tasks(&amp;env);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-9-调度延迟与吞吐量优化"><a href="#5-9-调度延迟与吞吐量优化" class="headerlink" title="5.9 调度延迟与吞吐量优化"></a>5.9 调度延迟与吞吐量优化</h2><h3 id="5-9-1-调度延迟"><a href="#5-9-1-调度延迟" class="headerlink" title="5.9.1 调度延迟"></a>5.9.1 调度延迟</h3><p><strong>sched_latency_ns</strong> - 目标调度延迟</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/debug.c</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">int</span> sysctl_sched_latency = <span class="number">6000000ULL</span>; <span class="comment">// 6ms</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>sched_min_granularity_ns</strong> - 最小调度粒度</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> sysctl_sched_min_granularity = <span class="number">750000ULL</span>; <span class="comment">// 750us</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="5-9-2-吞吐量优化"><a href="#5-9-2-吞吐量优化" class="headerlink" title="5.9.2 吞吐量优化"></a>5.9.2 吞吐量优化</h3><p><strong>sched_wakeup_granularity_ns</strong> - 唤醒粒度</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> sysctl_sched_wakeup_granularity = <span class="number">1000000ULL</span>; <span class="comment">// 1ms</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>sched_nr_migrate</strong> - 批量迁移任务数</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> sysctl_sched_nr_migrate = <span class="number">32</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="5-10-本章小结"><a href="#5-10-本章小结" class="headerlink" title="5.10 本章小结"></a>5.10 本章小结</h2><p>本章介绍了 Linux 进程调度机制：</p>
+<ol>
+<li><strong>调度器架构</strong>：模块化设计，支持多种调度类</li>
+<li><strong>运行队列</strong>：Per-CPU 运行队列，包含多种调度类的队列</li>
+<li><strong>CFS</strong>：基于 vruntime 的完全公平调度，使用红-黑树</li>
+<li><strong>实时调度</strong>：FIFO 和 RR 策略，支持软实时任务</li>
+<li><strong>Deadline 调度</strong>：EDF 算法，支持严格实时任务</li>
+<li><strong>上下文切换</strong>：切换地址空间和寄存器状态</li>
+<li><strong>主调度函数</strong>：schedule() 和 __schedule()</li>
+<li><strong>负载均衡</strong>：PELT 负载跟踪和 CPU 间任务迁移</li>
+</ol>
+<p>下一章将介绍进程状态与转换。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-05</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:20:07</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:43
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-05/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-06/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-06</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-04/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-04</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-05</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC5%E7%AB%A0-%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6"><span class="nav-text">第5章 进程调度</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#5-1-%E8%B0%83%E5%BA%A6%E5%99%A8%E6%9E%B6%E6%9E%84"><span class="nav-text">5.1 调度器架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-1-%E8%B0%83%E5%BA%A6%E5%99%A8%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99"><span class="nav-text">5.1.1 调度器设计原则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-2-%E8%B0%83%E5%BA%A6%E7%B1%BB%E5%B1%82%E6%AC%A1"><span class="nav-text">5.1.2 调度类层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-3-%E8%B0%83%E5%BA%A6%E7%B1%BB%E4%BC%98%E5%85%88%E7%BA%A7"><span class="nav-text">5.1.3 调度类优先级</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-%E8%BF%90%E8%A1%8C%E9%98%9F%E5%88%97-Run-Queue"><span class="nav-text">5.2 运行队列 (Run Queue)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-1-struct-rq"><span class="nav-text">5.2.1 struct rq</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-2-Per-CPU-%E8%BF%90%E8%A1%8C%E9%98%9F%E5%88%97"><span class="nav-text">5.2.2 Per-CPU 运行队列</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-%E5%AE%8C%E5%85%A8%E5%85%AC%E5%B9%B3%E8%B0%83%E5%BA%A6%E5%99%A8-CFS"><span class="nav-text">5.3 完全公平调度器 (CFS)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-1-%E6%A0%B8%E5%BF%83%E6%80%9D%E6%83%B3"><span class="nav-text">5.3.1 核心思想</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-2-%E8%B0%83%E5%BA%A6%E5%AE%9E%E4%BD%93"><span class="nav-text">5.3.2 调度实体</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-3-vruntime-%E8%AE%A1%E7%AE%97"><span class="nav-text">5.3.3 vruntime 计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-4-%E7%BA%A2-%E9%BB%91%E6%A0%91%E8%B0%83%E5%BA%A6%E9%98%9F%E5%88%97"><span class="nav-text">5.3.4 红-黑树调度队列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-5-%E4%BB%BB%E5%8A%A1%E9%80%89%E6%8B%A9"><span class="nav-text">5.3.5 任务选择</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-%E5%AE%9E%E6%97%B6%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-text">5.4 实时调度器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-1-%E5%AE%9E%E6%97%B6%E7%AD%96%E7%95%A5"><span class="nav-text">5.4.1 实时策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-2-%E5%AE%9E%E6%97%B6%E8%B0%83%E5%BA%A6%E5%AE%9E%E4%BD%93"><span class="nav-text">5.4.2 实时调度实体</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-3-%E4%BC%98%E5%85%88%E7%BA%A7%E6%95%B0%E7%BB%84"><span class="nav-text">5.4.3 优先级数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-4-FIFO-vs-RR"><span class="nav-text">5.4.4 FIFO vs RR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-5-Deadline-%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-text">5.5 Deadline 调度器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-1-EDF-%E7%AE%97%E6%B3%95"><span class="nav-text">5.5.1 EDF 算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-2-Deadline-%E8%B0%83%E5%BA%A6%E5%AE%9E%E4%BD%93"><span class="nav-text">5.5.2 Deadline 调度实体</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-3-Deadline-%E8%BF%90%E8%A1%8C%E9%98%9F%E5%88%97"><span class="nav-text">5.5.3 Deadline 运行队列</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-6-%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A2"><span class="nav-text">5.6 上下文切换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-1-%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B"><span class="nav-text">5.6.1 切换流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-6-2-switch-to-x86-64"><span class="nav-text">5.6.2 switch_to (x86_64)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-7-schedule-%E4%B8%BB%E8%B0%83%E5%BA%A6%E5%87%BD%E6%95%B0"><span class="nav-text">5.7 schedule() 主调度函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-7-1-%E5%85%A5%E5%8F%A3%E7%82%B9"><span class="nav-text">5.7.1 入口点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-7-2-schedule-%E5%AE%9E%E7%8E%B0"><span class="nav-text">5.7.2 __schedule() 实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-8-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1"><span class="nav-text">5.8 负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-8-1-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%97%B6%E6%9C%BA"><span class="nav-text">5.8.1 负载均衡时机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-8-2-PELT-%E8%B4%9F%E8%BD%BD%E8%B7%9F%E8%B8%AA"><span class="nav-text">5.8.2 PELT 负载跟踪</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-8-3-load-balance"><span class="nav-text">5.8.3 load_balance()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-9-%E8%B0%83%E5%BA%A6%E5%BB%B6%E8%BF%9F%E4%B8%8E%E5%90%9E%E5%90%90%E9%87%8F%E4%BC%98%E5%8C%96"><span class="nav-text">5.9 调度延迟与吞吐量优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-9-1-%E8%B0%83%E5%BA%A6%E5%BB%B6%E8%BF%9F"><span class="nav-text">5.9.1 调度延迟</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-9-2-%E5%90%9E%E5%90%90%E9%87%8F%E4%BC%98%E5%8C%96"><span class="nav-text">5.9.2 吞吐量优化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-10-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">5.10 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

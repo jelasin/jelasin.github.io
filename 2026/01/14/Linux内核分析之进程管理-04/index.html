@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-04/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-04">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-04/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:20:03.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:49.406Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-04 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-04</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:20:03</span>
+        <span class="mobile">2026-01-14 19:20:03</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:49</span>
+            <span class="mobile">2026-01-19 13:40:49</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第4章-进程创建"><a href="#第4章-进程创建" class="headerlink" title="第4章 进程创建"></a>第4章 进程创建</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="4-1-进程创建系统调用"><a href="#4-1-进程创建系统调用" class="headerlink" title="4.1 进程创建系统调用"></a>4.1 进程创建系统调用</h2><h3 id="4-1-1-系统调用概述"><a href="#4-1-1-系统调用概述" class="headerlink" title="4.1.1 系统调用概述"></a>4.1.1 系统调用概述</h3><p>Linux 提供多个进程&#x2F;线程创建系统调用：</p>
+<table>
+<thead>
+<tr>
+<th>系统调用</th>
+<th>描述</th>
+<th>内核实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fork()</code></td>
+<td>创建子进程</td>
+<td><code>kernel_clone()</code></td>
+</tr>
+<tr>
+<td><code>vfork()</code></td>
+<td>创建共享地址空间的子进程</td>
+<td><code>kernel_clone()</code></td>
+</tr>
+<tr>
+<td><code>clone()</code></td>
+<td>灵活创建进程&#x2F;线程</td>
+<td><code>kernel_clone()</code></td>
+</tr>
+<tr>
+<td><code>clone3()</code></td>
+<td>扩展的 clone (Linux 5.3+)</td>
+<td><code>kernel_clone()</code></td>
+</tr>
+</tbody></table>
+<h3 id="4-1-2-系统调用入口"><a href="#4-1-2-系统调用入口" class="headerlink" title="4.1.2 系统调用入口"></a>4.1.2 系统调用入口</h3><p><strong>位置：</strong> <code>kernel/fork.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fork 系统调用</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> __ARCH_WANT_SYS_FORK</span></span><br><span class="line">SYSCALL_DEFINE0(fork)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kernel_clone_args</span> <span class="title">args</span> =</span> &#123;</span><br><span class="line">        .exit_signal    = SIGCHLD,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kernel_clone(&amp;args);</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// vfork 系统调用</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> __ARCH_WANT_SYS_VFORK</span></span><br><span class="line">SYSCALL_DEFINE0(vfork)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kernel_clone_args</span> <span class="title">args</span> =</span> &#123;</span><br><span class="line">        .flags          = CLONE_VFORK | CLONE_VM,</span><br><span class="line">        .exit_signal    = SIGCHLD,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kernel_clone(&amp;args);</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// clone 系统调用</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> __ARCH_WANT_SYS_CLONE</span></span><br><span class="line">SYSCALL_DEFINE5(clone, <span class="type">unsigned</span> <span class="type">long</span>, clone_flags, <span class="type">unsigned</span> <span class="type">long</span>, newsp,</span><br><span class="line">               <span class="type">int</span> __user *, parent_tidptr,</span><br><span class="line">               <span class="type">int</span> __user *, child_tidptr,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, tls)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kernel_clone_args</span> <span class="title">args</span> =</span> &#123;</span><br><span class="line">        .flags      = (lower_32_bits(clone_flags) &amp; ~CSIGNAL),</span><br><span class="line">        .pidfd      = parent_tidptr,</span><br><span class="line">        .child_tid  = child_tidptr,</span><br><span class="line">        .parent_tid = parent_tidptr,</span><br><span class="line">        .exit_signal = (lower_32_bits(clone_flags) &amp; CSIGNAL),</span><br><span class="line">        .<span class="built_in">stack</span>      = newsp,</span><br><span class="line">        .tls        = tls,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kernel_clone(&amp;args);</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// clone3 系统调用 (扩展版本)</span></span><br><span class="line">SYSCALL_DEFINE2(clone3, <span class="keyword">struct</span> clone_args __user *, uargs, <span class="type">size_t</span>, size)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kernel_clone_args</span> <span class="title">kargs</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从用户空间复制参数</span></span><br><span class="line">    err = copy_clone_args_from_user(&amp;kargs, uargs, size);</span><br><span class="line">    <span class="keyword">if</span> (err)</span><br><span class="line">        <span class="keyword">return</span> err;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kernel_clone(&amp;kargs);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-2-clone-flags-标志详解"><a href="#4-2-clone-flags-标志详解" class="headerlink" title="4.2 clone_flags 标志详解"></a>4.2 clone_flags 标志详解</h2><h3 id="4-2-1-标志定义"><a href="#4-2-1-标志定义" class="headerlink" title="4.2.1 标志定义"></a>4.2.1 标志定义</h3><p><strong>位置：</strong> <code>include/uapi/linux/sched.h</code> 和 <code>include/linux/sched.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * cloning flags:</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CSIGNAL         0x000000ff  <span class="comment">// 信号掩码 (低 8 位)</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 资源共享标志</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_VM        0x00000100  <span class="comment">// 共享地址空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_FS        0x00000200  <span class="comment">// 共享文件系统信息 (根、工作目录)</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_FILES     0x00000400  <span class="comment">// 共享文件描述符表</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_SIGHAND   0x00000800  <span class="comment">// 共享信号处理函数</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_PIDFD     0x00001000  <span class="comment">// 返回 pidfd</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_PTRACE    0x00002000  <span class="comment">// 如果父进程被 ptrace，子进程也被 ptrace</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_VFORK     0x00004000  <span class="comment">// vfork - 父进程阻塞直到子进程 exec/exit</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_PARENT    0x00008000  <span class="comment">// 使用父进程的父进程作为新进程的父进程</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_THREAD    0x00010000  <span class="comment">// 加入父进程的线程组</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 命名空间标志</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWNS     0x00020000  <span class="comment">// 新的 mount 命名空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWCGROUP 0x02000000  <span class="comment">// 新的 cgroup 命名空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWUTS    0x04000000  <span class="comment">// 新的 UTS 命名空间 (主机名/域名)</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWIPC    0x08000000  <span class="comment">// 新的 IPC 命名空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWUSER   0x10000000  <span class="comment">// 新的 user 命名空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWPID    0x20000000  <span class="comment">// 新的 PID 命名空间</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_NEWNET    0x40000000  <span class="comment">// 新的 network 命名空间</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 其他标志</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_SYSVSEM   0x00040000  <span class="comment">// 共享 System V SEM_UNDO</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_SETTLS    0x00080000  <span class="comment">// 创建新的 TLS (线程本地存储)</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_PARENT_SETTID  0x00100000  <span class="comment">// 在父进程中设置子进程 TID</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_CHILD_CLEARTID 0x00200000  <span class="comment">// 在子进程中清除 TID</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_DETACHED  0x00400000  <span class="comment">// (废弃，无效果)</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_UNTRACED  0x00800000  <span class="comment">// 父进程被 ptrace 时，子进程不被 ptrace</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_CHILD_SETTID  0x01000000  <span class="comment">// 在子进程中设置 TID</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CLONE_IO        0x80000000  <span class="comment">// 克隆 I/O 上下文</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-2-2-标志组合"><a href="#4-2-2-标志组合" class="headerlink" title="4.2.2 标志组合"></a>4.2.2 标志组合</h3><p><strong>创建进程：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fork() 等价于:</span></span><br><span class="line">clone(SIGCHLD, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// vfork() 等价于:</span></span><br><span class="line">clone(CLONE_VM | CLONE_VFORK | SIGCHLD, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>创建线程：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// pthread_create 等价于:</span></span><br><span class="line">clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND |</span><br><span class="line">      CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS |</span><br><span class="line">      CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID,</span><br><span class="line">      child_stack, tls, parent_tidptr, child_tidptr);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-3-kernel-clone-核心流程"><a href="#4-3-kernel-clone-核心流程" class="headerlink" title="4.3 kernel_clone() 核心流程"></a>4.3 kernel_clone() 核心流程</h2><h3 id="4-3-1-主函数"><a href="#4-3-1-主函数" class="headerlink" title="4.3.1 主函数"></a>4.3.1 主函数</h3><p><strong>位置：</strong> <code>kernel/fork.c:kernel_clone()</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * This is the entry point for the new process or thread.</span></span><br><span class="line"><span class="comment"> * The core of the clone() system call.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">pid_t</span> <span class="title function_">kernel_clone</span><span class="params">(<span class="keyword">struct</span> kernel_clone_args *args)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">p</span>;</span></span><br><span class="line">    <span class="type">int</span> trace = <span class="number">0</span>;</span><br><span class="line">    <span class="type">pid_t</span> nr;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Determine whether the child should be traced.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    trace = kernel_clone_trace(args);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 创建新进程的 task_struct 并复制父进程信息</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    p = copy_process(<span class="literal">NULL</span>, trace, NUMA_NO_NODE, args);</span><br><span class="line">    <span class="keyword">if</span> (IS_ERR(p))</span><br><span class="line">        <span class="keyword">return</span> PTR_ERR(p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Do this prior waking up the new thread - the thread</span></span><br><span class="line"><span class="comment">     * pointer might get invalid after that.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    args-&gt;pid = get_task_pid(p, PIDTYPE_PID);</span><br><span class="line"></span><br><span class="line">    nr = pid_vnr(args-&gt;pid);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (args-&gt;flags &amp; CLONE_PARENT_SETTID)</span><br><span class="line">        put_user(nr, args-&gt;parent_tidptr);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (args-&gt;flags &amp; CLONE_VFORK) &#123;</span><br><span class="line">        <span class="comment">// vfork 特殊处理：父进程等待</span></span><br><span class="line">        p-&gt;vfork_done = &amp;vfork;</span><br><span class="line">        init_completion(&amp;vfork);</span><br><span class="line">        get_task_struct(p);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 唤醒新进程，使其进入就绪队列</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    wake_up_new_task(p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * vfork 的父进程等待子进程 exec 或 exit</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (args-&gt;flags &amp; CLONE_VFORK) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!wait_for_vfork_done(p, &amp;vfork))</span><br><span class="line">            ptrace_event(PTRACE_EVENT_VFORK_DONE, nr);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    put_pid(args-&gt;pid);</span><br><span class="line">    <span class="keyword">return</span> nr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-3-2-流程图"><a href="#4-3-2-流程图" class="headerlink" title="4.3.2 流程图"></a>4.3.2 流程图</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">kernel_clone()</span><br><span class="line">    │</span><br><span class="line">    ├─→ copy_process()</span><br><span class="line">    │       │</span><br><span class="line">    │       ├─→ dup_task_struct()           分配 task_struct</span><br><span class="line">    │       ├─→ copy_creds()                 复制证书</span><br><span class="line">    │       ├─→ copy_thread()                复制线程上下文</span><br><span class="line">    │       ├─→ copy_semundo()               复制信号量</span><br><span class="line">    │       ├─→ copy_files()                 复制文件描述符</span><br><span class="line">    │       ├─→ copy_fs()                    复制文件系统信息</span><br><span class="line">    │       ├─→ copy_sighand()               复制信号处理函数</span><br><span class="line">    │       ├─→ copy_signal()                复制信号信息</span><br><span class="line">    │       ├─→ copy_mm()                    复制地址空间</span><br><span class="line">    │       ├─→ copy_namespaces()            复制命名空间</span><br><span class="line">    │       ├─→ copy_io()                    复制 I/O 上下文</span><br><span class="line">    │       ├─→ sched_fork()                 调度器初始化</span><br><span class="line">    │       └─→ alloc_pid()                  分配 PID</span><br><span class="line">    │</span><br><span class="line">    ├─→ wake_up_new_task()           唤醒新进程</span><br><span class="line">    │</span><br><span class="line">    └─→ return child_pid             返回子进程 PID</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-4-copy-process-详细流程"><a href="#4-4-copy-process-详细流程" class="headerlink" title="4.4 copy_process() 详细流程"></a>4.4 copy_process() 详细流程</h2><h3 id="4-4-1-函数签名"><a href="#4-4-1-函数签名" class="headerlink" title="4.4.1 函数签名"></a>4.4.1 函数签名</h3><p><strong>位置：</strong> <code>kernel/fork.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">struct</span> task_struct *<span class="title function_">copy_process</span><span class="params">(</span></span><br><span class="line"><span class="params">                    <span class="keyword">struct</span> pid *pid,</span></span><br><span class="line"><span class="params">                    <span class="type">int</span> trace,</span></span><br><span class="line"><span class="params">                    <span class="type">int</span> node,</span></span><br><span class="line"><span class="params">                    <span class="keyword">struct</span> kernel_clone_args *args)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> retval;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">p</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ... 实现代码</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-2-参数验证"><a href="#4-4-2-参数验证" class="headerlink" title="4.4.2 参数验证"></a>4.4.2 参数验证</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 检查 clone_flags 的有效性</span></span><br><span class="line">    <span class="keyword">if</span> ((clone_flags &amp; (CLONE_NEWNS | CLONE_FS)) ==</span><br><span class="line">        (CLONE_NEWNS | CLONE_FS))</span><br><span class="line">        <span class="keyword">return</span> ERR_PTR(-EINVAL);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 不允许同时共享和不共享信号处理</span></span><br><span class="line">    <span class="keyword">if</span> ((clone_flags &amp; (CLONE_SIGHAND | CLONE_CLEAR_SIGHAND)) ==</span><br><span class="line">        (CLONE_SIGHAND | CLONE_CLEAR_SIGHAND))</span><br><span class="line">        <span class="keyword">return</span> ERR_PTR(-EINVAL);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 新 PID 命名空间要求 CLONE_THREAD</span></span><br><span class="line">    <span class="keyword">if</span> ((clone_flags &amp; CLONE_THREAD) &amp;&amp; (clone_flags &amp; CLONE_NEWPID))</span><br><span class="line">        <span class="keyword">return</span> ERR_PTR(-EINVAL);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-3-检查资源限制"><a href="#4-4-3-检查资源限制" class="headerlink" title="4.4.3 检查资源限制"></a>4.4.3 检查资源限制</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2. 检查进程数限制</span></span><br><span class="line">    retval = -EAGAIN;</span><br><span class="line">    <span class="keyword">if</span> (<span class="type">atomic_read</span>(&amp;p-&gt;user-&gt;processes) &gt;=</span><br><span class="line">            task_rlimit(p, RLIMIT_NPROC)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (capable(CAP_SYS_ADMIN) ||</span><br><span class="line">            capable(CAP_SYS_RESOURCE) ||</span><br><span class="line">            is_global_init(current))</span><br><span class="line">            <span class="keyword">goto</span> bad_fork_free;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-4-分配-task-struct"><a href="#4-4-4-分配-task-struct" class="headerlink" title="4.4.4 分配 task_struct"></a>4.4.4 分配 task_struct</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 3. 分配并复制 task_struct</span></span><br><span class="line">    p = dup_task_struct(current, node);</span><br><span class="line">    <span class="keyword">if</span> (!p)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_free;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 清除一些标志</span></span><br><span class="line">    retval = arch_dup_task_struct(p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_free;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-5-复制各种资源"><a href="#4-4-5-复制各种资源" class="headerlink" title="4.4.5 复制各种资源"></a>4.4.5 复制各种资源</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 4. 复制执行域</span></span><br><span class="line">    retval = copy_thread_tls(clone_flags, args-&gt;<span class="built_in">stack</span>, args-&gt;stack_size,</span><br><span class="line">                             p, args-&gt;tls);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_io;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 5. 复制证书</span></span><br><span class="line">    retval = copy_creds(p, clone_flags);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_thread;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 6. 初始化内存管理</span></span><br><span class="line">    retval = copy_mm(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_signal;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 7. 复制命名空间</span></span><br><span class="line">    retval = copy_namespaces(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_mm;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 8. 复制文件描述符</span></span><br><span class="line">    retval = copy_files(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_namespaces;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 9. 复制文件系统信息</span></span><br><span class="line">    retval = copy_fs(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_files;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 10. 复制信号处理</span></span><br><span class="line">    retval = copy_sighand(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_fs;</span><br><span class="line"></span><br><span class="line">    retval = copy_signal(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_sighand;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-6-初始化调度相关"><a href="#4-4-6-初始化调度相关" class="headerlink" title="4.4.6 初始化调度相关"></a>4.4.6 初始化调度相关</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 11. 初始化调度</span></span><br><span class="line">    retval = sched_fork(clone_flags, p);</span><br><span class="line">    <span class="keyword">if</span> (retval)</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_signal;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 12. 初始化性能事件</span></span><br><span class="line">    perf_event_fork(p);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-7-分配-PID"><a href="#4-4-7-分配-PID" class="headerlink" title="4.4.7 分配 PID"></a>4.4.7 分配 PID</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 13. 分配 PID</span></span><br><span class="line">    pid = alloc_pid(p-&gt;nsproxy-&gt;pid_ns_for_children, args-&gt;set_tid,</span><br><span class="line">                    args-&gt;set_tid_size);</span><br><span class="line">    <span class="keyword">if</span> (IS_ERR(pid)) &#123;</span><br><span class="line">        retval = PTR_ERR(pid);</span><br><span class="line">        <span class="keyword">goto</span> bad_fork_cleanup_thread;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-8-设置进程关系"><a href="#4-4-8-设置进程关系" class="headerlink" title="4.4.8 设置进程关系"></a>4.4.8 设置进程关系</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 14. 设置进程树关系</span></span><br><span class="line">    <span class="keyword">if</span> (clone_flags &amp; CLONE_THREAD) &#123;</span><br><span class="line">        p-&gt;group_leader = current-&gt;group_leader;</span><br><span class="line">        p-&gt;tgid = current-&gt;tgid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        p-&gt;group_leader = p;</span><br><span class="line">        p-&gt;tgid = p-&gt;pid;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 15. 设置父进程</span></span><br><span class="line">    <span class="keyword">if</span> (clone_flags &amp; (CLONE_PARENT | CLONE_THREAD)) &#123;</span><br><span class="line">        p-&gt;real_parent = current-&gt;real_parent;</span><br><span class="line">        p-&gt;parent_exec_id = current-&gt;parent_exec_id;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        p-&gt;real_parent = current;</span><br><span class="line">        p-&gt;parent_exec_id = current-&gt;self_exec_id;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 16. 添加到进程树</span></span><br><span class="line">    write_lock_irq(&amp;tasklist_lock);</span><br><span class="line">    <span class="keyword">if</span> (clone_flags &amp; CLONE_THREAD)</span><br><span class="line">        p-&gt;exit_signal = <span class="number">-1</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        p-&gt;exit_signal = args-&gt;exit_signal;</span><br><span class="line"></span><br><span class="line">    list_add_tail_rcu(&amp;p-&gt;tasks, &amp;init_task.tasks);</span><br><span class="line">    write_unlock_irq(&amp;tasklist_lock);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-4-9-完成"><a href="#4-4-9-完成" class="headerlink" title="4.4.9 完成"></a>4.4.9 完成</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">    <span class="comment">// 17. 设置进程名</span></span><br><span class="line">    set_task_comm(p, current-&gt;comm);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 18. 返回新进程</span></span><br><span class="line">    <span class="keyword">return</span> p;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 错误处理路径</span></span><br><span class="line">bad_fork_cleanup_thread:</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">return</span> ERR_PTR(retval);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-5-写时复制-Copy-on-Write"><a href="#4-5-写时复制-Copy-on-Write" class="headerlink" title="4.5 写时复制 (Copy-on-Write)"></a>4.5 写时复制 (Copy-on-Write)</h2><h3 id="4-5-1-基本原理"><a href="#4-5-1-基本原理" class="headerlink" title="4.5.1 基本原理"></a>4.5.1 基本原理</h3><p>写时复制是一种延迟分配策略，fork 时不立即复制物理内存，而是共享页表，并将页表设置为只读。当任一进程尝试写入时触发缺页异常，此时才真正分配新的物理页面。</p>
+<h3 id="4-5-2-fork-内存布局"><a href="#4-5-2-fork-内存布局" class="headerlink" title="4.5.2 fork 内存布局"></a>4.5.2 fork 内存布局</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">fork() 之前 - 父进程内存：</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│  用户空间                                                   │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  代码段 (只读)                     物理页 A          │  │</span><br><span class="line">│  ├──────────────────────────────────────────────────────┤  │</span><br><span class="line">│  │  数据段 (可写)                     物理页 B          │  │</span><br><span class="line">│  ├──────────────────────────────────────────────────────┤  │</span><br><span class="line">│  │  堆段 (可写)                       物理页 C          │  │</span><br><span class="line">│  ├──────────────────────────────────────────────────────┤  │</span><br><span class="line">│  │  栈段 (可写)                       物理页 D          │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">fork() 之后 - 页表共享 (COW)：</span><br><span class="line">┌─────────────────────────────┐   ┌─────────────────────────────┐</span><br><span class="line">│       父进程                │   │       子进程                  │</span><br><span class="line">│  ┌────────────────────────┐ │   │  ┌────────────────────────┐ │</span><br><span class="line">│  │ 代码段 → 物理页 A (只读)│◄┼───┼──►│ 代码段 → 物理页 A (只读)│ │</span><br><span class="line">│  │ 数据段 → 物理页 B (只读)│ │   │  │ 数据段 → 物理页 B (只读)│ │</span><br><span class="line">│  │ 堆段   → 物理页 C (只读)│ │   │  │ 堆段   → 物理页 C (只读)│ │</span><br><span class="line">│  │ 栈段   → 物理页 D (只读)│ │   │  │ 栈段   → 物理页 D (只读)│ │</span><br><span class="line">│  └────────────────────────┘ │   │  └────────────────────────┘ │</span><br><span class="line">└─────────────────────────────┘   └─────────────────────────────┘</span><br><span class="line"></span><br><span class="line">子进程写入后：</span><br><span class="line">┌─────────────────────────────┐   ┌─────────────────────────────┐</span><br><span class="line">│       父进程                │   │       子进程                  │</span><br><span class="line">│  ┌────────────────────────┐ │   │  ┌────────────────────────┐ │</span><br><span class="line">│  │ 代码段 → 物理页 A       │ │   │  │ 代码段 → 物理页 A       │ │</span><br><span class="line">│  │ 数据段 → 物理页 B       │ │   │  │ 数据段 → 物理页 B&#x27; (新)  │ │</span><br><span class="line">│  │ 堆段   → 物理页 C       │ │   │  │ 堆段   → 物理页 C&#x27; (新)  │ │</span><br><span class="line">│  │ 栈段   → 物理页 D       │ │   │  │ 栈段   → 物理页 D&#x27; (新)  │ │</span><br><span class="line">│  └────────────────────────┘ │   │  └────────────────────────┘ │</span><br><span class="line">└─────────────────────────────┘   └─────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-5-3-实现代码"><a href="#4-5-3-实现代码" class="headerlink" title="4.5.3 实现代码"></a>4.5.3 实现代码</h3><p><strong>位置：</strong> <code>mm/memory.c:copy_page_range()</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">copy_page_range</span><span class="params">(<span class="keyword">struct</span> mm_struct *dst_mm, <span class="keyword">struct</span> mm_struct *src_mm,</span></span><br><span class="line"><span class="params">                   <span class="keyword">struct</span> vm_area_struct *vma)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">pgd_t</span> *src_pgd, *dst_pgd;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> next;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> addr = vma-&gt;vm_start;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> end = vma-&gt;vm_end;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mmu_notifier_range</span> <span class="title">range</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 复制页表项，设置为只读 (COW)</span></span><br><span class="line">    src_pgd = pgd_offset(src_mm, addr);</span><br><span class="line">    dst_pgd = pgd_offset(dst_mm, addr);</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        next = pgd_addr_end(addr, end);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (pgd_none_or_clear_bad(src_pgd))</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (copy_p4d_range(dst_mm, src_mm, dst_pgd, src_pgd,</span><br><span class="line">                          vma, addr, next))</span><br><span class="line">            <span class="keyword">return</span> -ENOMEM;</span><br><span class="line">    &#125; <span class="keyword">while</span> (dst_pgd++, src_pgd++, addr = next, addr != end);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>写保护处理：</strong> <code>mm/memory.c:wp_page_copy()</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">vm_fault_t</span> <span class="title function_">wp_page_copy</span><span class="params">(<span class="keyword">struct</span> vm_fault *vmf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">old_page</span> =</span> vmf-&gt;page;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">new_page</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 分配新的物理页面</span></span><br><span class="line">    new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vmf-&gt;vma, vmf-&gt;address);</span><br><span class="line">    <span class="keyword">if</span> (!new_page)</span><br><span class="line">        <span class="keyword">return</span> VM_FAULT_OOM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 复制页面内容</span></span><br><span class="line">    copy_user_highpage(new_page, old_page, vmf-&gt;address);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新页表，指向新页面</span></span><br><span class="line">    flush_cache_page(vma, vmf-&gt;address, pte);</span><br><span class="line">    entry = mk_pte(new_page, vma-&gt;vm_page_prot);</span><br><span class="line">    set_pte_at(vma-&gt;vm_mm, vmf-&gt;address, vmf-&gt;pte, entry);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> VM_FAULT_WRITE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-6-execve-系统调用"><a href="#4-6-execve-系统调用" class="headerlink" title="4.6 execve() 系统调用"></a>4.6 execve() 系统调用</h2><h3 id="4-6-1-概述"><a href="#4-6-1-概述" class="headerlink" title="4.6.1 概述"></a>4.6.1 概述</h3><p>execve() 用新程序替换当前进程的内存映像，保持 PID 不变。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fs/exec.c</span></span><br><span class="line">SYSCALL_DEFINE3(execve,</span><br><span class="line">               <span class="type">const</span> <span class="type">char</span> __user *, filename,</span><br><span class="line">               <span class="type">const</span> <span class="type">char</span> __user *<span class="type">const</span> __user *, argv,</span><br><span class="line">               <span class="type">const</span> <span class="type">char</span> __user *<span class="type">const</span> __user *, envp)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> do_execveat(AT_FDCWD, filename, argv, envp, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="4-6-2-执行流程"><a href="#4-6-2-执行流程" class="headerlink" title="4.6.2 执行流程"></a>4.6.2 执行流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">do_execveat_common()</span><br><span class="line">    │</span><br><span class="line">    ├─→ open_exec()                  打开可执行文件</span><br><span class="line">    │</span><br><span class="line">    ├─→ sched_exec()                 调度器 exec 处理</span><br><span class="line">    │</span><br><span class="line">    ├─→ bprm_execve()                准备执行</span><br><span class="line">    │</span><br><span class="line">    ├─→ prepare_binprm()             检查文件格式</span><br><span class="line">    │</span><br><span class="line">    ├─→ copy_string_kernel()         复制参数</span><br><span class="line">    │</span><br><span class="line">    ├─→ load_elf_binary()            加载 ELF 格式</span><br><span class="line">    │   或</span><br><span class="line">    │   load_script_binary()         加载脚本格式</span><br><span class="line">    │</span><br><span class="line">    ├─→ setup_new_exec()             设置新执行环境</span><br><span class="line">    │</span><br><span class="line">    ├─→ flush_old_exec()             释放旧资源</span><br><span class="line">    │</span><br><span class="line">    ├─→ setup_arg_pages()            设置参数栈</span><br><span class="line">    │</span><br><span class="line">    ├─→ setup_binprm()               设置 binprm</span><br><span class="line">    │</span><br><span class="line">    ├─→ load_binary()                加载二进制文件</span><br><span class="line">    │</span><br><span class="line">    └─→ start_thread()               启动新程序</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="4-7-fork-vs-vfork-vs-clone"><a href="#4-7-fork-vs-vfork-vs-clone" class="headerlink" title="4.7 fork vs vfork vs clone"></a>4.7 fork vs vfork vs clone</h2><h3 id="4-7-1-对比"><a href="#4-7-1-对比" class="headerlink" title="4.7.1 对比"></a>4.7.1 对比</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>fork()</th>
+<th>vfork()</th>
+<th>clone()</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>地址空间</td>
+<td>复制 (COW)</td>
+<td>共享</td>
+<td>可选</td>
+</tr>
+<tr>
+<td>页表</td>
+<td>复制</td>
+<td>不复制</td>
+<td>可选</td>
+</tr>
+<tr>
+<td>父进程阻塞</td>
+<td>否</td>
+<td>是</td>
+<td>可选 (CLONE_VFORK)</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>创建进程</td>
+<td>创建后立即 exec</td>
+<td>灵活创建进程&#x2F;线程</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>较低</td>
+<td>高</td>
+<td>高</td>
+</tr>
+<tr>
+<td>POSIX</td>
+<td>是</td>
+<td>是</td>
+<td>是</td>
+</tr>
+</tbody></table>
+<h3 id="4-7-2-使用场景"><a href="#4-7-2-使用场景" class="headerlink" title="4.7.2 使用场景"></a>4.7.2 使用场景</h3><p><strong>fork()：</strong></p>
+<ul>
+<li>通用的进程创建</li>
+<li>父子进程独立执行</li>
+</ul>
+<p><strong>vfork()：</strong></p>
+<ul>
+<li>创建后立即执行 exec</li>
+<li>避免不必要的内存复制</li>
+<li>性能敏感场景</li>
+</ul>
+<p><strong>clone()：</strong></p>
+<ul>
+<li>创建线程</li>
+<li>细粒度控制资源共享</li>
+<li>容器&#x2F;命名空间操作</li>
+</ul>
+<hr>
+<h2 id="4-8-本章小结"><a href="#4-8-本章小结" class="headerlink" title="4.8 本章小结"></a>4.8 本章小结</h2><p>本章介绍了 Linux 进程创建机制：</p>
+<ol>
+<li><strong>系统调用</strong>：fork、vfork、clone、clone3 四种创建方式</li>
+<li><strong>clone_flags</strong>：通过标志控制资源共享程度</li>
+<li>**kernel_clone()**：统一的创建入口</li>
+<li>**copy_process()**：核心复制逻辑，包含多个资源复制步骤</li>
+<li><strong>写时复制</strong>：延迟分配策略，提高 fork 性能</li>
+<li>**execve()**：替换进程内存映像</li>
+<li><strong>创建方式对比</strong>：fork、vfork、clone 各有适用场景</li>
+</ol>
+<p>下一章将介绍进程调度机制。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-04</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:20:03</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:49
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-04/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-05/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-05</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-03/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-03</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-04</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC4%E7%AB%A0-%E8%BF%9B%E7%A8%8B%E5%88%9B%E5%BB%BA"><span class="nav-text">第4章 进程创建</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E8%BF%9B%E7%A8%8B%E5%88%9B%E5%BB%BA%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">4.1 进程创建系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-1-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%A6%82%E8%BF%B0"><span class="nav-text">4.1.1 系统调用概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-2-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E5%85%A5%E5%8F%A3"><span class="nav-text">4.1.2 系统调用入口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-clone-flags-%E6%A0%87%E5%BF%97%E8%AF%A6%E8%A7%A3"><span class="nav-text">4.2 clone_flags 标志详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-1-%E6%A0%87%E5%BF%97%E5%AE%9A%E4%B9%89"><span class="nav-text">4.2.1 标志定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-2-%E6%A0%87%E5%BF%97%E7%BB%84%E5%90%88"><span class="nav-text">4.2.2 标志组合</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-3-kernel-clone-%E6%A0%B8%E5%BF%83%E6%B5%81%E7%A8%8B"><span class="nav-text">4.3 kernel_clone() 核心流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-1-%E4%B8%BB%E5%87%BD%E6%95%B0"><span class="nav-text">4.3.1 主函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-2-%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="nav-text">4.3.2 流程图</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-copy-process-%E8%AF%A6%E7%BB%86%E6%B5%81%E7%A8%8B"><span class="nav-text">4.4 copy_process() 详细流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-1-%E5%87%BD%E6%95%B0%E7%AD%BE%E5%90%8D"><span class="nav-text">4.4.1 函数签名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-2-%E5%8F%82%E6%95%B0%E9%AA%8C%E8%AF%81"><span class="nav-text">4.4.2 参数验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-3-%E6%A3%80%E6%9F%A5%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6"><span class="nav-text">4.4.3 检查资源限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-4-%E5%88%86%E9%85%8D-task-struct"><span class="nav-text">4.4.4 分配 task_struct</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-5-%E5%A4%8D%E5%88%B6%E5%90%84%E7%A7%8D%E8%B5%84%E6%BA%90"><span class="nav-text">4.4.5 复制各种资源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-6-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%B0%83%E5%BA%A6%E7%9B%B8%E5%85%B3"><span class="nav-text">4.4.6 初始化调度相关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-7-%E5%88%86%E9%85%8D-PID"><span class="nav-text">4.4.7 分配 PID</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-8-%E8%AE%BE%E7%BD%AE%E8%BF%9B%E7%A8%8B%E5%85%B3%E7%B3%BB"><span class="nav-text">4.4.8 设置进程关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-9-%E5%AE%8C%E6%88%90"><span class="nav-text">4.4.9 完成</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-%E5%86%99%E6%97%B6%E5%A4%8D%E5%88%B6-Copy-on-Write"><span class="nav-text">4.5 写时复制 (Copy-on-Write)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86"><span class="nav-text">4.5.1 基本原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-2-fork-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="nav-text">4.5.2 fork 内存布局</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-3-%E5%AE%9E%E7%8E%B0%E4%BB%A3%E7%A0%81"><span class="nav-text">4.5.3 实现代码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-6-execve-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">4.6 execve() 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-6-1-%E6%A6%82%E8%BF%B0"><span class="nav-text">4.6.1 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-6-2-%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-text">4.6.2 执行流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-7-fork-vs-vfork-vs-clone"><span class="nav-text">4.7 fork vs vfork vs clone</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-7-1-%E5%AF%B9%E6%AF%94"><span class="nav-text">4.7.1 对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-7-2-%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-text">4.7.2 使用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">4.8 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-02/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-02">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-02/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:19:54.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:32.321Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-02 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-02</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:19:54</span>
+        <span class="mobile">2026-01-14 19:19:54</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:32</span>
+            <span class="mobile">2026-01-19 13:40:32</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第2章-进程描述符-task-struct"><a href="#第2章-进程描述符-task-struct" class="headerlink" title="第2章 进程描述符 task_struct"></a>第2章 进程描述符 task_struct</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="2-1-task-struct-概览"><a href="#2-1-task-struct-概览" class="headerlink" title="2.1 task_struct 概览"></a>2.1 task_struct 概览</h2><h3 id="2-1-1-定义位置"><a href="#2-1-1-定义位置" class="headerlink" title="2.1.1 定义位置"></a>2.1.1 定义位置</h3><p><code>struct task_struct</code> 是 Linux 内核中最重要的数据结构之一，定义在 <code>include/linux/sched.h</code> 中。它包含了进程的所有信息，是内核管理进程的核心数据结构。</p>
+<p><a href="elixir.bootlin.com/linux/v6.12.38/source/include/linux/sched.h#L785">task_struct</a></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:785</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_THREAD_INFO_IN_TASK</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * For reasons of header soup (see current_thread_info()), this</span></span><br><span class="line"><span class="comment">     * must be the first element of task_struct.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">thread_info</span>      <span class="title">thread_info</span>;</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            __state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* saved state for &quot;spinlock sleepers&quot; */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            saved_state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ... 更多字段</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-1-2-内存布局"><a href="#2-1-2-内存布局" class="headerlink" title="2.1.2 内存布局"></a>2.1.2 内存布局</h3><p><strong>大小与分配：</strong></p>
+<ul>
+<li>64位系统：约 8KB（包含内核栈）</li>
+<li>32位系统：约 4KB</li>
+<li>通过 slab 分配器管理：<code>task_struct_cachep</code></li>
+</ul>
+<p><strong>内存布局：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    内核栈 + task_struct                     │</span><br><span class="line">│                         (THREAD_SIZE)                       │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │              内核栈空间                              │  │</span><br><span class="line">│  │         (THREAD_SIZE - sizeof(task_struct))          │  │</span><br><span class="line">│  │                                                       │  │</span><br><span class="line">│  │                    ↑                                │  │</span><br><span class="line">│  │                  栈增长                            │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘  │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │              struct task_struct                      │  │</span><br><span class="line">│  │                                                       │  │</span><br><span class="line">│  │  - thread_info (低地址)                              │  │</span><br><span class="line">│  │  - __state                                            │  │</span><br><span class="line">│  │  - stack                                             │  │</span><br><span class="line">│  │  - usage                                             │  │</span><br><span class="line">│  │  - flags                                             │  │</span><br><span class="line">│  │  - ptrace                                            │  │</span><br><span class="line">│  │  - ... (更多字段)                                    │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘  │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            ↑</span><br><span class="line">                    current 指向这里</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>THREAD_SIZE 配置：</strong></p>
+<table>
+<thead>
+<tr>
+<th>架构</th>
+<th>THREAD_SIZE</th>
+<th>配置选项</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>x86_64</td>
+<td>16KB (4页) 或 8KB (2页)</td>
+<td>CONFIG_4KSTACKS</td>
+</tr>
+<tr>
+<td>ARM64</td>
+<td>16KB (4页)</td>
+<td>-</td>
+</tr>
+<tr>
+<td>RISC-V</td>
+<td>16KB (4页)</td>
+<td>-</td>
+</tr>
+</tbody></table>
+<h3 id="2-1-3-获取当前进程"><a href="#2-1-3-获取当前进程" class="headerlink" title="2.1.3 获取当前进程"></a>2.1.3 获取当前进程</h3><p><strong>current 宏的实现：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/include/asm/current.h</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> current get_current()</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> __always_inline <span class="keyword">struct</span> task_struct *<span class="title function_">get_current</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> this_cpu_read_stable(current_task);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ARM64 实现 (arch/arm64/include/asm/current.h)</span></span><br><span class="line"><span class="type">static</span> __always_inline <span class="keyword">struct</span> task_struct *<span class="title function_">get_current</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">struct</span> task_struct *)</span><br><span class="line">        (read_sysreg(sp_el0) &amp; ~THREAD_MASK);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>每个 CPU 的 <code>current_task</code> 变量指向当前正在运行的进程的 task_struct。</p>
+<hr>
+<h2 id="2-2-进程状态"><a href="#2-2-进程状态" class="headerlink" title="2.2 进程状态"></a>2.2 进程状态</h2><h3 id="2-2-1-状态定义"><a href="#2-2-1-状态定义" class="headerlink" title="2.2.1 状态定义"></a>2.2.1 状态定义</h3><p><strong>位置：</strong> <code>include/linux/sched.h:98</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Task state bitmask. NOTE! These bits are also</span></span><br><span class="line"><span class="comment"> * encoded in fs/proc/array.c: get_task_state().</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * We have two separate sets of flags: task-&gt;__state</span></span><br><span class="line"><span class="comment"> * is about runnability, while task-&gt;exit_state are</span></span><br><span class="line"><span class="comment"> * about the task exiting. Confusing, but this way</span></span><br><span class="line"><span class="comment"> * modifying one set can&#x27;t modify the other one by</span></span><br><span class="line"><span class="comment"> * mistake.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Used in tsk-&gt;__state: */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_RUNNING           0x00000000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_INTERRUPTIBLE     0x00000001</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_UNINTERRUPTIBLE   0x00000002</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __TASK_STOPPED         0x00000004</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __TASK_TRACED          0x00000008</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Used in tsk-&gt;exit_state: */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXIT_DEAD              0x00000010</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXIT_ZOMBIE            0x00000020</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Used in tsk-&gt;__state again: */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_PARKED            0x00000040</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_DEAD              0x00000080</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_WAKEKILL          0x00000100</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_WAKING            0x00000200</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_NOLOAD            0x00000400</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_NEW               0x00000800</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_RTLOCK_WAIT       0x00001000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_FREEZABLE         0x00002000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __TASK_FREEZABLE_UNSAFE (0x00004000 * IS_ENABLED(CONFIG_LOCKDEP))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_FROZEN            0x00008000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_STATE_MAX         0x00010000</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-2-2-状态详解"><a href="#2-2-2-状态详解" class="headerlink" title="2.2.2 状态详解"></a>2.2.2 状态详解</h3><p><strong>运行状态 (TASK_RUNNING)</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实际上表示两种状态：</span></span><br><span class="line"><span class="comment">// 1. 正在 CPU 上执行</span></span><br><span class="line"><span class="comment">// 2. 在就绪队列中等待执行</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> task_is_running(task) \</span></span><br><span class="line"><span class="meta">    (READ_ONCE((task)-&gt;__state) == TASK_RUNNING)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>可中断睡眠 (TASK_INTERRUPTIBLE)</strong></p>
+<ul>
+<li>可以被信号唤醒</li>
+<li>等待的事件到达时唤醒</li>
+<li>常用于可中断的 I&#x2F;O 操作</li>
+</ul>
+<p><strong>不可中断睡眠 (TASK_UNINTERRUPTIBLE)</strong></p>
+<ul>
+<li>不能被信号唤醒</li>
+<li>只能等待的事件到达时唤醒</li>
+<li>用于不可中断的 I&#x2F;O 操作</li>
+</ul>
+<p><strong>停止状态 (__TASK_STOPPED)</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 进程被 SIGSTOP/SIGTSTP 暂停</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_STOPPED (TASK_WAKEKILL | __TASK_STOPPED)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> task_is_stopped(task) \</span></span><br><span class="line"><span class="meta">    ((READ_ONCE(task-&gt;jobctl) &amp; JOBCTL_STOPPED) != 0)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>跟踪状态 (__TASK_TRACED)</strong></p>
+<ul>
+<li>被 ptrace 跟踪的进程</li>
+<li>调试器控制进程执行</li>
+</ul>
+<p><strong>僵尸状态 (EXIT_ZOMBIE)</strong></p>
+<ul>
+<li>进程已退出，但父进程尚未 wait()</li>
+<li>保留退出状态信息</li>
+</ul>
+<p><strong>死亡状态 (EXIT_DEAD&#x2F;TASK_DEAD)</strong></p>
+<ul>
+<li>进程最终状态</li>
+<li>即将被完全回收</li>
+</ul>
+<h3 id="2-2-3-组合状态"><a href="#2-2-3-组合状态" class="headerlink" title="2.2.3 组合状态"></a>2.2.3 组合状态</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Convenience macros for the sake of set_current_state: */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_KILLABLE           (TASK_WAKEKILL | TASK_UNINTERRUPTIBLE)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_STOPPED            (TASK_WAKEKILL | __TASK_STOPPED)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_TRACED             __TASK_TRACED</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_IDLE               (TASK_UNINTERRUPTIBLE | TASK_NOLOAD)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Convenience macros for the sake of wake_up(): */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TASK_NORMAL             (TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>TASK_KILLABLE</strong> - 可杀死睡眠</p>
+<ul>
+<li>类似 TASK_UNINTERRUPTIBLE</li>
+<li>但可以被致命信号唤醒</li>
+</ul>
+<p><strong>TASK_IDLE</strong> - 空闲睡眠</p>
+<ul>
+<li>不计入系统负载</li>
+<li>用于内核线程的空闲等待</li>
+</ul>
+<h3 id="2-2-4-状态检查函数"><a href="#2-2-4-状态检查函数" class="headerlink" title="2.2.4 状态检查函数"></a>2.2.4 状态检查函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:144</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">is_special_task_state</span><span class="params">(<span class="type">long</span> state)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> (state &amp; (__TASK_STOPPED | __TASK_TRACED | TASK_PARKED |</span><br><span class="line">                    TASK_DEAD | TASK_FROZEN));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 检查任务是否在运行</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">task_is_running</span><span class="params">(<span class="keyword">struct</span> task_struct *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> READ_ONCE(p-&gt;__state) == TASK_RUNNING;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-3-进程标志"><a href="#2-3-进程标志" class="headerlink" title="2.3 进程标志"></a>2.3 进程标志</h2><h3 id="2-3-1-标志定义"><a href="#2-3-1-标志定义" class="headerlink" title="2.3.1 标志定义"></a>2.3.1 标志定义</h3><p><strong>位置：</strong> <code>include/linux/sched.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Per process flags</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_EXITING       0x00000004  <span class="comment">/* 正在退出 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_EXITPIDONE    0x00000008  <span class="comment">/* PID 已释放 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_VCPU          0x00000010  <span class="comment">/* 作为 vCPU 运行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_WQ_WORKER     0x00000020  <span class="comment">/* workqueue worker */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_FORKNOEXEC    0x00000040  <span class="comment">/* fork 但未 exec */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_MCE_PROCESS   0x00000080  <span class="comment">/* MCE 正在处理 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_SUPERPRIV     0x00000100  <span class="comment">/* 需要 superuser 权限 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_DUMPCORE      0x00000200  <span class="comment">/* 正在 dump core */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_SIGNALED      0x00000400  <span class="comment">/* 被信号杀死 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_MEMALLOC      0x00000800  <span class="comment">/* 内存分配上下文 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_NPROC_EXCEEDED 0x00001000 <span class="comment">/* 超过进程数限制 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_USED_MATH     0x00002000  <span class="comment">/* 使用 FPU */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_USED_ASYNC    0x00004000  <span class="comment">/* 使用异步 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_NOFREEZE      0x00008000  <span class="comment">/* 不被冻结 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_FROZEN        0x00010000  <span class="comment">/* 已被冻结 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_KSWAPD        0x00020000  <span class="comment">/* kswapd 进程 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_MEMALLOC_NOIO 0x00080000  <span class="comment">/* 内存分配时不做 IO */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_MEMALLOC_NOFS 0x00100000  <span class="comment">/* 内存分配时不做 FS 操作 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_MEMALLOC_PIN  0x00200000  <span class="comment">/* pinned memory allocation */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_KTHREAD       0x00200000  <span class="comment">/* 内核线程 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_RANDOMIZE     0x00400000  <span class="comment">/* 地址随机化 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_SWAPWRITE     0x00800000  <span class="comment">/* 正在写入 swap */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_UMH           0x02000000  <span class="comment">/* user mode helper */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PF_SETDPERPID    0x04000000  <span class="comment">/* 每进程设置 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-2-标志检查"><a href="#2-3-2-标志检查" class="headerlink" title="2.3.2 标志检查"></a>2.3.2 标志检查</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 检查是否为内核线程</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">is_kthread_kernel_thread</span><span class="params">(<span class="keyword">struct</span> task_struct *task)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> task-&gt;flags &amp; (PF_KTHREAD | PF_IO_WORKER);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 检查进程是否正在退出</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">fatal_signal_pending</span><span class="params">(<span class="keyword">struct</span> task_struct *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> signal_pending(p) &amp;&amp; !(p-&gt;signal-&gt;flags &amp; SIGNAL_GROUP_EXIT);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-4-调度相关字段"><a href="#2-4-调度相关字段" class="headerlink" title="2.4 调度相关字段"></a>2.4 调度相关字段</h2><h3 id="2-4-1-优先级"><a href="#2-4-1-优先级" class="headerlink" title="2.4.1 优先级"></a>2.4.1 优先级</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:833</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="type">int</span>                     prio;            <span class="comment">// 动态优先级</span></span><br><span class="line">    <span class="type">int</span>                     static_prio;     <span class="comment">// 静态优先级</span></span><br><span class="line">    <span class="type">int</span>                     normal_prio;     <span class="comment">// 标准优先级（基于策略）</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            rt_priority;     <span class="comment">// 实时优先级</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>优先级计算：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/core.c</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">effective_prio</span><span class="params">(<span class="keyword">struct</span> task_struct *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    p-&gt;normal_prio = normal_prio(p);</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * If we are RT tasks or we were boosted to RT priority,</span></span><br><span class="line"><span class="comment">     * keep the priority unchanged. Otherwise, update priority</span></span><br><span class="line"><span class="comment">     * to the normal priority:</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (!rt_prio(p-&gt;prio))</span><br><span class="line">        <span class="keyword">return</span> p-&gt;normal_prio;</span><br><span class="line">    <span class="keyword">return</span> p-&gt;prio;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>优先级范围：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">实时优先级 (0 - 99)</span><br><span class="line">│</span><br><span class="line">│   0  最高实时优先级</span><br><span class="line">│   ...</span><br><span class="line">│   99 最低实时优先级</span><br><span class="line">│</span><br><span class="line">├─────────────────────────────────────</span><br><span class="line">│</span><br><span class="line">│   100 普通进程最高优先级 (nice -20)</span><br><span class="line">│   ...</span><br><span class="line">│   120 普通进程默认优先级 (nice 0)</span><br><span class="line">│   ...</span><br><span class="line">│   139 普通进程最低优先级 (nice +19)</span><br><span class="line">│</span><br><span class="line">└─────────────────────────────────────</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-4-2-调度实体"><a href="#2-4-2-调度实体" class="headerlink" title="2.4.2 调度实体"></a>2.4.2 调度实体</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:838</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span>     <span class="title">se</span>;</span>      <span class="comment">// CFS 调度实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_rt_entity</span>   <span class="title">rt</span>;</span>      <span class="comment">// 实时调度实体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_dl_entity</span>   <span class="title">dl</span>;</span>      <span class="comment">// Deadline 调度实体</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> *<span class="title">sched_class</span>;</span> <span class="comment">// 调度类</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>调度类定义：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/sched.h:2360</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> &#123;</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_UCLAMP_TASK</span></span><br><span class="line">    <span class="type">int</span> uclamp_enabled;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*enqueue_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">int</span> flags);</span><br><span class="line">    <span class="type">bool</span> (*dequeue_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">int</span> flags);</span><br><span class="line">    <span class="type">void</span> (*yield_task)   (<span class="keyword">struct</span> rq *rq);</span><br><span class="line">    <span class="type">bool</span> (*yield_to_task)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p);</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*wakeup_preempt)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">int</span> flags);</span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> (*balance)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *prev, <span class="keyword">struct</span> rq_flags *rf);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *(*<span class="title">pick_task</span>)(<span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">rq</span>);</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Optional! When implemented pick_next_task() should be equivalent to:</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     *   next = pick_task();</span></span><br><span class="line"><span class="comment">     *   if (next) &#123;</span></span><br><span class="line"><span class="comment">     *       put_prev_task(prev);</span></span><br><span class="line"><span class="comment">     *       set_next_task_first(next);</span></span><br><span class="line"><span class="comment">     *   &#125;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *(*<span class="title">pick_next_task</span>)(<span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">rq</span>, <span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">prev</span>);</span></span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*put_prev_task)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">struct</span> task_struct *next);</span><br><span class="line">    <span class="type">void</span> (*set_next_task)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">bool</span> first);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SMP</span></span><br><span class="line">    <span class="type">int</span>  (*select_task_rq)(<span class="keyword">struct</span> task_struct *p, <span class="type">int</span> task_cpu, <span class="type">int</span> flags);</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*migrate_task_rq)(<span class="keyword">struct</span> task_struct *p, <span class="type">int</span> new_cpu);</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*task_woken)(<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*set_cpus_allowed)(<span class="keyword">struct</span> task_struct *p, <span class="keyword">struct</span> affinity_context *ctx);</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*rq_online)(<span class="keyword">struct</span> rq *rq);</span><br><span class="line">    <span class="type">void</span> (*rq_offline)(<span class="keyword">struct</span> rq *rq);</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rq</span> *(*<span class="title">find_lock_rq</span>)(<span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">p</span>, <span class="keyword">struct</span> <span class="title">rq</span> *<span class="title">rq</span>);</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*task_tick)(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="type">int</span> queued);</span><br><span class="line">    <span class="type">void</span> (*task_fork)(<span class="keyword">struct</span> task_struct *p);</span><br><span class="line">    <span class="type">void</span> (*task_dead)(<span class="keyword">struct</span> task_struct *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * The switched_from() call is allowed to drop rq-&gt;lock, therefore we</span></span><br><span class="line"><span class="comment">     * cannot assume the switched_from/switched_to pair is serialized by</span></span><br><span class="line"><span class="comment">     * rq-&gt;lock. They are however serialized by p-&gt;pi_lock.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">void</span> (*switching_to) (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);</span><br><span class="line">    <span class="type">void</span> (*switched_from)(<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);</span><br><span class="line">    <span class="type">void</span> (*switched_to)  (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);</span><br><span class="line">    <span class="type">void</span> (*reweight_task)(<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task,</span><br><span class="line">                          <span class="type">const</span> <span class="keyword">struct</span> load_weight *lw);</span><br><span class="line">    <span class="type">void</span> (*prio_changed) (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task,</span><br><span class="line">                          <span class="type">int</span> oldprio);</span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="title function_">int</span> <span class="params">(*get_rr_interval)</span><span class="params">(<span class="keyword">struct</span> rq *rq,</span></span><br><span class="line"><span class="params">                                    <span class="keyword">struct</span> task_struct *task)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">void</span> (*update_curr)(<span class="keyword">struct</span> rq *rq);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_FAIR_GROUP_SCHED</span></span><br><span class="line">    <span class="type">void</span> (*task_change_group)(<span class="keyword">struct</span> task_struct *p);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SCHED_CORE</span></span><br><span class="line">    <span class="type">int</span> (*task_is_throttled)(<span class="keyword">struct</span> task_struct *p, <span class="type">int</span> cpu);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>调度类优先级顺序：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/core.c</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">stop_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">dl_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">rt_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">fair_sched_class</span>;</span></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">sched_class</span> <span class="title">idle_sched_class</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 链表顺序定义了优先级：stop &gt; dl &gt; rt &gt; fair &gt; idle</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-4-3-CPU-亲和性"><a href="#2-4-3-CPU-亲和性" class="headerlink" title="2.4.3 CPU 亲和性"></a>2.4.3 CPU 亲和性</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:882</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            policy;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           max_allowed_capacity;</span><br><span class="line">    <span class="type">int</span>                     nr_cpus_allowed;</span><br><span class="line">    <span class="type">const</span> <span class="type">cpumask_t</span>         *cpus_ptr;</span><br><span class="line">    <span class="type">cpumask_t</span>               *user_cpus_ptr;</span><br><span class="line">    <span class="type">cpumask_t</span>               cpus_mask;</span><br><span class="line">    <span class="type">void</span>                    *migration_pending;</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SMP</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">short</span>          migration_disabled;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">short</span>          migration_flags;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-5-进程标识符"><a href="#2-5-进程标识符" class="headerlink" title="2.5 进程标识符"></a>2.5 进程标识符</h2><h3 id="2-5-1-PID-字段"><a href="#2-5-1-PID-字段" class="headerlink" title="2.5.1 PID 字段"></a>2.5.1 PID 字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1026</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="type">pid_t</span>                   pid;         <span class="comment">// 进程 ID (线程 ID)</span></span><br><span class="line">    <span class="type">pid_t</span>                   tgid;        <span class="comment">// 线程组 ID (主线程 PID)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid</span>              *<span class="title">thread_pid</span>;</span> <span class="comment">// PID 结构</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">hlist_node</span>       <span class="title">pid_links</span>[<span class="title">PIDTYPE_MAX</span>];</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">thread_node</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-5-2-PID-类型"><a href="#2-5-2-PID-类型" class="headerlink" title="2.5.2 PID 类型"></a>2.5.2 PID 类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/pid.h</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">pid_type</span> &#123;</span></span><br><span class="line">    PIDTYPE_PID,      <span class="comment">// 进程 ID</span></span><br><span class="line">    PIDTYPE_TGID,     <span class="comment">// 线程组 ID</span></span><br><span class="line">    PIDTYPE_PGID,     <span class="comment">// 进程组 ID</span></span><br><span class="line">    PIDTYPE_SID,      <span class="comment">// 会话 ID</span></span><br><span class="line">    PIDTYPE_MAX,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-6-进程关系"><a href="#2-6-进程关系" class="headerlink" title="2.6 进程关系"></a>2.6 进程关系</h2><h3 id="2-6-1-家族关系字段"><a href="#2-6-1-家族关系字段" class="headerlink" title="2.6.1 家族关系字段"></a>2.6.1 家族关系字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1039</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Pointers to the (original) parent process, youngest child, younger sibling,</span></span><br><span class="line"><span class="comment">     * older sibling, respectively.  (p-&gt;father can be replaced with</span></span><br><span class="line"><span class="comment">     * p-&gt;real_parent-&gt;pid)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Real parent process: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> __<span class="title">rcu</span> *<span class="title">real_parent</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Recipient of SIGCHLD, wait4() reports: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> __<span class="title">rcu</span> *<span class="title">parent</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Children/sibling form the list of natural children:</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">children</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">sibling</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span>      *<span class="title">group_leader</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-6-2-进程树结构"><a href="#2-6-2-进程树结构" class="headerlink" title="2.6.2 进程树结构"></a>2.6.2 进程树结构</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">init (PID 1)</span><br><span class="line">  │</span><br><span class="line">  ├─ systemd (PID 1000)</span><br><span class="line">  │   │   real_parent = init</span><br><span class="line">  │   │   parent = init</span><br><span class="line">  │   │   children = [NetworkManager, sshd, cron]</span><br><span class="line">  │   │   group_leader = systemd</span><br><span class="line">  │   │</span><br><span class="line">  │   ├─ NetworkManager (PID 1001)</span><br><span class="line">  │   │   real_parent = systemd</span><br><span class="line">  │   │   parent = systemd</span><br><span class="line">  │   │</span><br><span class="line">  │   ├─ sshd (PID 1002)</span><br><span class="line">  │   │</span><br><span class="line">  │   └─ cron (PID 1003)</span><br><span class="line">  │</span><br><span class="line">  └─ containerd (PID 500)</span><br><span class="line">      │</span><br><span class="line">      └─ dockerd (PID 501)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-6-3-线程组关系"><a href="#2-6-3-线程组关系" class="headerlink" title="2.6.3 线程组关系"></a>2.6.3 线程组关系</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span>      *<span class="title">group_leader</span>;</span>      <span class="comment">// 线程组首领</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">thread_group</span>;</span>       <span class="comment">// 线程组成员</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>        <span class="title">thread_node</span>;</span>        <span class="comment">// PID 哈希节点</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>多线程进程结构：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">进程 (TGID = 1000)</span><br><span class="line">│</span><br><span class="line">├─ thread1 (PID = 1000, group_leader = thread1)</span><br><span class="line">├─ thread2 (PID = 1001, group_leader = thread1)</span><br><span class="line">└─ thread3 (PID = 1002, group_leader = thread1)</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-7-内存管理"><a href="#2-7-内存管理" class="headerlink" title="2.7 内存管理"></a>2.7 内存管理</h2><h3 id="2-7-1-内存描述符"><a href="#2-7-1-内存描述符" class="headerlink" title="2.7.1 内存描述符"></a>2.7.1 内存描述符</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:928</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span>        *<span class="title">mm</span>;</span>         <span class="comment">// 进程地址空间</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span>        *<span class="title">active_mm</span>;</span>  <span class="comment">// 活跃地址空间 (内核线程)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">address_space</span>    *<span class="title">faults_disabled_mapping</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>mm vs active_mm：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 内核线程：mm = NULL，active_mm = 借用的 mm</span></span><br><span class="line"><span class="comment">// 用户进程：mm = active_mm = 自己的 mm</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">mmdrop</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (mm-&gt;owner == <span class="literal">NULL</span>)  <span class="comment">// 内核线程借用的 mm</span></span><br><span class="line">        mmdrop_lazy_tlb(mm);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        __mmdrop(mm);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-7-2-地址空间布局"><a href="#2-7-2-地址空间布局" class="headerlink" title="2.7.2 地址空间布局"></a>2.7.2 地址空间布局</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">用户空间 (TASK_SIZE)</span><br><span class="line">│</span><br><span class="line">│  ┌─────────────────────────────────────┐</span><br><span class="line">│  │       参数和环境变量                │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │            栈 (向下增长)            │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │              (空洞)                 │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │            堆 (向上增长)            │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │           BSS 段                    │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │           数据段                    │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │           代码段                    │</span><br><span class="line">│  └─────────────────────────────────────┘</span><br><span class="line">│</span><br><span class="line">├─────────────────────────────────────</span><br><span class="line">│</span><br><span class="line">内核空间</span><br><span class="line">│</span><br><span class="line">│  ┌─────────────────────────────────────┐</span><br><span class="line">│  │        直接映射区                   │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │        vmalloc/ioremap 区           │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │        永久映射区                   │</span><br><span class="line">│  ├─────────────────────────────────────┤</span><br><span class="line">│  │        固定映射区                   │</span><br><span class="line">│  └─────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-8-文件系统"><a href="#2-8-文件系统" class="headerlink" title="2.8 文件系统"></a>2.8 文件系统</h2><h3 id="2-8-1-文件系统相关字段"><a href="#2-8-1-文件系统相关字段" class="headerlink" title="2.8.1 文件系统相关字段"></a>2.8.1 文件系统相关字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1148</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Filesystem information: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fs_struct</span>        *<span class="title">fs</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Open file information: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span>     *<span class="title">files</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>fs_struct：</strong> 文件系统信息（根目录、当前工作目录）</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/fs_struct.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">fs_struct</span> &#123;</span></span><br><span class="line">    <span class="type">int</span> users;</span><br><span class="line">    <span class="type">spinlock_t</span> lock;</span><br><span class="line">    <span class="type">seqcount_spinlock_t</span> seq;</span><br><span class="line">    <span class="type">int</span> umask;</span><br><span class="line">    <span class="type">int</span> in_exec;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">path</span> <span class="title">root</span>, <span class="title">pwd</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>files_struct：</strong> 打开的文件描述符表</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/fdtable.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">files_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * read mostly part</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">atomic_t</span> count;</span><br><span class="line">    <span class="type">bool</span> resize_in_progress;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> __<span class="title">rcu</span> *<span class="title">fdt</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fdtable</span> <span class="title">fdtab</span>;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * written part on a separate cache line in SMP</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">spinlock_t</span> file_lock ____cacheline_aligned_in_smp;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> next_fd;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> close_on_exec_init[<span class="number">1</span>];</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> open_fds_init[<span class="number">1</span>];</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> full_fds_bits_init[<span class="number">1</span>];</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> __<span class="title">rcu</span> * <span class="title">fd_array</span>[<span class="title">NR_OPEN_DEFAULT</span>];</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-9-信号处理"><a href="#2-9-信号处理" class="headerlink" title="2.9 信号处理"></a>2.9 信号处理</h2><h3 id="2-9-1-信号相关字段"><a href="#2-9-1-信号相关字段" class="headerlink" title="2.9.1 信号相关字段"></a>2.9.1 信号相关字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1161</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Signal handlers: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">signal_struct</span>    *<span class="title">signal</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sighand_struct</span> __<span class="title">rcu</span> *<span class="title">sighand</span>;</span></span><br><span class="line">    <span class="type">sigset_t</span>                blocked;</span><br><span class="line">    <span class="type">sigset_t</span>                real_blocked;</span><br><span class="line">    <span class="type">sigset_t</span>                saved_sigmask;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sigpending</span>       <span class="title">pending</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           sas_ss_sp;</span><br><span class="line">    <span class="type">size_t</span>                  sas_ss_size;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>            sas_ss_flags;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-9-2-信号标志"><a href="#2-9-2-信号标志" class="headerlink" title="2.9.2 信号标志"></a>2.9.2 信号标志</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:736</span></span><br><span class="line"><span class="comment">/* Used in tsk-&gt;jobctl: */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_STOP_SIGMASK   0xffff  <span class="comment">/* signr of the last group stop */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_STOPPED        (1 <span class="string">&lt;&lt; 16) /* -&gt;</span>signal-&gt;group_stop_count &gt; 0 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_STOP_CONSUME    (1 &lt;&lt; 17) <span class="comment">/* group stop consuming */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_TRAP_STOP      (1 &lt;&lt; 18) <span class="comment">/* trap for STOP */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_TRAP_NOTIFY    (1 &lt;&lt; 19) <span class="comment">// trap for NOTIFY</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_TRAPPING       (1 &lt;&lt; 20)  <span class="comment">// ptracer is waiting for SIGTRAP</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_LISTENING      (1 &lt;&lt; 21)  <span class="comment">// listening for events</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_TRAP_FREEZE    (1 &lt;&lt; 22)  <span class="comment">// trap for cgroup freeze</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JOBCTL_TASK_WORK      (1 &lt;&lt; 23)  <span class="comment">// task_work_add() pending</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-10-统计信息"><a href="#2-10-统计信息" class="headerlink" title="2.10 统计信息"></a>2.10 统计信息</h2><h3 id="2-10-1-CPU-时间统计"><a href="#2-10-1-CPU-时间统计" class="headerlink" title="2.10.1 CPU 时间统计"></a>2.10.1 CPU 时间统计</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1077</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    u64                     utime;          <span class="comment">// 用户态时间</span></span><br><span class="line">    u64                     stime;          <span class="comment">// 内核态时间</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_ARCH_HAS_SCALED_CPUTIME</span></span><br><span class="line">    u64                     utimescaled;    <span class="comment">// 缩放的用户时间</span></span><br><span class="line">    u64                     stimescaled;    <span class="comment">// 缩放的内核时间</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    u64                     gtime;          <span class="comment">// Guest 时间</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">prev_cputime</span>     <span class="title">prev_cputime</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-10-2-缺页统计"><a href="#2-10-2-缺页统计" class="headerlink" title="2.10.2 缺页统计"></a>2.10.2 缺页统计</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* MM fault and swap info: */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           min_flt;        <span class="comment">// 次要缺页</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           maj_flt;        <span class="comment">// 主要缺页</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-10-3-上下文切换统计"><a href="#2-10-3-上下文切换统计" class="headerlink" title="2.10.3 上下文切换统计"></a>2.10.3 上下文切换统计</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Context switch counts: */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           nvcsw;          <span class="comment">// 自愿上下文切换</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           nivcsw;         <span class="comment">// 非自愿上下文切换</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-10-4-时间信息"><a href="#2-10-4-时间信息" class="headerlink" title="2.10.4 时间信息"></a>2.10.4 时间信息</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Monotonic time in nsecs: */</span></span><br><span class="line">    u64                     start_time;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Boot based time in nsecs: */</span></span><br><span class="line">    u64                     start_boottime;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-11-证书与安全"><a href="#2-11-证书与安全" class="headerlink" title="2.11 证书与安全"></a>2.11 证书与安全</h2><h3 id="2-11-1-证书字段"><a href="#2-11-1-证书字段" class="headerlink" title="2.11.1 证书字段"></a>2.11.1 证书字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1113</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Process credentials: */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Tracer&#x27;s credentials at attach: */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">cred</span> __<span class="title">rcu</span> *<span class="title">ptracer_cred</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Objective and real subjective task credentials (COW): */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">cred</span> __<span class="title">rcu</span> *<span class="title">real_cred</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Effective (overridable) subjective task credentials (COW): */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">cred</span> __<span class="title">rcu</span> *<span class="title">cred</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-11-2-安全模块"><a href="#2-11-2-安全模块" class="headerlink" title="2.11.2 安全模块"></a>2.11.2 安全模块</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">seccomp</span>           <span class="title">seccomp</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">syscall_user_dispatch</span> <span class="title">syscall_dispatch</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-12-进程名"><a href="#2-12-进程名" class="headerlink" title="2.12 进程名"></a>2.12 进程名</h2><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1135</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * executable name, excluding path.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * - normally initialized setup_new_exec()</span></span><br><span class="line"><span class="comment">     * - access it with [gs]et_task_comm()</span></span><br><span class="line"><span class="comment">     * - lock it with task_lock()</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">char</span>                    comm[TASK_COMM_LEN];</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// TASK_COMM_LEN = 16</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>获取和设置进程名：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:483</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">get_task_comm</span><span class="params">(<span class="type">char</span> *buf, <span class="keyword">struct</span> task_struct *tsk)</span></span><br><span class="line">&#123;</span><br><span class="line">    task_lock(tsk);</span><br><span class="line">    strscpy_pad(buf, tsk-&gt;comm, TASK_COMM_LEN);</span><br><span class="line">    task_unlock(tsk);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">set_task_comm</span><span class="params">(<span class="keyword">struct</span> task_struct *tsk, <span class="type">const</span> <span class="type">char</span> *buf)</span></span><br><span class="line">&#123;</span><br><span class="line">    task_lock(tsk);</span><br><span class="line">    strscpy_pad(tsk-&gt;comm, buf, TASK_COMM_LEN);</span><br><span class="line">    task_unlock(tsk);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-13-锁与同步"><a href="#2-13-锁与同步" class="headerlink" title="2.13 锁与同步"></a>2.13 锁与同步</h2><h3 id="2-13-1-分配锁"><a href="#2-13-1-分配锁" class="headerlink" title="2.13.1 分配锁"></a>2.13.1 分配锁</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/sched.h:1190</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Protection against (de-)allocation: mm, files, fs, tty, keyrings: */</span></span><br><span class="line">    <span class="type">spinlock_t</span>              alloc_lock;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Protection of the PI data structures: */</span></span><br><span class="line">    <span class="type">raw_spinlock_t</span>          pi_lock;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-13-2-优先级继承"><a href="#2-13-2-优先级继承" class="headerlink" title="2.13.2 优先级继承"></a>2.13.2 优先级继承</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_RT_MUTEXES</span></span><br><span class="line">    <span class="comment">/* PI waiters blocked on a rt_mutex held by this task: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_root_cached</span>   <span class="title">pi_waiters</span>;</span></span><br><span class="line">    <span class="comment">/* Updated under owner&#x27;s pi_lock and rq lock */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span>      *<span class="title">pi_top_task</span>;</span></span><br><span class="line">    <span class="comment">/* Deadlock detection and priority inheritance handling: */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rt_mutex_waiter</span>  *<span class="title">pi_blocked_on</span>;</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-14-本章小结"><a href="#2-14-本章小结" class="headerlink" title="2.14 本章小结"></a>2.14 本章小结</h2><p>本章详细介绍了 Linux 内核中进程描述符 <code>task_struct</code> 的结构：</p>
+<ol>
+<li><strong>基本结构</strong>：约 8KB，包含内核栈，通过 slab 分配器管理</li>
+<li><strong>进程状态</strong>：<code>__state</code> 字段包含运行、睡眠、停止、僵尸等状态</li>
+<li><strong>进程标志</strong>：<code>flags</code> 字段包含各种进程属性</li>
+<li><strong>调度信息</strong>：优先级、调度实体、调度类等</li>
+<li><strong>进程标识</strong>：PID、TGID、命名空间相关</li>
+<li><strong>进程关系</strong>：父进程、子进程、线程组</li>
+<li><strong>资源管理</strong>：内存、文件、信号等</li>
+<li><strong>统计信息</strong>：CPU 时间、缺页、上下文切换等</li>
+</ol>
+<p>task_struct 是 Linux 进程管理的核心数据结构，理解其结构对于深入理解内核进程管理至关重要。</p>
+<p>下一章将介绍进程标识符与命名空间的管理。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-02</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:19:54</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:32
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-02/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-03/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-03</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-01/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-01</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-02</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC2%E7%AB%A0-%E8%BF%9B%E7%A8%8B%E6%8F%8F%E8%BF%B0%E7%AC%A6-task-struct"><span class="nav-text">第2章 进程描述符 task_struct</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-task-struct-%E6%A6%82%E8%A7%88"><span class="nav-text">2.1 task_struct 概览</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-%E5%AE%9A%E4%B9%89%E4%BD%8D%E7%BD%AE"><span class="nav-text">2.1.1 定义位置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-2-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="nav-text">2.1.2 内存布局</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-3-%E8%8E%B7%E5%8F%96%E5%BD%93%E5%89%8D%E8%BF%9B%E7%A8%8B"><span class="nav-text">2.1.3 获取当前进程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81"><span class="nav-text">2.2 进程状态</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-%E7%8A%B6%E6%80%81%E5%AE%9A%E4%B9%89"><span class="nav-text">2.2.1 状态定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E7%8A%B6%E6%80%81%E8%AF%A6%E8%A7%A3"><span class="nav-text">2.2.2 状态详解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-3-%E7%BB%84%E5%90%88%E7%8A%B6%E6%80%81"><span class="nav-text">2.2.3 组合状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-4-%E7%8A%B6%E6%80%81%E6%A3%80%E6%9F%A5%E5%87%BD%E6%95%B0"><span class="nav-text">2.2.4 状态检查函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E8%BF%9B%E7%A8%8B%E6%A0%87%E5%BF%97"><span class="nav-text">2.3 进程标志</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E6%A0%87%E5%BF%97%E5%AE%9A%E4%B9%89"><span class="nav-text">2.3.1 标志定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E6%A0%87%E5%BF%97%E6%A3%80%E6%9F%A5"><span class="nav-text">2.3.2 标志检查</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4-%E8%B0%83%E5%BA%A6%E7%9B%B8%E5%85%B3%E5%AD%97%E6%AE%B5"><span class="nav-text">2.4 调度相关字段</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-1-%E4%BC%98%E5%85%88%E7%BA%A7"><span class="nav-text">2.4.1 优先级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-2-%E8%B0%83%E5%BA%A6%E5%AE%9E%E4%BD%93"><span class="nav-text">2.4.2 调度实体</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-3-CPU-%E4%BA%B2%E5%92%8C%E6%80%A7"><span class="nav-text">2.4.3 CPU 亲和性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-5-%E8%BF%9B%E7%A8%8B%E6%A0%87%E8%AF%86%E7%AC%A6"><span class="nav-text">2.5 进程标识符</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-1-PID-%E5%AD%97%E6%AE%B5"><span class="nav-text">2.5.1 PID 字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-2-PID-%E7%B1%BB%E5%9E%8B"><span class="nav-text">2.5.2 PID 类型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-6-%E8%BF%9B%E7%A8%8B%E5%85%B3%E7%B3%BB"><span class="nav-text">2.6 进程关系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-1-%E5%AE%B6%E6%97%8F%E5%85%B3%E7%B3%BB%E5%AD%97%E6%AE%B5"><span class="nav-text">2.6.1 家族关系字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-2-%E8%BF%9B%E7%A8%8B%E6%A0%91%E7%BB%93%E6%9E%84"><span class="nav-text">2.6.2 进程树结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-3-%E7%BA%BF%E7%A8%8B%E7%BB%84%E5%85%B3%E7%B3%BB"><span class="nav-text">2.6.3 线程组关系</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-7-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86"><span class="nav-text">2.7 内存管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-1-%E5%86%85%E5%AD%98%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="nav-text">2.7.1 内存描述符</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-2-%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E5%B8%83%E5%B1%80"><span class="nav-text">2.7.2 地址空间布局</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="nav-text">2.8 文件系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-8-1-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9B%B8%E5%85%B3%E5%AD%97%E6%AE%B5"><span class="nav-text">2.8.1 文件系统相关字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-9-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86"><span class="nav-text">2.9 信号处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-9-1-%E4%BF%A1%E5%8F%B7%E7%9B%B8%E5%85%B3%E5%AD%97%E6%AE%B5"><span class="nav-text">2.9.1 信号相关字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-9-2-%E4%BF%A1%E5%8F%B7%E6%A0%87%E5%BF%97"><span class="nav-text">2.9.2 信号标志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-10-%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF"><span class="nav-text">2.10 统计信息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-10-1-CPU-%E6%97%B6%E9%97%B4%E7%BB%9F%E8%AE%A1"><span class="nav-text">2.10.1 CPU 时间统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-10-2-%E7%BC%BA%E9%A1%B5%E7%BB%9F%E8%AE%A1"><span class="nav-text">2.10.2 缺页统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-10-3-%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A2%E7%BB%9F%E8%AE%A1"><span class="nav-text">2.10.3 上下文切换统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-10-4-%E6%97%B6%E9%97%B4%E4%BF%A1%E6%81%AF"><span class="nav-text">2.10.4 时间信息</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-11-%E8%AF%81%E4%B9%A6%E4%B8%8E%E5%AE%89%E5%85%A8"><span class="nav-text">2.11 证书与安全</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-11-1-%E8%AF%81%E4%B9%A6%E5%AD%97%E6%AE%B5"><span class="nav-text">2.11.1 证书字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-11-2-%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9D%97"><span class="nav-text">2.11.2 安全模块</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-12-%E8%BF%9B%E7%A8%8B%E5%90%8D"><span class="nav-text">2.12 进程名</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-13-%E9%94%81%E4%B8%8E%E5%90%8C%E6%AD%A5"><span class="nav-text">2.13 锁与同步</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-13-1-%E5%88%86%E9%85%8D%E9%94%81"><span class="nav-text">2.13.1 分配锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-13-2-%E4%BC%98%E5%85%88%E7%BA%A7%E7%BB%A7%E6%89%BF"><span class="nav-text">2.13.2 优先级继承</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-14-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">2.14 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

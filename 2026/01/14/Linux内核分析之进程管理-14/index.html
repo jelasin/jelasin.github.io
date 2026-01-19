@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-14/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-14">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-14/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:20:47.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:53.228Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-14 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-14</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:20:47</span>
+        <span class="mobile">2026-01-14 19:20:47</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:53</span>
+            <span class="mobile">2026-01-19 13:40:53</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第14章-EEVDF-调度器详解"><a href="#第14章-EEVDF-调度器详解" class="headerlink" title="第14章 EEVDF 调度器详解"></a>第14章 EEVDF 调度器详解</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="14-1-EEVDF-算法概述"><a href="#14-1-EEVDF-算法概述" class="headerlink" title="14.1 EEVDF 算法概述"></a>14.1 EEVDF 算法概述</h2><h3 id="14-1-1-从-CFS-到-EEVDF"><a href="#14-1-1-从-CFS-到-EEVDF" class="headerlink" title="14.1.1 从 CFS 到 EEVDF"></a>14.1.1 从 CFS 到 EEVDF</h3><p><strong>CFS (Completely Fair Scheduler) 的问题：</strong></p>
+<ul>
+<li>基于 vruntime 的红黑树调度</li>
+<li>无法保证任务的响应时间上限</li>
+<li>长睡眠任务唤醒后可能获得过长的执行时间</li>
+</ul>
+<p><strong>EEVDF (Earliest Eligible Virtual Deadline First)：</strong></p>
+<ul>
+<li>在 CFS 基础上引入虚拟截止时间 (virtual deadline)</li>
+<li>保证任务在截止时间内获得 CPU</li>
+<li>提供更好的延迟保证</li>
+</ul>
+<h3 id="14-1-2-EEVDF-核心概念"><a href="#14-1-2-EEVDF-核心概念" class="headerlink" title="14.1.2 EEVDF 核心概念"></a>14.1.2 EEVDF 核心概念</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">EEVDF 关键概念:</span><br><span class="line"></span><br><span class="line">1. 虚拟运行时间 (vruntime): 任务已获得的虚拟服务</span><br><span class="line">2. 虚拟截止时间 (deadline): 任务应该完成的虚拟时间</span><br><span class="line">3. 虚拟滞后 (vlag): 任务相对于公平服务的偏离</span><br><span class="line">4. 时间片 (slice): 任务分配的执行时间</span><br><span class="line"></span><br><span class="line">EEVDF 方程:</span><br><span class="line">  deadline = vruntime + slice</span><br><span class="line">  lag_i = S - s_i = w_i * (V - v_i)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-1-3-滞后-Lag-概念"><a href="#14-1-3-滞后-Lag-概念" class="headerlink" title="14.1.3 滞后 (Lag) 概念"></a>14.1.3 滞后 (Lag) 概念</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Fair schedulers conserve lag:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *   \Sum lag_i = 0</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Where lag_i is given by:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *   lag_i = S - s_i = w_i * (V - v_i)</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Where:</span></span><br><span class="line"><span class="comment"> *   S  = 理想服务时间 (ideal service time)</span></span><br><span class="line"><span class="comment"> *   s_i = 任务实际服务时间</span></span><br><span class="line"><span class="comment"> *   w_i = 任务权重</span></span><br><span class="line"><span class="comment"> *   V   = 虚拟时间</span></span><br><span class="line"><span class="comment"> *   v_i = 任务虚拟运行时间</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 理想情况下，所有任务的总滞后为 0</span></span><br><span class="line"><span class="comment"> * 负滞后表示任务获得了超额服务</span></span><br><span class="line"><span class="comment"> * 正滞后表示任务服务不足</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-2-EEVDF-数据结构"><a href="#14-2-EEVDF-数据结构" class="headerlink" title="14.2 EEVDF 数据结构"></a>14.2 EEVDF 数据结构</h2><h3 id="14-2-1-sched-entity-扩展字段"><a href="#14-2-1-sched-entity-扩展字段" class="headerlink" title="14.2.1 sched_entity 扩展字段"></a>14.2.1 sched_entity 扩展字段</h3><p><strong>位置：</strong> <code>include/linux/sched.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> &#123;</span></span><br><span class="line">    <span class="comment">/* CFS 基础字段 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">load_weight</span>      <span class="title">load</span>;</span>           <span class="comment">/* 任务权重 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span>          <span class="title">run_node</span>;</span>       <span class="comment">/* 红黑树节点 */</span></span><br><span class="line">    u64                     vruntime;        <span class="comment">/* 虚拟运行时间 */</span></span><br><span class="line">    u64                     exec_start;      <span class="comment">/* 执行开始时间 */</span></span><br><span class="line">    u64                     sum_exec_runtime;<span class="comment">/* 总运行时间 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* EEVDF 新增字段 */</span></span><br><span class="line">    u64                     deadline;       <span class="comment">/* 虚拟截止时间 */</span></span><br><span class="line">    u64                     min_vruntime;   <span class="comment">/* 最小 vruntime */</span></span><br><span class="line">    s64                     vlag;           <span class="comment">/* 虚拟滞后 */</span></span><br><span class="line">    u64                     slice;          <span class="comment">/* 分配的时间片 */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span>           rel_deadline;   <span class="comment">/* 相对截止时间标志 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span>           custom_slice;   <span class="comment">/* 自定义时间片标志 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span>           sched_delayed;  <span class="comment">/* 延迟出队标志 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ... 其他字段 ... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-2-2-cfs-rq-扩展字段"><a href="#14-2-2-cfs-rq-扩展字段" class="headerlink" title="14.2.2 cfs_rq 扩展字段"></a>14.2.2 cfs_rq 扩展字段</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 红黑树 - 现在按 deadline 而非 vruntime 排序 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_root_cached</span>   <span class="title">timeline</span>;</span>        <span class="comment">/* EEVDF timeline */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 平均虚拟时间相关 */</span></span><br><span class="line">    u64                     min_vruntime;    <span class="comment">/* 最小 vruntime */</span></span><br><span class="line">    u64                     avg_vruntime;    <span class="comment">/* 平均 vruntime */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>           avg_load;       <span class="comment">/* 平均负载 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 当前运行实体 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span>     *<span class="title">curr</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span>     *<span class="title">next</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-3-虚拟时间与滞后"><a href="#14-3-虚拟时间与滞后" class="headerlink" title="14.3 虚拟时间与滞后"></a>14.3 虚拟时间与滞后</h2><h3 id="14-3-1-平均虚拟时间"><a href="#14-3-1-平均虚拟时间" class="headerlink" title="14.3.1 平均虚拟时间"></a>14.3.1 平均虚拟时间</h3><p><strong>位置：</strong> <code>kernel/sched/fair.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 计算加权平均虚拟运行时间</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *       \Sum v_i * w_i</span></span><br><span class="line"><span class="comment"> *   V = --------------</span></span><br><span class="line"><span class="comment"> *          \Sum w_i</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 这是衡量系统整体进度的关键指标</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">u64 <span class="title function_">avg_vruntime</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">curr</span> =</span> cfs_rq-&gt;curr;</span><br><span class="line">    s64 avg = cfs_rq-&gt;avg_vruntime;</span><br><span class="line">    <span class="type">long</span> load = cfs_rq-&gt;avg_load;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果有当前运行任务，考虑在内</span></span><br><span class="line">    <span class="keyword">if</span> (curr &amp;&amp; curr-&gt;on_rq) &#123;</span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> weight = scale_load_down(curr-&gt;load.weight);</span><br><span class="line"></span><br><span class="line">        avg += entity_key(cfs_rq, curr) * weight;</span><br><span class="line">        load += weight;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!load)</span><br><span class="line">        avg = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        avg = div_s64(avg, load);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> cfs_rq-&gt;min_vruntime + avg;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 添加实体到平均值</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">avg_vruntime_add</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> weight = scale_load_down(se-&gt;load.weight);</span><br><span class="line">    s64 key = entity_key(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    cfs_rq-&gt;avg_vruntime += key * weight;</span><br><span class="line">    cfs_rq-&gt;avg_load += weight;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 从平均值移除实体</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">avg_vruntime_sub</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> weight = scale_load_down(se-&gt;load.weight);</span><br><span class="line">    s64 key = entity_key(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    cfs_rq-&gt;avg_vruntime -= key * weight;</span><br><span class="line">    cfs_rq-&gt;avg_load -= weight;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-3-2-滞后计算"><a href="#14-3-2-滞后计算" class="headerlink" title="14.3.2 滞后计算"></a>14.3.2 滞后计算</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 计算任务滞后</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * lag_i = S - s_i = w_i * (V - v_i)</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 为了避免滞后无限增长，需要限制其范围</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> s64 <span class="title function_">entity_lag</span><span class="params">(u64 avruntime, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    s64 vlag, limit;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算虚拟滞后</span></span><br><span class="line">    vlag = avruntime - se-&gt;vruntime;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 限制滞后范围</span></span><br><span class="line">    <span class="comment">// 不能超过 2 * slice 或小于 TICK_NSEC</span></span><br><span class="line">    limit = calc_delta_fair(<span class="type">max_t</span>(u64, <span class="number">2</span>*se-&gt;slice, TICK_NSEC), se);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> clamp(vlag, -limit, limit);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 更新实体滞后</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">update_entity_lag</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    SCHED_WARN_ON(!se-&gt;on_rq);</span><br><span class="line">    se-&gt;vlag = entity_lag(avg_vruntime(cfs_rq), se);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-3-3-滞后的物理意义"><a href="#14-3-3-滞后的物理意义" class="headerlink" title="14.3.3 滞后的物理意义"></a>14.3.3 滞后的物理意义</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">滞后示意图:</span><br><span class="line"></span><br><span class="line">理想服务线 (平均 vruntime)</span><br><span class="line">      │</span><br><span class="line">      │</span><br><span class="line">      │            任务 A (vlag &lt; 0)</span><br><span class="line">      │    ╱────  (获得了超额服务)</span><br><span class="line">      │   ╱</span><br><span class="line">──────┼──╱──────────────────────</span><br><span class="line">      │ ╱</span><br><span class="line">      │╱     任务 B (vlag ≈ 0)</span><br><span class="line">      │     (正常服务)</span><br><span class="line">      │</span><br><span class="line">      │</span><br><span class="line">      │            任务 C (vlag &gt; 0)</span><br><span class="line">      │              ╲</span><br><span class="line">      │               ╲────  (服务不足)</span><br><span class="line">      │</span><br><span class="line">      └──────────────────────────→ vruntime</span><br><span class="line"></span><br><span class="line">EEVDF 目标:</span><br><span class="line">- 让 vlag &gt; 0 的任务优先运行</span><br><span class="line">- 保持 Sum(lag_i) = 0</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-4-任务放置-place-entity"><a href="#14-4-任务放置-place-entity" class="headerlink" title="14.4 任务放置 (place_entity)"></a>14.4 任务放置 (place_entity)</h2><h3 id="14-4-1-放置策略"><a href="#14-4-1-放置策略" class="headerlink" title="14.4.1 放置策略"></a>14.4.1 放置策略</h3><p><strong>位置：</strong> <code>kernel/sched/fair.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 放置实体到 EEVDF timeline</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * EEVDF placement strategy:</span></span><br><span class="line"><span class="comment"> * #1: 保留任务的滞后 (lag)</span></span><br><span class="line"><span class="comment"> * #2: 初始任务给予半个时间片</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">place_entity</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se, <span class="type">int</span> flags)</span></span><br><span class="line">&#123;</span><br><span class="line">    u64 vslice, vruntime = avg_vruntime(cfs_rq);</span><br><span class="line">    s64 lag = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置时间片</span></span><br><span class="line">    <span class="keyword">if</span> (!se-&gt;custom_slice)</span><br><span class="line">        se-&gt;slice = sysctl_sched_base_slice;</span><br><span class="line">    vslice = calc_delta_fair(se-&gt;slice, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * EEVDF placement strategy #1: 保留滞后</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * 滞后定义为: lag_i = S - s_i = w_i * (V - v_i)</span></span><br><span class="line"><span class="comment">     * 虚拟滞后定义为: vl_i = V - v_i</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * 当添加新任务时，会影响加权平均 V，需要补偿</span></span><br><span class="line"><span class="comment">     * 以保持任务的滞后不变。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (sched_feat(PLACE_LAG) &amp;&amp; cfs_rq-&gt;nr_running) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">curr</span> =</span> cfs_rq-&gt;curr;</span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> load;</span><br><span class="line"></span><br><span class="line">        lag = se-&gt;vlag;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * 考虑新任务对平均值的影响，需要膨胀滞后值</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * 推导:</span></span><br><span class="line"><span class="comment">         *   V&#x27; = V - w_i*vl_i / (W + w_i)</span></span><br><span class="line"><span class="comment">         *   vl&#x27;_i = vl_i - w_i*vl_i / (W + w_i)</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         *   要保持滞后，需要反向补偿</span></span><br><span class="line"><span class="comment">         *   vl_i = (W + w_i)*vl&#x27;_i / W</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        load = cfs_rq-&gt;avg_load;</span><br><span class="line">        <span class="keyword">if</span> (curr &amp;&amp; curr-&gt;on_rq)</span><br><span class="line">            load += scale_load_down(curr-&gt;load.weight);</span><br><span class="line"></span><br><span class="line">        lag *= load + scale_load_down(se-&gt;load.weight);</span><br><span class="line">        <span class="keyword">if</span> (WARN_ON_ONCE(!load))</span><br><span class="line">            load = <span class="number">1</span>;</span><br><span class="line">        lag = div_s64(lag, load);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置 vruntime</span></span><br><span class="line">    se-&gt;vruntime = vruntime - lag;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保持相对截止时间</span></span><br><span class="line">    <span class="keyword">if</span> (sched_feat(PLACE_REL_DEADLINE) &amp;&amp; se-&gt;rel_deadline) &#123;</span><br><span class="line">        se-&gt;deadline += se-&gt;vruntime;</span><br><span class="line">        se-&gt;rel_deadline = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * EEVDF placement strategy #2:</span></span><br><span class="line"><span class="comment">     * 初始任务给予半个时间片，&quot;温柔&quot;进入竞争</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (sched_feat(PLACE_DEADLINE_INITIAL) &amp;&amp; (flags &amp; ENQUEUE_INITIAL))</span><br><span class="line">        vslice /= <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * EEVDF: vd_i = ve_i + r_i/w_i</span></span><br><span class="line"><span class="comment">     * 虚拟截止时间 = 虚拟运行时间 + 虚拟时间片</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    se-&gt;deadline = se-&gt;vruntime + vslice;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-4-2-放置策略图解"><a href="#14-4-2-放置策略图解" class="headerlink" title="14.4.2 放置策略图解"></a>14.4.2 放置策略图解</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">任务放置到 EEVDF timeline:</span><br><span class="line"></span><br><span class="line">初始放置 (ENQUEUE_INITIAL):</span><br><span class="line">      │</span><br><span class="line">      │  V = avg_vruntime</span><br><span class="line">      │</span><br><span class="line">──────┼──────────────────────────</span><br><span class="line">      │</span><br><span class="line">      │    新任务: vruntime = V - 0.5*slice</span><br><span class="line">      │                 deadline = vruntime + slice</span><br><span class="line">      │</span><br><span class="line">      └──────────────────────────→ vruntime</span><br><span class="line"></span><br><span class="line">唤醒放置 (保留滞后):</span><br><span class="line">      │</span><br><span class="line">      │  V = avg_vruntime</span><br><span class="line">      │</span><br><span class="line">──────┼──────────────────────────</span><br><span class="line">      │</span><br><span class="line">      │    正滞后任务: vruntime = V - lag (lag &gt; 0)</span><br><span class="line">      │                 被优先调度</span><br><span class="line">      │</span><br><span class="line">      │    负滞后任务: vruntime = V - lag (lag &lt; 0)</span><br><span class="line">      │                 较晚被调度</span><br><span class="line">      │</span><br><span class="line">      └──────────────────────────→ vruntime</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-5-权重调整-reweight"><a href="#14-5-权重调整-reweight" class="headerlink" title="14.5 权重调整 (reweight)"></a>14.5 权重调整 (reweight)</h2><h3 id="14-5-1-reweight-eevdf"><a href="#14-5-1-reweight-eevdf" class="headerlink" title="14.5.1 reweight_eevdf"></a>14.5.1 reweight_eevdf</h3><p><strong>位置：</strong> <code>kernel/sched/fair.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * EEVDF 权重调整</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 推论 #1: 虚拟运行时间需要调整以保持滞后</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *   Weight   VRuntime   Avg-VRuntime</span></span><br><span class="line"><span class="comment"> *   before   w          v             V</span></span><br><span class="line"><span class="comment"> *   after    w&#x27;         v&#x27;            V&#x27;</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *   滞后需要保持:</span></span><br><span class="line"><span class="comment"> *     lag = (V - v)*w = (V&#x27; - v&#x27;)*w&#x27;</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *   因为 v = v&#x27;, 从 (1):</span></span><br><span class="line"><span class="comment"> *     V&#x27; = (V - v)*w/w&#x27; + v</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">reweight_eevdf</span><span class="params">(<span class="keyword">struct</span> sched_entity *se, u64 avruntime,</span></span><br><span class="line"><span class="params">                          <span class="type">unsigned</span> <span class="type">long</span> weight)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> old_weight = se-&gt;load.weight;</span><br><span class="line">    s64 vlag, vslice;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * VRUNTIME 调整</span></span><br><span class="line"><span class="comment">     * -------------------</span></span><br><span class="line"><span class="comment">     * 保持滞后不变: lag = (V - v)*w = (V&#x27; - v&#x27;)*w&#x27;</span></span><br><span class="line"><span class="comment">     * 且 v = v&#x27;:</span></span><br><span class="line"><span class="comment">     *   V&#x27; = (V - v)*w/w&#x27; + v</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * 让 W 是调整前的总权重:</span></span><br><span class="line"><span class="comment">     *   V&#x27; = (WV + w&#x27;v - wv) / (W + w&#x27; - w)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * 联立求解得到:</span></span><br><span class="line"><span class="comment">     *   (V - v)*w/w&#x27; = (V - v)*W/(W + w&#x27; - w)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     *   v&#x27; = v + (V - v) * [1 - w/W * (W + w&#x27; - w)/w&#x27;]</span></span><br><span class="line"><span class="comment">     *      = v + (V - v) * [1 - w/W * (W/w&#x27; - w/w&#x27; + 1)]</span></span><br><span class="line"><span class="comment">     *      = v + (V - v) * [1 - (w/W)*(W/w&#x27;) + (w/W)*(w/w&#x27;) - (w/W)]</span></span><br><span class="line"><span class="comment">     *      = v + (V - v) * [1 - (w/W)*(W/w&#x27; - 1 + w/w&#x27;)]</span></span><br><span class="line"><span class="comment">     *      = v + (V - v) * [1 - (w/W)*((W - w + w&#x27;)/w&#x27;)]</span></span><br><span class="line"><span class="comment">     *      = v + (V - v) * [1 - (w/W)*(W/w&#x27; - 1 + w/w&#x27;)]</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (!se-&gt;on_rq) &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * 如果任务不在队列中，使用滞后来设置 vruntime</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        vlag = se-&gt;vlag;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * scale: w/w&#x27; -&gt; W/W&#x27;</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        vlag = div_s64(vlag * old_weight, weight);</span><br><span class="line"></span><br><span class="line">        se-&gt;vruntime = avruntime - vlag;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * 如果任务在队列中，需要在队列中更新</span></span><br><span class="line"><span class="comment">         * (需要调用者从队列中移除、更新、重新入队)</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新权重</span></span><br><span class="line">    se-&gt;load.weight = weight;</span><br><span class="line">    se-&gt;load.inv_weight = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重新计算时间片</span></span><br><span class="line">    vslice = calc_delta_fair(se-&gt;slice, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新截止时间</span></span><br><span class="line">    se-&gt;deadline = se-&gt;vruntime + vslice;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-6-EEVDF-调度流程"><a href="#14-6-EEVDF-调度流程" class="headerlink" title="14.6 EEVDF 调度流程"></a>14.6 EEVDF 调度流程</h2><h3 id="14-6-1-任务选择"><a href="#14-6-1-任务选择" class="headerlink" title="14.6.1 任务选择"></a>14.6.1 任务选择</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 选择下一个任务</span></span><br><span class="line"><span class="comment"> * 现在 timeline 按 deadline 排序，而不是 vruntime</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> sched_entity *<span class="title function_">pick_next_entity</span><span class="params">(<span class="keyword">struct</span> rq *rq,</span></span><br><span class="line"><span class="params">                                            <span class="keyword">struct</span> cfs_rq *cfs_rq)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">se</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取最小 deadline 的任务</span></span><br><span class="line">    se = __pick_first_entity(cfs_rq);</span><br><span class="line">    <span class="keyword">if</span> (!se)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查是否应该跳过</span></span><br><span class="line">    <span class="keyword">if</span> (cfs_rq-&gt;skip == se) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">second</span>;</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (se == cfs_rq-&gt;curr)</span><br><span class="line">            second = __pick_first_entity(cfs_rq);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            second = __pick_next_entity(se);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (second &amp;&amp; wakeup_preempt_entity(second, se) &lt; <span class="number">1</span>)</span><br><span class="line">            se = second;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> se;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-6-2-实体比较"><a href="#14-6-2-实体比较" class="headerlink" title="14.6.2 实体比较"></a>14.6.2 实体比较</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 实体比较 - 按 deadline 排序</span></span><br><span class="line"><span class="comment"> * (CFS 时期按 vruntime 排序)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">entity_before</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> sched_entity *a,</span></span><br><span class="line"><span class="params">                                <span class="type">const</span> <span class="keyword">struct</span> sched_entity *b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> (s64)(a-&gt;deadline - b-&gt;deadline) &lt; <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-6-3-Timeline-组织"><a href="#14-6-3-Timeline-组织" class="headerlink" title="14.6.3 Timeline 组织"></a>14.6.3 Timeline 组织</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">EEVDF Timeline (按 deadline 排序):</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    cfs_rq-&gt;timeline                         │</span><br><span class="line">│                    (rb_root_cached)                         │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                          │</span><br><span class="line">                          ↓</span><br><span class="line">         ┌────────────────────────────────────┐</span><br><span class="line">         │              左子树                 │</span><br><span class="line">         │  deadline 较大 (较晚截止)           │</span><br><span class="line">         └────────────────────────────────────┘</span><br><span class="line">                          │</span><br><span class="line">         ┌────────────────────────────────────┐</span><br><span class="line">         │           rb_leftmost               │ ← 最小 deadline</span><br><span class="line">         │       (下一个被调度任务)            │   (最早截止)</span><br><span class="line">         │    se-&gt;deadline = min_deadline      │</span><br><span class="line">         │    se-&gt;vruntime 可能较大            │</span><br><span class="line">         └────────────────────────────────────┘</span><br><span class="line">                          │</span><br><span class="line">         ┌────────────────────────────────────┐</span><br><span class="line">         │              右子树                 │</span><br><span class="line">         │  deadline 最大 (最晚截止)           │</span><br><span class="line">         └────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">关键区别:</span><br><span class="line">- CFS: 按 vruntime 排序</span><br><span class="line">- EEVDF: 按 deadline 排序</span><br><span class="line">- deadline = vruntime + slice</span><br><span class="line">- 所以 EEVDF 考虑了任务的紧急程度</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-7-EEVDF-特性控制"><a href="#14-7-EEVDF-特性控制" class="headerlink" title="14.7 EEVDF 特性控制"></a>14.7 EEVDF 特性控制</h2><h3 id="14-7-1-SCHED-FEAT-开关"><a href="#14-7-1-SCHED-FEAT-开关" class="headerlink" title="14.7.1 SCHED_FEAT 开关"></a>14.7.1 SCHED_FEAT 开关</h3><p><strong>位置：</strong> <code>kernel/sched/features.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 使用 avg_vruntime 保留跨 sleep+wake 周期的滞后</span></span><br><span class="line"><span class="comment"> * EEVDF placement strategy #1, #2</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(PLACE_LAG, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 给新任务半个时间片以&quot;温柔&quot;进入竞争</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(PLACE_DEADLINE_INITIAL, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 在迁移时保留相对虚拟截止时间</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(PLACE_REL_DEADLINE, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 阻止抢占，直到当前任务达到 0-lag 点或耗尽时间片</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(RUN_TO_PARITY, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 允许更短时间片的任务唤醒时抢占</span></span><br><span class="line"><span class="comment"> * (覆盖 RESPECT_SLICE)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(PREEMPT_SHORT, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 延迟出队任务，直到被选中或唤醒</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 通过延迟非就绪任务的出队，它们保持在竞争中</span></span><br><span class="line"><span class="comment"> * 可以燃烧掉它们的负滞后。当被选中时，</span></span><br><span class="line"><span class="comment"> * 它们将具有正滞后（根据定义）。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * DELAY_ZERO 在出队 (或唤醒) 时将滞后裁剪为 0</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(DELAY_DEQUEUE, <span class="literal">true</span>)</span><br><span class="line">SCHED_FEAT(DELAY_ZERO, <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 允许唤醒时抢占当前任务</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">SCHED_FEAT(WAKEUP_PREEMPTION, <span class="literal">true</span>)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-7-2-调试特性开关"><a href="#14-7-2-调试特性开关" class="headerlink" title="14.7.2 调试特性开关"></a>14.7.2 调试特性开关</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看当前调度器特性</span></span><br><span class="line">$ <span class="built_in">cat</span> /sys/kernel/debug/sched/features</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用某个特性</span></span><br><span class="line">$ <span class="built_in">echo</span> NO_PLACE_LAG &gt; /sys/kernel/debug/sched/features</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用某个特性</span></span><br><span class="line">$ <span class="built_in">echo</span> PLACE_LAG &gt; /sys/kernel/debug/sched/features</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-8-EEVDF-vs-纯-CFS-对比"><a href="#14-8-EEVDF-vs-纯-CFS-对比" class="headerlink" title="14.8 EEVDF vs 纯 CFS 对比"></a>14.8 EEVDF vs 纯 CFS 对比</h2><h3 id="14-8-1-关键区别"><a href="#14-8-1-关键区别" class="headerlink" title="14.8.1 关键区别"></a>14.8.1 关键区别</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>纯 CFS</th>
+<th>EEVDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>排序键</td>
+<td>vruntime</td>
+<td>deadline &#x3D; vruntime + slice</td>
+</tr>
+<tr>
+<td>选择策略</td>
+<td>最小 vruntime</td>
+<td>最小 deadline</td>
+</tr>
+<tr>
+<td>延迟保证</td>
+<td>无</td>
+<td>有 (通过 deadline)</td>
+</tr>
+<tr>
+<td>滞后处理</td>
+<td>简单</td>
+<td>复杂 (vlag 计算)</td>
+</tr>
+<tr>
+<td>新任务放置</td>
+<td>平均 vruntime</td>
+<td>平均 vruntime - lag</td>
+</tr>
+<tr>
+<td>时间片</td>
+<td>独立计算</td>
+<td>影响 deadline</td>
+</tr>
+</tbody></table>
+<h3 id="14-8-2-调度场景对比"><a href="#14-8-2-调度场景对比" class="headerlink" title="14.8.2 调度场景对比"></a>14.8.2 调度场景对比</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">场景: 三个任务，权重不同</span><br><span class="line"></span><br><span class="line">任务 A: weight=1024 (nice 0), vruntime=1000</span><br><span class="line">任务 B: weight=512  (nice 10), vruntime=1200</span><br><span class="line">任务 C: weight=256  (nice 15), vruntime=800</span><br><span class="line"></span><br><span class="line">纯 CFS (按 vruntime 排序):</span><br><span class="line">  1. C (vruntime=800)</span><br><span class="line">  2. A (vruntime=1000)</span><br><span class="line">  3. B (vruntime=1200)</span><br><span class="line"></span><br><span class="line">EEVDF (按 deadline 排序, slice=100):</span><br><span class="line">  A: deadline = 1000 + 100*1024/1024 = 1100</span><br><span class="line">  B: deadline = 1200 + 100*1024/512 = 1400</span><br><span class="line">  C: deadline = 800 + 100*1024/256 = 1200</span><br><span class="line"></span><br><span class="line">  1. A (deadline=1100)</span><br><span class="line">  2. C (deadline=1200)</span><br><span class="line">  3. B (deadline=1400)</span><br><span class="line"></span><br><span class="line">差异:</span><br><span class="line">- CFS 优先服务 vruntime 小的任务</span><br><span class="line">- EEVDF 优先服务 deadline 小的任务</span><br><span class="line">- EEVDF 考虑了任务的紧急程度</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-9-延迟出队-DELAY-DEQUEUE"><a href="#14-9-延迟出队-DELAY-DEQUEUE" class="headerlink" title="14.9 延迟出队 (DELAY_DEQUEUE)"></a>14.9 延迟出队 (DELAY_DEQUEUE)</h2><h3 id="14-9-1-延迟出队机制"><a href="#14-9-1-延迟出队机制" class="headerlink" title="14.9.1 延迟出队机制"></a>14.9.1 延迟出队机制</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 延迟出队特性</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 传统方式: 任务立即从运行队列移除</span></span><br><span class="line"><span class="comment"> * 延迟出队: 任务保持在队列中，但标记为不可运行</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 优势:</span></span><br><span class="line"><span class="comment"> * - 任务可以保持竞争状态</span></span><br><span class="line"><span class="comment"> * - 负滞后任务可以燃烧掉它们的滞后</span></span><br><span class="line"><span class="comment"> * - 避免频繁的入队/出队操作</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">dequeue_entity</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq, <span class="keyword">struct</span> sched_entity *se, <span class="type">int</span> flags)</span></span><br><span class="line">&#123;</span><br><span class="line">    update_curr(cfs_rq);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sched_feat(DELAY_DEQUEUE) &amp;&amp; !(flags &amp; DEQUEUE_SLEEP)) &#123;</span><br><span class="line">        <span class="comment">// 延迟出队</span></span><br><span class="line">        se-&gt;sched_delayed = <span class="number">1</span>;</span><br><span class="line">        <span class="comment">// 保留在队列中，但不参与调度</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 立即出队</span></span><br><span class="line">    <span class="keyword">if</span> (se != cfs_rq-&gt;curr)</span><br><span class="line">        __dequeue_entity(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sched_feat(DELAY_ZERO) &amp;&amp; (flags &amp; DEQUEUE_SLEEP))</span><br><span class="line">        se-&gt;vlag = <span class="number">0</span>;  <span class="comment">// 裁剪滞后为 0</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-9-2-重新入队"><a href="#14-9-2-重新入队" class="headerlink" title="14.9.2 重新入队"></a>14.9.2 重新入队</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 重新入队延迟的实体</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">requeue_delayed_entity</span><span class="params">(<span class="keyword">struct</span> sched_entity *se)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span> *<span class="title">cfs_rq</span> =</span> cfs_rq_of(se);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!se-&gt;sched_delayed)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    se-&gt;sched_delayed = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新滞后</span></span><br><span class="line">    update_entity_lag(cfs_rq, se);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重新放置</span></span><br><span class="line">    place_entity(cfs_rq, se, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果滞后已为正，可以参与调度</span></span><br><span class="line">    <span class="keyword">if</span> (entity_eligible(cfs_rq, se))</span><br><span class="line">        enqueue_entity(cfs_rq, se, ENQUEUE_WAKEUP);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-10-EEVDF-监控"><a href="#14-10-EEVDF-监控" class="headerlink" title="14.10 EEVDF 监控"></a>14.10 EEVDF 监控</h2><h3 id="14-10-1-查看调度实体信息"><a href="#14-10-1-查看调度实体信息" class="headerlink" title="14.10.1 查看调度实体信息"></a>14.10.1 查看调度实体信息</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 通过 BPF 查看任务的 vruntime 和 deadline</span></span><br><span class="line">$ bpftrace -e <span class="string">&#x27;</span></span><br><span class="line"><span class="string">tracepoint:sched:sched_switch &#123;</span></span><br><span class="line"><span class="string">    $prev = args[0]-&gt;prev_pid;</span></span><br><span class="line"><span class="string">    $next = args[0]-&gt;next_pid;</span></span><br><span class="line"><span class="string">    printf(&quot;switch: %d -&gt; %d\n&quot;, $prev, $next);</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">&#x27;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="14-10-2-调试参数"><a href="#14-10-2-调试参数" class="headerlink" title="14.10.2 调试参数"></a>14.10.2 调试参数</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 EEVDF 相关统计</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/sched_debug</span><br><span class="line"><span class="comment"># 包含 cfs_rq 的 min_vruntime, avg_vruntime 等信息</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看任务的调度统计</span></span><br><span class="line">$ <span class="built_in">cat</span> /proc/[pid]/sched</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="14-11-本章小结"><a href="#14-11-本章小结" class="headerlink" title="14.11 本章小结"></a>14.11 本章小结</h2><p>本章详细介绍了 Linux EEVDF 调度器：</p>
+<ol>
+<li><strong>EEVDF 概念</strong>：在 CFS 基础上引入虚拟截止时间</li>
+<li><strong>滞后计算</strong>：lag_i &#x3D; S - s_i &#x3D; w_i * (V - v_i)</li>
+<li><strong>平均虚拟时间</strong>：avg_vruntime 加权平均计算</li>
+<li><strong>任务放置</strong>：保留滞后，初始任务给半片</li>
+<li><strong>权重调整</strong>：reweight_eevdf 保持滞后不变</li>
+<li><strong>调度流程</strong>：按 deadline 而非 vruntime 排序</li>
+<li><strong>特性控制</strong>：PLACE_LAG, DELAY_DEQUEUE 等</li>
+<li><strong>延迟出队</strong>：任务保持在竞争中燃烧滞后</li>
+</ol>
+<p>EEVDF 是 Linux 6.12 中 CFS 的默认实现模式，提供了更好的延迟保证和公平性。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-14</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:20:47</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:53
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-14/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/15/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%99%9A%E6%8B%9F%E5%8C%96/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之虚拟化</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-13/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-13</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-14</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC14%E7%AB%A0-EEVDF-%E8%B0%83%E5%BA%A6%E5%99%A8%E8%AF%A6%E8%A7%A3"><span class="nav-text">第14章 EEVDF 调度器详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#14-1-EEVDF-%E7%AE%97%E6%B3%95%E6%A6%82%E8%BF%B0"><span class="nav-text">14.1 EEVDF 算法概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-1-1-%E4%BB%8E-CFS-%E5%88%B0-EEVDF"><span class="nav-text">14.1.1 从 CFS 到 EEVDF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-1-2-EEVDF-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="nav-text">14.1.2 EEVDF 核心概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-1-3-%E6%BB%9E%E5%90%8E-Lag-%E6%A6%82%E5%BF%B5"><span class="nav-text">14.1.3 滞后 (Lag) 概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-2-EEVDF-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">14.2 EEVDF 数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-2-1-sched-entity-%E6%89%A9%E5%B1%95%E5%AD%97%E6%AE%B5"><span class="nav-text">14.2.1 sched_entity 扩展字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-2-2-cfs-rq-%E6%89%A9%E5%B1%95%E5%AD%97%E6%AE%B5"><span class="nav-text">14.2.2 cfs_rq 扩展字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-3-%E8%99%9A%E6%8B%9F%E6%97%B6%E9%97%B4%E4%B8%8E%E6%BB%9E%E5%90%8E"><span class="nav-text">14.3 虚拟时间与滞后</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-3-1-%E5%B9%B3%E5%9D%87%E8%99%9A%E6%8B%9F%E6%97%B6%E9%97%B4"><span class="nav-text">14.3.1 平均虚拟时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-3-2-%E6%BB%9E%E5%90%8E%E8%AE%A1%E7%AE%97"><span class="nav-text">14.3.2 滞后计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-3-3-%E6%BB%9E%E5%90%8E%E7%9A%84%E7%89%A9%E7%90%86%E6%84%8F%E4%B9%89"><span class="nav-text">14.3.3 滞后的物理意义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-4-%E4%BB%BB%E5%8A%A1%E6%94%BE%E7%BD%AE-place-entity"><span class="nav-text">14.4 任务放置 (place_entity)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-4-1-%E6%94%BE%E7%BD%AE%E7%AD%96%E7%95%A5"><span class="nav-text">14.4.1 放置策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-4-2-%E6%94%BE%E7%BD%AE%E7%AD%96%E7%95%A5%E5%9B%BE%E8%A7%A3"><span class="nav-text">14.4.2 放置策略图解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-5-%E6%9D%83%E9%87%8D%E8%B0%83%E6%95%B4-reweight"><span class="nav-text">14.5 权重调整 (reweight)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-5-1-reweight-eevdf"><span class="nav-text">14.5.1 reweight_eevdf</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-6-EEVDF-%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B"><span class="nav-text">14.6 EEVDF 调度流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-6-1-%E4%BB%BB%E5%8A%A1%E9%80%89%E6%8B%A9"><span class="nav-text">14.6.1 任务选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-6-2-%E5%AE%9E%E4%BD%93%E6%AF%94%E8%BE%83"><span class="nav-text">14.6.2 实体比较</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-6-3-Timeline-%E7%BB%84%E7%BB%87"><span class="nav-text">14.6.3 Timeline 组织</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-7-EEVDF-%E7%89%B9%E6%80%A7%E6%8E%A7%E5%88%B6"><span class="nav-text">14.7 EEVDF 特性控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-7-1-SCHED-FEAT-%E5%BC%80%E5%85%B3"><span class="nav-text">14.7.1 SCHED_FEAT 开关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-7-2-%E8%B0%83%E8%AF%95%E7%89%B9%E6%80%A7%E5%BC%80%E5%85%B3"><span class="nav-text">14.7.2 调试特性开关</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-8-EEVDF-vs-%E7%BA%AF-CFS-%E5%AF%B9%E6%AF%94"><span class="nav-text">14.8 EEVDF vs 纯 CFS 对比</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-8-1-%E5%85%B3%E9%94%AE%E5%8C%BA%E5%88%AB"><span class="nav-text">14.8.1 关键区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-8-2-%E8%B0%83%E5%BA%A6%E5%9C%BA%E6%99%AF%E5%AF%B9%E6%AF%94"><span class="nav-text">14.8.2 调度场景对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-9-%E5%BB%B6%E8%BF%9F%E5%87%BA%E9%98%9F-DELAY-DEQUEUE"><span class="nav-text">14.9 延迟出队 (DELAY_DEQUEUE)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-9-1-%E5%BB%B6%E8%BF%9F%E5%87%BA%E9%98%9F%E6%9C%BA%E5%88%B6"><span class="nav-text">14.9.1 延迟出队机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-9-2-%E9%87%8D%E6%96%B0%E5%85%A5%E9%98%9F"><span class="nav-text">14.9.2 重新入队</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-10-EEVDF-%E7%9B%91%E6%8E%A7"><span class="nav-text">14.10 EEVDF 监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#14-10-1-%E6%9F%A5%E7%9C%8B%E8%B0%83%E5%BA%A6%E5%AE%9E%E4%BD%93%E4%BF%A1%E6%81%AF"><span class="nav-text">14.10.1 查看调度实体信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-10-2-%E8%B0%83%E8%AF%95%E5%8F%82%E6%95%B0"><span class="nav-text">14.10.2 调试参数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#14-11-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">14.11 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

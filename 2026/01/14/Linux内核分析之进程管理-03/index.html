@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/14/linux内核分析之进程管理-03/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之进程管理-03">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-03/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-14T11:19:58.000Z">
+<meta property="article:modified_time" content="2026-01-19T05:40:29.191Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之进程管理-03 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之进程管理-03</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-14 19:19:58</span>
+        <span class="mobile">2026-01-14 19:19:58</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-01-19 13:40:29</span>
+            <span class="mobile">2026-01-19 13:40:29</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第3章-进程标识符与命名空间"><a href="#第3章-进程标识符与命名空间" class="headerlink" title="第3章 进程标识符与命名空间"></a>第3章 进程标识符与命名空间</h1><blockquote>
+<p>基于 Linux 6.12.38 源码分析</p>
+</blockquote>
+<hr>
+<h2 id="3-1-进程-ID-类型"><a href="#3-1-进程-ID-类型" class="headerlink" title="3.1 进程 ID 类型"></a>3.1 进程 ID 类型</h2><h3 id="3-1-1-PID-类型定义"><a href="#3-1-1-PID-类型定义" class="headerlink" title="3.1.1 PID 类型定义"></a>3.1.1 PID 类型定义</h3><p><strong>位置：</strong> <code>include/linux/pid.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">pid_type</span> &#123;</span></span><br><span class="line">    PIDTYPE_PID,      <span class="comment">// 进程 ID (线程 ID)</span></span><br><span class="line">    PIDTYPE_TGID,     <span class="comment">// 线程组 ID (进程 ID)</span></span><br><span class="line">    PIDTYPE_PGID,     <span class="comment">// 进程组 ID</span></span><br><span class="line">    PIDTYPE_SID,      <span class="comment">// 会话 ID</span></span><br><span class="line">    PIDTYPE_MAX,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-1-2-各类型用途"><a href="#3-1-2-各类型用途" class="headerlink" title="3.1.2 各类型用途"></a>3.1.2 各类型用途</h3><p><strong>PIDTYPE_PID：</strong></p>
+<ul>
+<li>标识单个线程（轻量级进程）</li>
+<li>每个线程都有唯一的 PID</li>
+<li>通过 <code>getpid()</code> 系统调用获取</li>
+</ul>
+<p><strong>PIDTYPE_TGID：</strong></p>
+<ul>
+<li>线程组 ID，即传统意义的进程 ID</li>
+<li>同一进程内所有线程共享相同的 TGID</li>
+<li>主线程的 PID &#x3D; TGID</li>
+</ul>
+<p><strong>PIDTYPE_PGID：</strong></p>
+<ul>
+<li>进程组 ID</li>
+<li>用于作业控制</li>
+<li>通过 <code>getpgid()</code> 系统调用获取</li>
+</ul>
+<p><strong>PIDTYPE_SID：</strong></p>
+<ul>
+<li>会话 ID</li>
+<li>进程登录会话标识</li>
+<li>通过 <code>getsid()</code> 系统调用获取</li>
+</ul>
+<hr>
+<h2 id="3-2-PID-管理数据结构"><a href="#3-2-PID-管理数据结构" class="headerlink" title="3.2 PID 管理数据结构"></a>3.2 PID 管理数据结构</h2><h3 id="3-2-1-struct-pid"><a href="#3-2-1-struct-pid" class="headerlink" title="3.2.1 struct pid"></a>3.2.1 struct pid</h3><p><strong>位置：</strong> <code>include/linux/pid.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * struct upid is used to get the id of the struct pid. This is used in the</span></span><br><span class="line"><span class="comment"> * pidhash and in the pid itself to speed up the pid finding operations.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">upid</span> &#123;</span></span><br><span class="line">    <span class="type">int</span> nr;                     <span class="comment">// 该命名空间内的 PID 编号</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> *<span class="title">ns</span>;</span>   <span class="comment">// 所属的命名空间</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pid</span> &#123;</span></span><br><span class="line">    <span class="type">refcount_t</span> count;           <span class="comment">// 引用计数</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> level;         <span class="comment">// 命名空间层级深度</span></span><br><span class="line">    <span class="type">spinlock_t</span> lock;            <span class="comment">// 保护 pid 结构的锁</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dentry</span> *<span class="title">stashed</span>;</span>     <span class="comment">// pidfd 的 dentry</span></span><br><span class="line">    u64 ino;                    <span class="comment">// inode 编号</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* lists of tasks that use this pid */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">hlist_head</span> <span class="title">tasks</span>[<span class="title">PIDTYPE_MAX</span>];</span> <span class="comment">// 每种类型的任务哈希表</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">hlist_head</span> <span class="title">inodes</span>;</span>   <span class="comment">// pidfd 相关的 inode</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* wait queue for pidfd notifications */</span></span><br><span class="line">    <span class="type">wait_queue_head_t</span> wait_pidfd;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">rcu</span>;</span>        <span class="comment">// RCU 回收</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* PID 级数组，每个元素对应一个命名空间层级 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">upid</span> <span class="title">numbers</span>[];</span>      <span class="comment">// 柔性数组</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-2-2-struct-pid-namespace"><a href="#3-2-2-struct-pid-namespace" class="headerlink" title="3.2.2 struct pid_namespace"></a>3.2.2 struct pid_namespace</h3><p><strong>位置：</strong> <code>include/linux/pid_namespace.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">idr</span> <span class="title">idr</span>;</span>                    <span class="comment">// PID 分配器 (IDR)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">rcu</span>;</span>               <span class="comment">// RCU 回收</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> pid_allocated;        <span class="comment">// 已分配的 PID 数量</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">child_reaper</span>;</span>  <span class="comment">// 该命名空间的 init 进程</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> *<span class="title">pid_cachep</span>;</span>     <span class="comment">// pid 结构的 slab 缓存</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> level;                <span class="comment">// 命名空间层级深度</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> *<span class="title">parent</span>;</span>      <span class="comment">// 父命名空间</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_BSD_PROCESS_ACCT</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fs_pin</span> *<span class="title">bacct</span>;</span>              <span class="comment">// BSD 进程会计</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">user_namespace</span> *<span class="title">user_ns</span>;</span>    <span class="comment">// 用户命名空间</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">ucounts</span> *<span class="title">ucounts</span>;</span>           <span class="comment">// ucounts 计数</span></span><br><span class="line">    <span class="type">int</span> reboot;                        <span class="comment">// 组退出码 (如果命名空间被重启)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">ns_common</span> <span class="title">ns</span>;</span>               <span class="comment">// 通用命名空间字段</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> defined(CONFIG_SYSCTL) &amp;&amp; defined(CONFIG_MEMFD_CREATE)</span></span><br><span class="line">    <span class="type">int</span> memfd_noexec_scope;            <span class="comment">// memfd noexec 范围</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125; __randomize_layout;</span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> <span class="title">init_pid_ns</span>;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-2-3-PID-命名空间层级"><a href="#3-2-3-PID-命名空间层级" class="headerlink" title="3.2.3 PID 命名空间层级"></a>3.2.3 PID 命名空间层级</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    PID Namespace 层级                          │</span><br><span class="line">├────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                │</span><br><span class="line">│  Level 0: 初始命名空间 (init_pid_ns)                           │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  level = 0                                            │    │</span><br><span class="line">│  │  child_reaper = init (PID 1)                          │    │</span><br><span class="line">│  │                                                        │    │</span><br><span class="line">│  │  PID 1: systemd/init                                 │    │</span><br><span class="line">│  │  PID 2: kthreadd                                     │    │</span><br><span class="line">│  │  PID 100: container-A                                │    │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘    │</span><br><span class="line">│                         │                                     │</span><br><span class="line">│                         │ clone(CLONE_NEWPID)                 │</span><br><span class="line">│                         ↓                                     │</span><br><span class="line">│  Level 1: 容器 A 命名空间                                      │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  level = 1                                            │    │</span><br><span class="line">│  │  parent = init_pid_ns                                 │    │</span><br><span class="line">│  │  child_reaper = container-A-init                     │    │</span><br><span class="line">│  │                                                        │    │</span><br><span class="line">│  │  PID 1: container-A-init (外部: PID 100)             │    │</span><br><span class="line">│  │  PID 2: app-process (外部: PID 101)                  │    │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘    │</span><br><span class="line">│                         │                                     │</span><br><span class="line">│                         │ clone(CLONE_NEWPID)                 │</span><br><span class="line">│                         ↓                                     │</span><br><span class="line">│  Level 2: 嵌套容器命名空间                                     │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  level = 2                                            │    │</span><br><span class="line">│  │  parent = container-A-pid-ns                         │    │</span><br><span class="line">│  │                                                        │    │</span><br><span class="line">│  │  PID 1: nested-init (外部: PID 101, 容器A: PID 2)    │    │</span><br><span class="line">│  └──────────────────────────────────────────────────────┘    │</span><br><span class="line">│                                                                │</span><br><span class="line">└────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-2-4-视图映射"><a href="#3-2-4-视图映射" class="headerlink" title="3.2.4 视图映射"></a>3.2.4 视图映射</h3><p><strong>不同命名空间视角：</strong></p>
+<table>
+<thead>
+<tr>
+<th>进程</th>
+<th>全局视角</th>
+<th>Level 0 视角</th>
+<th>Level 1 视角</th>
+<th>Level 2 视角</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>init</td>
+<td>PID 1</td>
+<td>PID 1</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>container-A-init</td>
+<td>PID 100</td>
+<td>PID 100</td>
+<td>PID 1</td>
+<td>-</td>
+</tr>
+<tr>
+<td>app-process</td>
+<td>PID 101</td>
+<td>PID 101</td>
+<td>PID 2</td>
+<td>PID 1</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-3-PID-分配与释放"><a href="#3-3-PID-分配与释放" class="headerlink" title="3.3 PID 分配与释放"></a>3.3 PID 分配与释放</h2><h3 id="3-3-1-PID-分配"><a href="#3-3-1-PID-分配" class="headerlink" title="3.3.1 PID 分配"></a>3.3.1 PID 分配</h3><p><strong>位置：</strong> <code>kernel/pid.c:alloc_pid()</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> pid *<span class="title function_">alloc_pid</span><span class="params">(<span class="keyword">struct</span> pid_namespace *ns, <span class="type">pid_t</span> *set_tid,</span></span><br><span class="line"><span class="params">                     <span class="type">size_t</span> set_tid_size)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid</span> *<span class="title">pid</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">pid_type</span> <span class="title">type</span>;</span></span><br><span class="line">    <span class="type">int</span> i, nr;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> *<span class="title">tmp</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">upid</span> *<span class="title">upid</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 分配 pid 结构</span></span><br><span class="line">    pid = kmem_cache_alloc(ns-&gt;pid_cachep, GFP_KERNEL);</span><br><span class="line">    <span class="keyword">if</span> (!pid)</span><br><span class="line">        <span class="keyword">return</span> ERR_PTR(-ENOMEM);</span><br><span class="line"></span><br><span class="line">    tmp = ns;</span><br><span class="line">    pid-&gt;level = ns-&gt;level;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 为每个命名空间层级分配 PID</span></span><br><span class="line">    <span class="keyword">for</span> (i = ns-&gt;level; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">        <span class="type">int</span> tid = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果用户指定了特定 PID</span></span><br><span class="line">        <span class="keyword">if</span> (set_tid &amp;&amp; set_tid_size) &#123;</span><br><span class="line">            tid = set_tid[ns-&gt;level - i];</span><br><span class="line">            <span class="comment">// 验证 PID 的有效性</span></span><br><span class="line">            retval = -EINVAL;</span><br><span class="line">            <span class="keyword">if</span> (tid &lt; <span class="number">1</span> || tid &gt;= pid_max)</span><br><span class="line">                <span class="keyword">goto</span> out_free;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 分配指定的 PID</span></span><br><span class="line">            nr = idr_alloc(&amp;tmp-&gt;idr, <span class="literal">NULL</span>, tid, tid + <span class="number">1</span>, GFP_ATOMIC);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 自动分配下一个可用 PID</span></span><br><span class="line">            <span class="type">int</span> pid_min = <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">if</span> (idr_get_cursor(&amp;tmp-&gt;idr) &gt; RESERVED_PIDS)</span><br><span class="line">                pid_min = RESERVED_PIDS;</span><br><span class="line"></span><br><span class="line">            nr = idr_alloc_cyclic(&amp;tmp-&gt;idr, <span class="literal">NULL</span>, pid_min,</span><br><span class="line">                                  pid_max, GFP_ATOMIC);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (nr &lt; <span class="number">0</span>) &#123;</span><br><span class="line">            retval = (nr == -ENOSPC) ? -EAGAIN : nr;</span><br><span class="line">            <span class="keyword">goto</span> out_free;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 保存该命名空间的 PID 编号</span></span><br><span class="line">        pid-&gt;numbers[i].nr = nr;</span><br><span class="line">        pid-&gt;numbers[i].ns = tmp;</span><br><span class="line">        tmp = tmp-&gt;parent;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 初始化 pid 结构</span></span><br><span class="line">    get_pid_ns(ns);</span><br><span class="line">    refcount_set(&amp;pid-&gt;count, <span class="number">1</span>);</span><br><span class="line">    spin_lock_init(&amp;pid-&gt;lock);</span><br><span class="line">    <span class="keyword">for</span> (type = <span class="number">0</span>; type &lt; PIDTYPE_MAX; ++type)</span><br><span class="line">        INIT_HLIST_HEAD(&amp;pid-&gt;tasks[type]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4. 将 PID 插入 IDR，使其可见</span></span><br><span class="line">    upid = pid-&gt;numbers + ns-&gt;level;</span><br><span class="line">    spin_lock_irq(&amp;pidmap_lock);</span><br><span class="line">    <span class="keyword">for</span> (; upid &gt;= pid-&gt;numbers; --upid) &#123;</span><br><span class="line">        idr_replace(&amp;upid-&gt;ns-&gt;idr, pid, upid-&gt;nr);</span><br><span class="line">        upid-&gt;ns-&gt;pid_allocated++;</span><br><span class="line">    &#125;</span><br><span class="line">    spin_unlock_irq(&amp;pidmap_lock);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> pid;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-3-2-PID-释放"><a href="#3-3-2-PID-释放" class="headerlink" title="3.3.2 PID 释放"></a>3.3.2 PID 释放</h3><p><strong>位置：</strong> <code>kernel/pid.c:free_pid()</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">free_pid</span><span class="params">(<span class="keyword">struct</span> pid *pid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* We can be called with write_lock_irq(&amp;tasklist_lock) held */</span></span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line"></span><br><span class="line">    spin_lock_irqsave(&amp;pidmap_lock, flags);</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt;= pid-&gt;level; i++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">upid</span> *<span class="title">upid</span> =</span> pid-&gt;numbers + i;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> *<span class="title">ns</span> =</span> upid-&gt;ns;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 减少 PID 分配计数</span></span><br><span class="line">        <span class="keyword">switch</span> (--ns-&gt;pid_allocated) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">2</span>:</span><br><span class="line">        <span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line">            <span class="comment">/* 当只剩 reaper 时，唤醒它 */</span></span><br><span class="line">            wake_up_process(ns-&gt;child_reaper);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line">            <span class="comment">/* 命名空间为空，可能需要清理 */</span></span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 从 IDR 中移除</span></span><br><span class="line">        idr_remove(&amp;ns-&gt;idr, upid-&gt;nr);</span><br><span class="line">    &#125;</span><br><span class="line">    spin_unlock_irqrestore(&amp;pidmap_lock, flags);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 延迟释放，等待 RCU</span></span><br><span class="line">    call_rcu(&amp;pid-&gt;rcu, delayed_put_pid);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="3-4-PID-查找与转换"><a href="#3-4-PID-查找与转换" class="headerlink" title="3.4 PID 查找与转换"></a>3.4 PID 查找与转换</h2><h3 id="3-4-1-查找-PID"><a href="#3-4-1-查找-PID" class="headerlink" title="3.4.1 查找 PID"></a>3.4.1 查找 PID</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/pid.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找当前命名空间中的 PID */</span></span><br><span class="line"><span class="keyword">struct</span> pid *<span class="title function_">find_vpid</span><span class="params">(<span class="type">int</span> nr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> find_pid_ns(nr, task_active_pid_ns(current));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 在指定命名空间查找 PID */</span></span><br><span class="line"><span class="keyword">struct</span> pid *<span class="title function_">find_pid_ns</span><span class="params">(<span class="type">int</span> nr, <span class="keyword">struct</span> pid_namespace *ns)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> idr_find(&amp;ns-&gt;idr, nr);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 通过 PID 编号获取 task_struct */</span></span><br><span class="line"><span class="keyword">struct</span> task_struct *<span class="title function_">find_task_by_vpid</span><span class="params">(<span class="type">pid_t</span> vnr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> find_task_by_pid_ns(vnr, task_active_pid_ns(current));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> task_struct *<span class="title function_">find_task_by_pid_ns</span><span class="params">(<span class="type">pid_t</span> nr, <span class="keyword">struct</span> pid_namespace *ns)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid</span> *<span class="title">pid</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">result</span>;</span></span><br><span class="line"></span><br><span class="line">    rcu_read_lock();</span><br><span class="line">    pid = find_pid_ns(nr, ns);</span><br><span class="line">    <span class="keyword">if</span> (pid) &#123;</span><br><span class="line">        result = pid_task(pid, PIDTYPE_PID);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        result = <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    rcu_read_unlock();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-4-2-PID-编号转换"><a href="#3-4-2-PID-编号转换" class="headerlink" title="3.4.2 PID 编号转换"></a>3.4.2 PID 编号转换</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取当前命名空间的 PID 编号</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">pid_t</span> <span class="title function_">pid_nr</span><span class="params">(<span class="keyword">struct</span> pid *pid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">pid_t</span> nr = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (pid)</span><br><span class="line">        nr = pid-&gt;numbers[task_active_pid_ns(current)-&gt;level].nr;</span><br><span class="line">    <span class="keyword">return</span> nr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取指定命名空间的 PID 编号</span></span><br><span class="line"><span class="type">pid_t</span> <span class="title function_">pid_nr_ns</span><span class="params">(<span class="keyword">struct</span> pid *pid, <span class="keyword">struct</span> pid_namespace *ns)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">upid</span> *<span class="title">upid</span>;</span></span><br><span class="line">    <span class="type">pid_t</span> nr = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (pid &amp;&amp; ns-&gt;level &lt;= pid-&gt;level) &#123;</span><br><span class="line">        upid = &amp;pid-&gt;numbers[ns-&gt;level];</span><br><span class="line">        <span class="keyword">if</span> (upid-&gt;ns == ns)</span><br><span class="line">            nr = upid-&gt;nr;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> nr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取虚拟 PID 编号 (当前线程命名空间)</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">pid_t</span> <span class="title function_">pid_vnr</span><span class="params">(<span class="keyword">struct</span> pid *pid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> pid_nr_ns(pid, task_active_pid_ns(current));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="3-5-进程组与会话"><a href="#3-5-进程组与会话" class="headerlink" title="3.5 进程组与会话"></a>3.5 进程组与会话</h2><h3 id="3-5-1-进程组"><a href="#3-5-1-进程组" class="headerlink" title="3.5.1 进程组"></a>3.5.1 进程组</h3><p><strong>定义：</strong> 进程组是一个或多个进程的集合，用于作业控制。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// task_struct 中的进程组字段</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid</span> *<span class="title">pgrp</span>;</span>        <span class="comment">// 进程组 ID (PGID)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid</span> *<span class="title">session</span>;</span>     <span class="comment">// 会话 ID (SID)</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>进程组操作：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sys.c</span></span><br><span class="line"></span><br><span class="line">SYSCALL_DEFINE2(setpgid, <span class="type">pid_t</span>, pid, <span class="type">pid_t</span>, pgid)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">p</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">group_leader</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pid_namespace</span> *<span class="title">ns</span>;</span></span><br><span class="line">    <span class="type">int</span> err;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找目标进程</span></span><br><span class="line">    p = find_vpid(pid);</span><br><span class="line">    <span class="keyword">if</span> (!p)</span><br><span class="line">        <span class="keyword">return</span> -ESRCH;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 权限检查</span></span><br><span class="line">    ns = task_active_pid_ns(p);</span><br><span class="line">    <span class="keyword">if</span> (!check_pergroup_permission(p, ns, pid, pgid))</span><br><span class="line">        <span class="keyword">return</span> -EPERM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置进程组</span></span><br><span class="line">    err = __setpgid(p, pgid);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> err;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-5-2-会话"><a href="#3-5-2-会话" class="headerlink" title="3.5.2 会话"></a>3.5.2 会话</h3><p><strong>定义：</strong> 会话是进程组的集合，通常与登录会话关联。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建新会话</span></span><br><span class="line">SYSCALL_DEFINE0(setsid)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">p</span> =</span> current;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查是否已是会话首领</span></span><br><span class="line">    <span class="keyword">if</span> (p-&gt;signal-&gt;leader)</span><br><span class="line">        <span class="keyword">return</span> -EPERM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建新会话</span></span><br><span class="line">    <span class="keyword">if</span> (!process_session(p))</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 成为进程组首领</span></span><br><span class="line">    set_signal_session(p-&gt;signal, process_session(p));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置为会话首领</span></span><br><span class="line">    p-&gt;signal-&gt;leader = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> process_session(p);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-5-3-进程树示例"><a href="#3-5-3-进程树示例" class="headerlink" title="3.5.3 进程树示例"></a>3.5.3 进程树示例</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">init (PID 1, SID 1, PGID 1)</span><br><span class="line">  │</span><br><span class="line">  ├─ systemd (PID 1000, SID 1, PGID 1000)</span><br><span class="line">  │   │   session: 1</span><br><span class="line">  │   │   pgrp: 1000</span><br><span class="line">  │   │</span><br><span class="line">  │   ├─ NetworkManager (PID 1001, SID 1, PGID 1000)</span><br><span class="line">  │   ├─ sshd (PID 1002, SID 1, PGID 1000)</span><br><span class="line">  │   │</span><br><span class="line">  │   └─ cron (PID 1003, SID 1, PGID 1000)</span><br><span class="line">  │</span><br><span class="line">  ├─ login (PID 2000, SID 2000, PGID 2000)</span><br><span class="line">  │   │   session: 2000 (新会话)</span><br><span class="line">  │   │   pgrp: 2000</span><br><span class="line">  │   │</span><br><span class="line">  │   └─ bash (PID 2001, SID 2000, PGID 2000)</span><br><span class="line">  │       │   session: 2000</span><br><span class="line">  │       │   pgrp: 2000</span><br><span class="line">  │       │</span><br><span class="line">  │       └─ command (PID 2002, SID 2000, PGID 2002)</span><br><span class="line">  │           │   session: 2000</span><br><span class="line">  │           │   pgrp: 2002 (新进程组)</span><br><span class="line">  │</span><br><span class="line">  └─ containerd (PID 3000, SID 3000, PGID 3000)</span><br><span class="line">      │   session: 3000 (新会话)</span><br><span class="line">      │   pgrp: 3000</span><br><span class="line">      │</span><br><span class="line">      └─ dockerd (PID 3001, SID 3000, PGID 3000)</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="3-6-PID-Namespace-操作"><a href="#3-6-PID-Namespace-操作" class="headerlink" title="3.6 PID Namespace 操作"></a>3.6 PID Namespace 操作</h2><h3 id="3-6-1-创建新-PID-命名空间"><a href="#3-6-1-创建新-PID-命名空间" class="headerlink" title="3.6.1 创建新 PID 命名空间"></a>3.6.1 创建新 PID 命名空间</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 通过 clone 创建</span></span><br><span class="line">pid = clone(CLONE_NEWPID | SIGCHLD, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 通过 unshare 创建</span></span><br><span class="line">unshare(CLONE_NEWPID);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-6-2-进入已有-PID-命名空间"><a href="#3-6-2-进入已有-PID-命名空间" class="headerlink" title="3.6.2 进入已有 PID 命名空间"></a>3.6.2 进入已有 PID 命名空间</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 通过 setns 系统调用进入</span></span><br><span class="line">SYSCALL_DEFINE2(setns, <span class="type">int</span>, fd, <span class="type">int</span>, nstype)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">file</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">ns_common</span> *<span class="title">ns</span>;</span></span><br><span class="line">    <span class="type">int</span> err;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取 namespace 文件描述符</span></span><br><span class="line">    file = fget(fd);</span><br><span class="line">    <span class="keyword">if</span> (!file)</span><br><span class="line">        <span class="keyword">return</span> -EBADF;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取 namespace</span></span><br><span class="line">    ns = get_ns_from_fd(fd);</span><br><span class="line">    <span class="keyword">if</span> (IS_ERR(ns)) &#123;</span><br><span class="line">        err = PTR_ERR(ns);</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 切换到新 namespace</span></span><br><span class="line">    err = switch_task_namespaces(current, ns);</span><br><span class="line"></span><br><span class="line">out:</span><br><span class="line">    fput(file);</span><br><span class="line">    <span class="keyword">return</span> err;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="3-7-proc-文件系统中的-PID-信息"><a href="#3-7-proc-文件系统中的-PID-信息" class="headerlink" title="3.7 &#x2F;proc 文件系统中的 PID 信息"></a>3.7 &#x2F;proc 文件系统中的 PID 信息</h2><h3 id="3-7-1-proc-pid-status"><a href="#3-7-1-proc-pid-status" class="headerlink" title="3.7.1 &#x2F;proc&#x2F;[pid]&#x2F;status"></a>3.7.1 &#x2F;proc&#x2F;[pid]&#x2F;status</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ cat /proc/1234/status</span><br><span class="line">Name:   systemd</span><br><span class="line">State:  S (sleeping)</span><br><span class="line">Tgid:   1234</span><br><span class="line">Pid:    1234</span><br><span class="line">PPid:   1</span><br><span class="line">TracerPid:      0</span><br><span class="line">Uid:    0       0       0       0</span><br><span class="line">Gid:    0       0       0       0</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-7-2-进程树查看"><a href="#3-7-2-进程树查看" class="headerlink" title="3.7.2 进程树查看"></a>3.7.2 进程树查看</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># pstree -p</span></span><br><span class="line">systemd(1)─┬─NetworkManager(1000)</span><br><span class="line">           ├─sshd(1002)───bash(2000)───vim(2001)</span><br><span class="line">           └─cron(1003)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="3-7-3-命名空间查看"><a href="#3-7-3-命名空间查看" class="headerlink" title="3.7.3 命名空间查看"></a>3.7.3 命名空间查看</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程所属的 PID 命名空间</span></span><br><span class="line"><span class="built_in">ls</span> -la /proc/1234/ns/pid</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看所有 PID 命名空间</span></span><br><span class="line"><span class="built_in">ls</span> /proc/[pid]/ns/pid | xargs -I&#123;&#125; <span class="built_in">readlink</span> &#123;&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="3-8-本章小结"><a href="#3-8-本章小结" class="headerlink" title="3.8 本章小结"></a>3.8 本章小结</h2><p>本章介绍了 Linux 进程标识符与命名空间的管理：</p>
+<ol>
+<li><strong>PID 类型</strong>：PID、TGID、PGID、SID 四种类型，各有不同用途</li>
+<li><strong>数据结构</strong>：<code>struct pid</code> 管理编号，<code>struct pid_namespace</code> 管理命名空间</li>
+<li><strong>命名空间层级</strong>：支持嵌套的 PID 命名空间，实现容器隔离</li>
+<li><strong>PID 分配</strong>：通过 IDR 机制分配和释放 PID</li>
+<li><strong>PID 查找</strong>：支持跨命名空间的 PID 查找和转换</li>
+<li><strong>进程组与会话</strong>：支持作业控制和登录会话管理</li>
+<li><strong>容器支持</strong>：PID 命名空间是实现容器隔离的关键技术</li>
+</ol>
+<p>下一章将介绍进程的创建机制。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之进程管理-03</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-14 19:19:58</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-01-19 13:40:29
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/14/Linux内核分析之进程管理-03/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-04/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-04</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/14/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86-02/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之进程管理-02</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之进程管理-03</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC3%E7%AB%A0-%E8%BF%9B%E7%A8%8B%E6%A0%87%E8%AF%86%E7%AC%A6%E4%B8%8E%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="nav-text">第3章 进程标识符与命名空间</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E8%BF%9B%E7%A8%8B-ID-%E7%B1%BB%E5%9E%8B"><span class="nav-text">3.1 进程 ID 类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-1-PID-%E7%B1%BB%E5%9E%8B%E5%AE%9A%E4%B9%89"><span class="nav-text">3.1.1 PID 类型定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-2-%E5%90%84%E7%B1%BB%E5%9E%8B%E7%94%A8%E9%80%94"><span class="nav-text">3.1.2 各类型用途</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-PID-%E7%AE%A1%E7%90%86%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">3.2 PID 管理数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-1-struct-pid"><span class="nav-text">3.2.1 struct pid</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-2-struct-pid-namespace"><span class="nav-text">3.2.2 struct pid_namespace</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-3-PID-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E5%B1%82%E7%BA%A7"><span class="nav-text">3.2.3 PID 命名空间层级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-4-%E8%A7%86%E5%9B%BE%E6%98%A0%E5%B0%84"><span class="nav-text">3.2.4 视图映射</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-PID-%E5%88%86%E9%85%8D%E4%B8%8E%E9%87%8A%E6%94%BE"><span class="nav-text">3.3 PID 分配与释放</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-1-PID-%E5%88%86%E9%85%8D"><span class="nav-text">3.3.1 PID 分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-2-PID-%E9%87%8A%E6%94%BE"><span class="nav-text">3.3.2 PID 释放</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-4-PID-%E6%9F%A5%E6%89%BE%E4%B8%8E%E8%BD%AC%E6%8D%A2"><span class="nav-text">3.4 PID 查找与转换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-1-%E6%9F%A5%E6%89%BE-PID"><span class="nav-text">3.4.1 查找 PID</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-2-PID-%E7%BC%96%E5%8F%B7%E8%BD%AC%E6%8D%A2"><span class="nav-text">3.4.2 PID 编号转换</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-5-%E8%BF%9B%E7%A8%8B%E7%BB%84%E4%B8%8E%E4%BC%9A%E8%AF%9D"><span class="nav-text">3.5 进程组与会话</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-1-%E8%BF%9B%E7%A8%8B%E7%BB%84"><span class="nav-text">3.5.1 进程组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-2-%E4%BC%9A%E8%AF%9D"><span class="nav-text">3.5.2 会话</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-3-%E8%BF%9B%E7%A8%8B%E6%A0%91%E7%A4%BA%E4%BE%8B"><span class="nav-text">3.5.3 进程树示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-6-PID-Namespace-%E6%93%8D%E4%BD%9C"><span class="nav-text">3.6 PID Namespace 操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-6-1-%E5%88%9B%E5%BB%BA%E6%96%B0-PID-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="nav-text">3.6.1 创建新 PID 命名空间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-6-2-%E8%BF%9B%E5%85%A5%E5%B7%B2%E6%9C%89-PID-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="nav-text">3.6.2 进入已有 PID 命名空间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-7-proc-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E4%B8%AD%E7%9A%84-PID-%E4%BF%A1%E6%81%AF"><span class="nav-text">3.7 &#x2F;proc 文件系统中的 PID 信息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-7-1-proc-pid-status"><span class="nav-text">3.7.1 &#x2F;proc&#x2F;[pid]&#x2F;status</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-7-2-%E8%BF%9B%E7%A8%8B%E6%A0%91%E6%9F%A5%E7%9C%8B"><span class="nav-text">3.7.2 进程树查看</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-7-3-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E6%9F%A5%E7%9C%8B"><span class="nav-text">3.7.3 命名空间查看</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">3.8 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>
