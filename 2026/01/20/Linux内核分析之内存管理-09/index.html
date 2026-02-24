@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-09/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-09">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-09/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:27.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:20.717Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-09 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-09</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:27</span>
+        <span class="mobile">2026-01-20 21:39:27</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:20</span>
+            <span class="mobile">2026-02-24 14:05:20</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第9章：缺页异常处理"><a href="#第9章：缺页异常处理" class="headerlink" title="第9章：缺页异常处理"></a>第9章：缺页异常处理</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="9-1-缺页异常概述"><a href="#9-1-缺页异常概述" class="headerlink" title="9.1 缺页异常概述"></a>9.1 缺页异常概述</h2><h3 id="9-1-1-什么是缺页异常"><a href="#9-1-1-什么是缺页异常" class="headerlink" title="9.1.1 什么是缺页异常"></a>9.1.1 什么是缺页异常</h3><p>缺页异常 (Page Fault) 是当程序访问的虚拟页面不在物理内存中时触发的异常。</p>
+<p><strong>触发场景:</strong></p>
+<ol>
+<li><strong>按需加载</strong>: 程序访问的代码&#x2F;数据页首次被访问</li>
+<li><strong>写时复制 (COW)</strong>: fork 后父子进程共享页面，一方尝试写入</li>
+<li><strong>匿名页面</strong>: malloc&#x2F;mmap 分配的内存首次访问</li>
+<li><strong>文件映射</strong>: mmap 映射的文件页首次访问</li>
+<li><strong>保护违例</strong>: 尝试写入只读页面</li>
+</ol>
+<h3 id="9-1-2-x86-64-缺页异常"><a href="#9-1-2-x86-64-缺页异常" class="headerlink" title="9.1.2 x86_64 缺页异常"></a>9.1.2 x86_64 缺页异常</h3><p><strong>异常向量:</strong> #PF (异常 14)</p>
+<p><strong>错误码格式:</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">┌────┬──────────┬─────────┬──────────┐</span><br><span class="line">│ 位 │  名称    │  值     │  描述     │</span><br><span class="line">├────┼──────────┼─────────┼──────────┤</span><br><span class="line">│ 0  │  P       │  0/1    │  0=页不存在, 1=页存在但保护违例 │</span><br><span class="line">│ 1  │  W       │  0/1    │  0=读操作, 1=写操作 │</span><br><span class="line">│ 2  │  U       │  0/1    │  0=监督模式, 1=用户模式 │</span><br><span class="line">│ 3  │  R       │  0/1    │  0=普通访问, 1=保留位访问 │</span><br><span class="line">│ 4  │  I       │  0/1    │  0=取数据, 1=取指令 │</span><br><span class="line">└────┴──────────┴─────────┴──────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>错误码宏定义:</strong></p>
+<p><strong>位置:</strong> <code>arch/x86/include/asm/traps.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 页错误标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_WRITE     (1UL &lt;&lt; 0)   <span class="comment">/* 写操作 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_PRESENT   (1UL &lt;&lt; 1)   <span class="comment">/* 页存在 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_USER      (1UL &lt;&lt; 2)   <span class="comment">/* 用户模式 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_RESERVED  (1UL &lt;&lt; 3)   <span class="comment">/* 保留位 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_INSTR     (1UL &lt;&lt; 4)   <span class="comment">/* 指令取 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_PK        (1UL &lt;&lt; 5)   <span class="comment">/* 保护密 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X86_PF_SGX       (1UL &lt;&lt; 15)  <span class="comment">/* SGX */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-2-缺页异常处理流程"><a href="#9-2-缺页异常处理流程" class="headerlink" title="9.2 缺页异常处理流程"></a>9.2 缺页异常处理流程</h2><h3 id="9-2-1-处理流程图"><a href="#9-2-1-处理流程图" class="headerlink" title="9.2.1 处理流程图"></a>9.2.1 处理流程图</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">用户/内核访问无效地址</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│      CPU 触发 #PF 异常               │</span><br><span class="line">│      - 错误码推入栈                 │</span><br><span class="line">│      - 故障地址存入 CR2             │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│  do_page_fault(regs, error_code,     │</span><br><span class="line">│               address)               │</span><br><span class="line">│                                      │</span><br><span class="line">│  1. 检查地址是否在内核空间           │</span><br><span class="line">│  2. 检查是否在临界区                 │</span><br><span class="line">│  3. 查找对应的 VMA                  │</span><br><span class="line">│  4. 检查访问权限                     │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│  handle_mm_fault(vma, address,       │</span><br><span class="line">│                  flags, regs)        │</span><br><span class="line">│                                      │</span><br><span class="line">│  1. 检查 VMA 权限                    │</span><br><span class="line">│  2. 调用特定处理函数                 │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│  根据页面类型处理:                   │</span><br><span class="line">│                                      │</span><br><span class="line">│  ┌────────────────────────────────┐ │</span><br><span class="line">│  │ 文件映射: filemap_fault        │ │</span><br><span class="line">│  └────────────────────────────────┘ │</span><br><span class="line">│  ┌────────────────────────────────┐ │</span><br><span class="line">│  │ 匿名映射: do_anonymous_page    │ │</span><br><span class="line">│  └────────────────────────────────┘ │</span><br><span class="line">│  ┌────────────────────────────────┐ │</span><br><span class="line">│  │ 写时复制: do_wp_page           │ │</span><br><span class="line">│  └────────────────────────────────┘ │</span><br><span class="line">│  ┌────────────────────────────────┐ │</span><br><span class="line">│  │ 堆栈扩展: expand_stack         │ │</span><br><span class="line">│  └────────────────────────────────┘ │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-2-2-入口函数"><a href="#9-2-2-入口函数" class="headerlink" title="9.2.2 入口函数"></a>9.2.2 入口函数</h3><p><strong>位置:</strong> <code>arch/x86/mm/fault.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 页错误处理入口 */</span></span><br><span class="line">DEFINE_IDTENTRY_RAW(exc_page_fault)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> address = read_cr2();  <span class="comment">/* 读取故障地址 */</span></span><br><span class="line">    <span class="type">irqentry_state_t</span> state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 页错误可能发生在任何上下文中：</span></span><br><span class="line"><span class="comment">     * - 用户空间</span></span><br><span class="line"><span class="comment">     * - 内核空间</span></span><br><span class="line"><span class="comment">     * - 中断上下文</span></span><br><span class="line"><span class="comment">     * - NMI 上下文</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 保存寄存器状态 */</span></span><br><span class="line">    state = irqentry_enter(regs);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 处理页错误 */</span></span><br><span class="line">    handle_page_fault(regs, error_code, address);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 恢复寄存器状态 */</span></span><br><span class="line">    irqentry_exit(regs, state);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 内核页错误处理 */</span></span><br><span class="line"><span class="type">static</span> __always_inline <span class="type">void</span> <span class="title function_">handle_page_fault</span><span class="params">(<span class="keyword">struct</span> pt_regs *regs,</span></span><br><span class="line"><span class="params">                                              <span class="type">unsigned</span> <span class="type">long</span> error_code,</span></span><br><span class="line"><span class="params">                                              <span class="type">unsigned</span> <span class="type">long</span> address)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 检查是否是内核地址 */</span></span><br><span class="line">    <span class="keyword">if</span> (unlikely(fault_in_kernel_space(address))) &#123;</span><br><span class="line">        <span class="comment">/* 内核空间页错误 */</span></span><br><span class="line">        do_kern_addr_fault(regs, error_code, address);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* 用户空间页错误 */</span></span><br><span class="line">        do_user_addr_fault(regs, error_code, address);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-3-匿名页面缺页"><a href="#9-3-匿名页面缺页" class="headerlink" title="9.3 匿名页面缺页"></a>9.3 匿名页面缺页</h2><h3 id="9-3-1-do-anonymous-page"><a href="#9-3-1-do-anonymous-page" class="headerlink" title="9.3.1 do_anonymous_page"></a>9.3.1 do_anonymous_page</h3><p><strong>位置:</strong> <code>mm/memory.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vm_fault_t</span> <span class="title function_">do_anonymous_page</span><span class="params">(<span class="keyword">struct</span> vm_fault *vmf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span> =</span> vmf-&gt;vma;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">    <span class="type">vm_fault_t</span> ret = VM_FAULT_OOM;</span><br><span class="line">    <span class="type">pte_t</span> entry;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 检查 VMA 是否为匿名映射 */</span></span><br><span class="line">    <span class="keyword">if</span> (vma-&gt;vm_file) &#123;</span><br><span class="line">        <span class="comment">/* 不是匿名映射 */</span></span><br><span class="line">        <span class="keyword">return</span> VM_FAULT_SIGBUS;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 如果是写操作，分配新页面 */</span></span><br><span class="line">    <span class="keyword">if</span> (vmf-&gt;flags &amp; FAULT_FLAG_WRITE) &#123;</span><br><span class="line">        <span class="comment">/* 分配零页 */</span></span><br><span class="line">        page = alloc_zeroed_user_highpage_movable(vma, vmf-&gt;address);</span><br><span class="line">        <span class="keyword">if</span> (!page)</span><br><span class="line">            <span class="keyword">goto</span> oom;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 设置页表项 */</span></span><br><span class="line">        ret = set_pte_range(vma, vmf-&gt;address, vmf-&gt;address + PAGE_SIZE,</span><br><span class="line">                           page, <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (ret)</span><br><span class="line">            <span class="keyword">goto</span> oom;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* 只读访问，使用共享零页 */</span></span><br><span class="line">        entry = pte_mkspecial(pfn_pte(my_zero_pfn(<span class="number">0</span>), vma-&gt;vm_page_prot));</span><br><span class="line">        ret = finish_fault(vmf);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">oom:</span><br><span class="line">    <span class="keyword">return</span> VM_FAULT_OOM;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-3-2-匿名页面分配流程"><a href="#9-3-2-匿名页面分配流程" class="headerlink" title="9.3.2 匿名页面分配流程"></a>9.3.2 匿名页面分配流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">do_anonymous_page(vmf)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 检查 VMA 是否为匿名映射          │</span><br><span class="line">│    - 如果有 vm_file，返回错误       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 检查操作类型                    │</span><br><span class="line">│    - 写操作: 分配新页面             │</span><br><span class="line">│    - 读操作: 使用共享零页           │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        写操作</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 分配零页                         │</span><br><span class="line">│    - alloc_zeroed_user_highpage    │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 设置页表项                       │</span><br><span class="line">│    - set_pte_range                  │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 返回 VM_FAULT_NOPAGE            │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-4-文件映射缺页"><a href="#9-4-文件映射缺页" class="headerlink" title="9.4 文件映射缺页"></a>9.4 文件映射缺页</h2><h3 id="9-4-1-filemap-fault"><a href="#9-4-1-filemap-fault" class="headerlink" title="9.4.1 filemap_fault"></a>9.4.1 filemap_fault</h3><p><strong>位置:</strong> <code>mm/filemap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vm_fault_t</span> <span class="title function_">filemap_fault</span><span class="params">(<span class="keyword">struct</span> vm_fault *vmf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> error;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">file</span> =</span> vmf-&gt;vma-&gt;vm_file;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file_lock_context</span> *<span class="title">file_lock_context</span> =</span> file-&gt;f_lock_context;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">address_space</span> *<span class="title">mapping</span> =</span> file-&gt;f_mapping;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 检查页缓存 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span>;</span></span><br><span class="line">    <span class="type">pgoff_t</span> offset = vmf-&gt;pgoff;</span><br><span class="line"></span><br><span class="line">    folio = filemap_get_folio(mapping, offset);</span><br><span class="line">    <span class="keyword">if</span> (IS_ERR(folio)) &#123;</span><br><span class="line">        <span class="comment">/* 页面不在缓存，需要读取 */</span></span><br><span class="line">        error = filemap_read_folio(file, mapping, ra, offset,</span><br><span class="line">                                   &amp;folio, <span class="literal">NULL</span>);</span><br><span class="line">        <span class="keyword">if</span> (error)</span><br><span class="line">            <span class="keyword">return</span> VM_FAULT_SIGBUS;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 检查 folio 错误 */</span></span><br><span class="line">    <span class="keyword">if</span> (folio_test_error(folio)) &#123;</span><br><span class="line">        <span class="comment">/* 页面错误 */</span></span><br><span class="line">        folio_unlock(folio);</span><br><span class="line">        folio_put(folio);</span><br><span class="line">        <span class="keyword">return</span> VM_FAULT_SIGBUS;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 映射 folio 到用户空间 */</span></span><br><span class="line">    error = vmf_insert_folio(vmf, folio);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 释放 folio 引用 */</span></span><br><span class="line">    folio_put(folio);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-4-2-文件映射缺页流程"><a href="#9-4-2-文件映射缺页流程" class="headerlink" title="9.4.2 文件映射缺页流程"></a>9.4.2 文件映射缺页流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">filemap_fault(vmf)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 检查页缓存                       │</span><br><span class="line">│    - filemap_get_folio              │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        不在缓存</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 从文件读取页面                   │</span><br><span class="line">│    - filemap_read_folio             │</span><br><span class="line">│    - 启动 IO 操作                   │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 等待 IO 完成                     │</span><br><span class="line">│    - folio_wait_locked              │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 映射到用户空间                   │</span><br><span class="line">│    - vmf_insert_folio               │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-5-写时复制"><a href="#9-5-写时复制" class="headerlink" title="9.5 写时复制"></a>9.5 写时复制</h2><h3 id="9-5-1-do-wp-page"><a href="#9-5-1-do-wp-page" class="headerlink" title="9.5.1 do_wp_page"></a>9.5.1 do_wp_page</h3><p><strong>位置:</strong> <code>mm/memory.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vm_fault_t</span> <span class="title function_">do_wp_page</span><span class="params">(<span class="keyword">struct</span> vm_fault *vmf)</span></span><br><span class="line">    __<span class="title function_">releases</span><span class="params">(vmf-&gt;ptl)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span> =</span> vmf-&gt;vma;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span> =</span> vmf-&gt;page;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 检查页面是否私有的 */</span></span><br><span class="line">    <span class="keyword">if</span> (folio_mapcount(folio) == <span class="number">1</span> &amp;&amp; !folio_test_dirty(folio)) &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * 只有当前进程映射此页面，直接标记为可写</span></span><br><span class="line"><span class="comment">         * 无需复制</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        wp_page_reuse(vmf, folio);</span><br><span class="line">        <span class="keyword">return</span> VM_FAULT_WRITE;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 多个进程共享，需要复制 */</span></span><br><span class="line">    get_folio(folio);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 分配新页面 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">new_folio</span> =</span> alloc_folio(GFP_HIGHUSER_MOVABLE, <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span> (!new_folio) &#123;</span><br><span class="line">        folio_put(folio);</span><br><span class="line">        <span class="keyword">return</span> VM_FAULT_OOM;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 复制页面内容 */</span></span><br><span class="line">    copy_user_highpage(new_folio, folio, vmf-&gt;address, vma);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 5. 设置新页面为可写 */</span></span><br><span class="line">    __folio_mark_uptodate(new_folio);</span><br><span class="line">    folio_set_dirty(new_folio);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 6. 更新页表 */</span></span><br><span class="line">    pte_unmap_unlock(vmf-&gt;pte, vmf-&gt;ptl);</span><br><span class="line">    vmf-&gt;pte = pte_offset_map_lock(vma-&gt;vm_mm, vmf-&gt;pmd, vmf-&gt;address, &amp;vmf-&gt;ptl);</span><br><span class="line">    <span class="keyword">if</span> (likely(pte_same(*vmf-&gt;pte, vmf-&gt;orig_pte))) &#123;</span><br><span class="line">        <span class="type">pte_t</span> entry = mk_pte_folio(new_folio, vma-&gt;vm_page_prot);</span><br><span class="line">        entry = pte_mkdirty(pte_mkwrite(entry));</span><br><span class="line">        set_pte_at(vma-&gt;vm_mm, vmf-&gt;address, vmf-&gt;pte, entry);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    folio_put(folio);</span><br><span class="line">    <span class="keyword">return</span> VM_FAULT_WRITE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-5-2-COW-流程"><a href="#9-5-2-COW-流程" class="headerlink" title="9.5.2 COW 流程"></a>9.5.2 COW 流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">do_wp_page(vmf)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 检查页面映射计数                │</span><br><span class="line">│    - mapcount == 1: 私有页面        │</span><br><span class="line">│    - mapcount &gt; 1: 共享页面         │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        私有页面</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 直接标记为可写                   │</span><br><span class="line">│    - wp_page_reuse                  │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        共享页面</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 分配新页面                       │</span><br><span class="line">│    - alloc_folio                   │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 复制页面内容                     │</span><br><span class="line">│    - copy_user_highpage             │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 更新页表                         │</span><br><span class="line">│    - 设置新页面 PTE                 │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-6-堆栈扩展"><a href="#9-6-堆栈扩展" class="headerlink" title="9.6 堆栈扩展"></a>9.6 堆栈扩展</h2><h3 id="9-6-1-expand-stack"><a href="#9-6-1-expand-stack" class="headerlink" title="9.6.1 expand_stack"></a>9.6.1 expand_stack</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">expand_stack</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma, <span class="type">unsigned</span> <span class="type">long</span> address)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 1. 检查是否是栈 VMA */</span></span><br><span class="line">    <span class="keyword">if</span> (!(vma-&gt;vm_flags &amp; VM_GROWSDOWN))</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 检查地址是否在合理范围内 */</span></span><br><span class="line">    <span class="keyword">if</span> (address &lt; vma-&gt;vm_start) &#123;</span><br><span class="line">        <span class="comment">/* 向下扩展 */</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> size = vma-&gt;vm_end - address;</span><br><span class="line">        <span class="keyword">if</span> (size &gt; rlimit(RLIMIT_STACK))</span><br><span class="line">            <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 3. 检查是否与现有 VMA 重叠 */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> vma-&gt;vm_mm;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">next</span> =</span> find_vma(mm, vma-&gt;vm_end);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (next &amp;&amp; next-&gt;vm_start &lt; vma-&gt;vm_end + size)</span><br><span class="line">            <span class="keyword">return</span> -ENOMEM;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 扩展 VMA */</span></span><br><span class="line">    vma-&gt;vm_start = address;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-6-2-栈扩展流程"><a href="#9-6-2-栈扩展流程" class="headerlink" title="9.6.2 栈扩展流程"></a>9.6.2 栈扩展流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">expand_stack(vma, address)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 检查是否是栈 VMA                │</span><br><span class="line">│    - VM_GROWSDOWN 标志              │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 检查地址范围                     │</span><br><span class="line">│    - 检查 RLIMIT_STACK              │</span><br><span class="line">│    - 检查与现有 VMA 重叠            │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 扩展 VMA                         │</span><br><span class="line">│    - 调整 vm_start                  │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="9-7-缺页统计"><a href="#9-7-缺页统计" class="headerlink" title="9.7 缺页统计"></a>9.7 缺页统计</h2><h3 id="9-7-1-vm-fault-结构-完整版"><a href="#9-7-1-vm-fault-结构-完整版" class="headerlink" title="9.7.1 vm_fault 结构 (完整版)"></a>9.7.1 vm_fault 结构 (完整版)</h3><p><strong>位置:</strong> <code>include/linux/mm.h:547</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct vm_fault - 页 fault 信息</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * vm_fault 由页 fault 处理器填充并传递给 vma 的 -&gt;fault 函数。</span></span><br><span class="line"><span class="comment"> * vma 的 -&gt;fault 负责返回 VM_FAULT_xxx 标志的位掩码，</span></span><br><span class="line"><span class="comment"> * 给出关于 fault 如何处理的详细信息。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * MM 层为页面分配填充 gfp_mask，但 fault 处理器可以</span></span><br><span class="line"><span class="comment"> * 在其实现需要不同的分配上下文时修改它。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 如果可能，应使用 pgoff 而不是 virtual_address。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_fault</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 常量字段 - 由页 fault 处理器填充 */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span>     <span class="comment">/* 目标 VMA */</span></span><br><span class="line">        <span class="type">gfp_t</span> gfp_mask;                  <span class="comment">/* 分配的 gfp 掩码 */</span></span><br><span class="line">        <span class="type">pgoff_t</span> pgoff;                   <span class="comment">/* 基于 vma 的逻辑页偏移 */</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> address;           <span class="comment">/* 故障虚拟地址 - 已掩码 */</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> real_address;      <span class="comment">/* 故障虚拟地址 - 未掩码 */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">fault_flag</span> <span class="title">flags</span>;</span>               <span class="comment">/* FAULT_FLAG_xxx 标志 */</span></span><br><span class="line">    <span class="type">pmd_t</span> *pmd;                          <span class="comment">/* 匹配地址的 PMD 条目指针 */</span></span><br><span class="line">    <span class="type">pud_t</span> *pud;                          <span class="comment">/* 匹配地址的 PUD 条目指针 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">pte_t</span> orig_pte;                   <span class="comment">/* 故障时 PTE 的值 */</span></span><br><span class="line">        <span class="type">pmd_t</span> orig_pmd;                   <span class="comment">/* 故障时 PMD 的值 (PMD fault) */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="type">spinlock_t</span> *ptl;                     <span class="comment">/* 页表锁 */</span></span><br><span class="line">    <span class="type">pte_t</span> *pte;                          <span class="comment">/* PTE 指针 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span>               <span class="comment">/* 分配的页面 */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span>;</span>             <span class="comment">/* 分配的 folio (内核 6.6+) */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="type">atomic_subword_t</span> nr_pages;           <span class="comment">/* 多页数量 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-7-2-fault-flag-标志"><a href="#9-7-2-fault-flag-标志" class="headerlink" title="9.7.2 fault_flag 标志"></a>9.7.2 fault_flag 标志</h3><p><strong>位置:</strong> <code>include/linux/mm.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Fault 标志枚举 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">fault_flag</span> &#123;</span></span><br><span class="line">    FAULT_FLAG_WRITE         = <span class="number">0x01</span>,  <span class="comment">/* 写 fault */</span></span><br><span class="line">    FAULT_FLAG_MKWRITE       = <span class="number">0x02</span>,  <span class="comment">/* 创建写映射 (PTE 标记为写) */</span></span><br><span class="line">    FAULT_FLAG_ALLOW_RETRY   = <span class="number">0x04</span>,  <span class="comment">/* 允许重试 (处理信号) */</span></span><br><span class="line">    FAULT_FLAG_RETRY_NOWAIT  = <span class="number">0x08</span>,  <span class="comment">/* 不等待重试 */</span></span><br><span class="line">    FAULT_FLAG_KILLABLE      = <span class="number">0x10</span>,  <span class="comment">/* 可被 fatal signal 杀死 */</span></span><br><span class="line">    FAULT_FLAG_TRIED         = <span class="number">0x20</span>,  <span class="comment">/* 已尝试一次 */</span></span><br><span class="line">    FAULT_FLAG_USER          = <span class="number">0x40</span>,  <span class="comment">/* 用户空间 fault */</span></span><br><span class="line">    FAULT_FLAG_REMOTE        = <span class="number">0x80</span>,  <span class="comment">/* 远程节点 fault (NUMA) */</span></span><br><span class="line">    FAULT_FLAG_INSTRUCTION   = <span class="number">0x100</span>, <span class="comment">/* 指令取 fault */</span></span><br><span class="line">    FAULT_FLAG_INTERRUPTIBLE = <span class="number">0x200</span>, <span class="comment">/* 可中断等待 */</span></span><br><span class="line">    FAULT_FLAG_VMA_LOCK      = <span class="number">0x400</span>, <span class="comment">/* 使用 Per-VMA 锁 */</span></span><br><span class="line">    FAULT_FLAG_ORIG_PTE_VALID = <span class="number">0x800</span>, <span class="comment">/* orig_pte 有效 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-7-3-缺页标志位说明"><a href="#9-7-3-缺页标志位说明" class="headerlink" title="9.7.3 缺页标志位说明"></a>9.7.3 缺页标志位说明</h3><table>
+<thead>
+<tr>
+<th>标志</th>
+<th>值</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FAULT_FLAG_WRITE</td>
+<td>0x01</td>
+<td>写操作导致的 fault</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_MKWRITE</td>
+<td>0x02</td>
+<td>创建写映射 (用于写时复制)</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_ALLOW_RETRY</td>
+<td>0x04</td>
+<td>允许在信号处理后重试</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_RETRY_NOWAIT</td>
+<td>0x08</td>
+<td>不等待重试 (立即返回)</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_KILLABLE</td>
+<td>0x10</td>
+<td>可被致命信号中断</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_TRIED</td>
+<td>0x20</td>
+<td>已经尝试过一次</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_USER</td>
+<td>0x40</td>
+<td>用户空间 fault</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_REMOTE</td>
+<td>0x80</td>
+<td>远程节点 fault (NUMA)</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_INSTRUCTION</td>
+<td>0x100</td>
+<td>指令获取 fault</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_INTERRUPTIBLE</td>
+<td>0x200</td>
+<td>可中断等待</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_VMA_LOCK</td>
+<td>0x400</td>
+<td>使用 Per-VMA 锁</td>
+</tr>
+<tr>
+<td>FAULT_FLAG_ORIG_PTE_VALID</td>
+<td>0x800</td>
+<td>orig_pte 字段有效</td>
+</tr>
+</tbody></table>
+<h3 id="9-7-4-vm-fault-返回值"><a href="#9-7-4-vm-fault-返回值" class="headerlink" title="9.7.4 vm_fault 返回值"></a>9.7.4 vm_fault 返回值</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* vm_fault_t 返回值 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_OOM        0x0001  <span class="comment">/* 内存不足 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_SIGBUS     0x0002  <span class="comment">/* 总线错误 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_MAJOR      0x0004  <span class="comment">/* 主要缺页 (需从磁盘读取) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_WRITE      0x0008  <span class="comment">/* 写时复制 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_HWPOISON   0x0010  <span class="comment">/* 硬件中毒页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_HWPOISON_LARGE  0x0020  <span class="comment">/* 大页硬件中毒 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_SIGSEGV    0x0040  <span class="comment">/* 段错误 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_NOPAGE     0x0080  <span class="comment">/* 无页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_LOCKED     0x0100  <span class="comment">/* 页面已锁定 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_RETRY      0x0200  <span class="comment">/* 重试 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_FALLBACK   0x0400  <span class="comment">/* 回退 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_DONE_COW   0x0800  <span class="comment">/* COW 完成 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_NEEDDSYNC  0x1000  <span class="comment">/* 需要同步 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_COMPLETED  0x2000  <span class="comment">/* 完成 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_HINDEX_MASK 0x1f0000 <span class="comment">/* hindex 掩码 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 返回值辅助宏 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_ERROR (VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_FAULTS (VM_FAULT_ERROR | VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_FAULT_PTE (VM_FAULT_COMPLETED | VM_FAULT_DONE_COW | VM_FAULT_FALLBACK | VM_FAULT_NOPAGE)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-7-5-proc-接口"><a href="#9-7-5-proc-接口" class="headerlink" title="9.7.5 &#x2F;proc 接口"></a>9.7.5 &#x2F;proc 接口</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程缺页统计</span></span><br><span class="line"><span class="built_in">cat</span> /proc/[pid]/stat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出字段</span></span><br><span class="line"><span class="comment"># - minflt: 次要缺页 (可以从 RAM 满足)</span></span><br><span class="line"><span class="comment"># - majflt: 主要缺页 (需要从磁盘读取)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看系统缺页统计</span></span><br><span class="line"><span class="built_in">cat</span> /proc/vmstat | grep -i fault</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出</span></span><br><span class="line"><span class="comment"># pgfault: 12345678</span></span><br><span class="line"><span class="comment"># pgmajfault: 12345</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<hr>
+<h2 id="9-8-缺页处理决策树"><a href="#9-8-缺页处理决策树" class="headerlink" title="9.8 缺页处理决策树"></a>9.8 缺页处理决策树</h2><h3 id="9-8-1-完整决策流程"><a href="#9-8-1-完整决策流程" class="headerlink" title="9.8.1 完整决策流程"></a>9.8.1 完整决策流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      缺页异常处理决策树                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│  do_page_fault(address, error_code)                                │</span><br><span class="line">│         │                                                           │</span><br><span class="line">│         ├──► 内核地址? ──YES─► do_kern_addr_fault()                │</span><br><span class="line">│         │                                                           │</span><br><span class="line">│         ├──► 找不到VMA? ──YES─► 扩展栈? ──YES─► expand_stack()      │</span><br><span class="line">│         │                              │                            │</span><br><span class="line">│         │                              NO                           │</span><br><span class="line">│         │                              ▼                            │</span><br><span class="line">│         │                        SIGSEGV                         │</span><br><span class="line">│         │                                                           │</span><br><span class="line">│         └──► 用户地址 + 找到VMA                                       │</span><br><span class="line">│                     │                                               │</span><br><span class="line">│                     ▼                                               │</span><br><span class="line">│            ┌──────────────────────┐                                │</span><br><span class="line">│            │  handle_mm_fault()   │                                │</span><br><span class="line">│            └──────────────────────┘                                │</span><br><span class="line">│                     │                                               │</span><br><span class="line">│                     ├──► 地址在页表中? ──NO──► 触发缺页处理            │</span><br><span class="line">│                     │                    │                          │</span><br><span class="line">│                     │               VMA类型?                        │</span><br><span class="line">│                     │                    │                          │</span><br><span class="line">│                     │        ┌───────────┼───────────┐              │</span><br><span class="line">│                     │        ▼           ▼           ▼              │</span><br><span class="line">│                     │    匿名VMA     文件VMA     其他                │</span><br><span class="line">│                     │        │           │           │              │</span><br><span class="line">│                     │        ▼           ▼           ▼              │</span><br><span class="line">│                     │  do_anonymous  filemap_fault SIGBUS         │</span><br><span class="line">│                     │  _page()           │                         │</span><br><span class="line">│                     │        │           │                         │</span><br><span class="line">│                     │        ▼           ▼                         │</span><br><span class="line">│                     │    分配页面    从文件读取                      │</span><br><span class="line">│                     │    (alloc_pages) (read_folio)               │</span><br><span class="line">│                     │        │           │                         │</span><br><span class="line">│                     │        ▼           ▼                         │</span><br><span class="line">│                     │   设置页表    设置页表                       │</span><br><span class="line">│                     │        │           │                         │</span><br><span class="line">│                     └────────┴───────────┘                         │</span><br><span class="line">│                              │                                     │</span><br><span class="line">│                     地址在页表中? ──YES──► 检查权限                  │</span><br><span class="line">│                              │            │                       │</span><br><span class="line">│                              ▼            ▼                       │</span><br><span class="line">│                         保护违例? ──YES─► do_wp_page()            │</span><br><span class="line">│                              │             │                       │</span><br><span class="line">│                              │             ▼                       │</span><br><span class="line">│                              │         写时复制 (COW)               │</span><br><span class="line">│                              │             │                       │</span><br><span class="line">│                              │             ├───► mapcount==1 ───►   │</span><br><span class="line">│                              │             │     直接写标记          │</span><br><span class="line">│                              │             │                       │</span><br><span class="line">│                              │             └───► mapcount&gt;1 ────►   │</span><br><span class="line">│                              │                   分配新页           │</span><br><span class="line">│                              │                   复制内容            │</span><br><span class="line">│                              │                   更新页表            │</span><br><span class="line">│                              │                                     │</span><br><span class="line">│                              └─────────────────────────────────────│</span><br><span class="line">│                                                                 │</span><br><span class="line">│  相关章节:                                                       │</span><br><span class="line">│  ─────────                                                       │</span><br><span class="line">│  • ch05 - 页表管理 (页表项检查)                                   │</span><br><span class="line">│  • ch06 - VMA管理 (find_vma)                                      │</span><br><span class="line">│  • ch09 - 缺页处理 (详细实现)                                      │</span><br><span class="line">│  • ch11 - mmap/mprotect (权限检查)                                  │</span><br><span class="line">│  • ch12 - 文件映射与页缓存                                         │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="9-8-2-处理路径总结"><a href="#9-8-2-处理路径总结" class="headerlink" title="9.8.2 处理路径总结"></a>9.8.2 处理路径总结</h3><table>
+<thead>
+<tr>
+<th>路径</th>
+<th>触发条件</th>
+<th>处理函数</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>匿名页面首次访问</td>
+<td>PTE不存在，匿名VMA</td>
+<td>do_anonymous_page</td>
+<td>分配零页，设置PTE</td>
+</tr>
+<tr>
+<td>文件页面首次访问</td>
+<td>PTE不存在，文件VMA</td>
+<td>filemap_fault</td>
+<td>从文件读取或使用缓存</td>
+</tr>
+<tr>
+<td>写时复制</td>
+<td>PTE存在但只读，写操作</td>
+<td>do_wp_page</td>
+<td>复制页面或直接写标记</td>
+</tr>
+<tr>
+<td>栈扩展</td>
+<td>地址接近栈边界</td>
+<td>expand_stack</td>
+<td>扩展VMA</td>
+</tr>
+<tr>
+<td>保护违例</td>
+<td>权限不足</td>
+<td>SIGSEGV</td>
+<td>进程终止</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="9-9-本章小结与跨章节关联"><a href="#9-9-本章小结与跨章节关联" class="headerlink" title="9.9 本章小结与跨章节关联"></a>9.9 本章小结与跨章节关联</h2><h3 id="9-9-1-本章要点"><a href="#9-9-1-本章要点" class="headerlink" title="9.9.1 本章要点"></a>9.9.1 本章要点</h3><p>本章介绍了 Linux 6.12 的缺页异常处理：</p>
+<ol>
+<li><strong>缺页概述</strong>: 按需加载、COW、匿名页面、文件映射</li>
+<li><strong>错误码</strong>: x86_64 缺页错误码格式</li>
+<li><strong>处理流程</strong>: do_page_fault → handle_mm_fault → 特定处理</li>
+<li><strong>匿名页面</strong>: do_anonymous_page，分配零页</li>
+<li><strong>文件映射</strong>: filemap_fault，从文件读取</li>
+<li><strong>写时复制</strong>: do_wp_page，复制共享页面</li>
+<li><strong>堆栈扩展</strong>: expand_stack，向下扩展栈</li>
+<li><strong>缺页统计</strong>: &#x2F;proc 接口，minflt&#x2F;majflt</li>
+</ol>
+<h3 id="9-9-2-与其他章节的关系"><a href="#9-9-2-与其他章节的关系" class="headerlink" title="9.9.2 与其他章节的关系"></a>9.9.2 与其他章节的关系</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 本章内容 (缺页异常处理)                                      │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_page_fault ──▶ ch05:页表管理 (检查页表项)                │</span><br><span class="line">│                     (PTE是否有效/存在)                        │</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_page_fault ──▶ ch06:VMA管理 (find_vma)                 │</span><br><span class="line">│                     (确定地址所属VMA)                        │</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_anonymous_page ──▶ ch07:alloc_pages                     │</span><br><span class="line">│                        (分配物理页面)                        │</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_anonymous_page ──▶ ch05:页表管理 (set_pte_at)           │</span><br><span class="line">│                        (建立虚拟→物理映射)                    │</span><br><span class="line">│                                                            │</span><br><span class="line">│  filemap_fault ────▶ ch12:页缓存                            │</span><br><span class="line">│                        (查找或读取文件页面)                    │</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_wp_page ────────▶ ch02:Folio/Mapcount                   │</span><br><span class="line">│                        (检查页面是否共享)                     │</span><br><span class="line">│                                                            │</span><br><span class="line">│  do_wp_page ────────▶ ch07:alloc_pages (COW时分配新页)       │</span><br><span class="line">│                                                            │</span><br><span class="line">│  expand_stack ──────▶ ch06:VMA管理 (修改vm_start)            │</span><br><span class="line">│                                                            │</span><br><span class="line">│  权限检查 ─────────▶ ch11:mprotect (VMA权限验证)              │</span><br><span class="line">│                                                            │</span><br><span class="line">│  缺页统计 ─────────▶ ch15:vmstat (pgfault计数器)             │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键处理路径：</strong></p>
+<ol>
+<li><p><strong>匿名页面分配</strong>: <code>缺页异常</code> → <code>do_anonymous_page()</code> → <code>alloc_pages()</code> → <code>set_pte_at()</code></p>
+<ul>
+<li>相关章节: ch07 (页面分配), ch05 (页表管理)</li>
+</ul>
+</li>
+<li><p><strong>文件页面映射</strong>: <code>缺页异常</code> → <code>filemap_fault()</code> → <code>页缓存查找</code> → <code>IO读取</code></p>
+<ul>
+<li>相关章节: ch12 (页缓存)</li>
+</ul>
+</li>
+<li><p><strong>写时复制</strong>: <code>写操作缺页</code> → <code>do_wp_page()</code> → <code>检查mapcount</code> → <code>复制或直接写</code></p>
+<ul>
+<li>相关章节: ch02 (folio结构), ch07 (页面分配)</li>
+</ul>
+</li>
+<li><p><strong>栈扩展</strong>: <code>栈访问缺页</code> → <code>expand_stack()</code> → <code>修改VMA</code></p>
+<ul>
+<li>相关章节: ch06 (VMA管理)</li>
+</ul>
+</li>
+<li><p><strong>权限检查</strong>: <code>缺页异常</code> → <code>检查VMA权限</code> → <code>mprotect验证</code> → <code>允许或拒绝</code></p>
+<ul>
+<li>相关章节: ch06 (VMA权限), ch11 (mprotect)</li>
+</ul>
+</li>
+</ol>
+<p>下一章将介绍页面回收。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-09</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:27</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:20
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-09/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-10/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-10</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-08/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-08</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-09</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC9%E7%AB%A0%EF%BC%9A%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="nav-text">第9章：缺页异常处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#9-1-%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%E6%A6%82%E8%BF%B0"><span class="nav-text">9.1 缺页异常概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-1-%E4%BB%80%E4%B9%88%E6%98%AF%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8"><span class="nav-text">9.1.1 什么是缺页异常</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-2-x86-64-%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8"><span class="nav-text">9.1.2 x86_64 缺页异常</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-2-%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-text">9.2 缺页异常处理流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-1-%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="nav-text">9.2.1 处理流程图</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-2-%E5%85%A5%E5%8F%A3%E5%87%BD%E6%95%B0"><span class="nav-text">9.2.2 入口函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-3-%E5%8C%BF%E5%90%8D%E9%A1%B5%E9%9D%A2%E7%BC%BA%E9%A1%B5"><span class="nav-text">9.3 匿名页面缺页</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-1-do-anonymous-page"><span class="nav-text">9.3.1 do_anonymous_page</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-2-%E5%8C%BF%E5%90%8D%E9%A1%B5%E9%9D%A2%E5%88%86%E9%85%8D%E6%B5%81%E7%A8%8B"><span class="nav-text">9.3.2 匿名页面分配流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-4-%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84%E7%BC%BA%E9%A1%B5"><span class="nav-text">9.4 文件映射缺页</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-1-filemap-fault"><span class="nav-text">9.4.1 filemap_fault</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-2-%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84%E7%BC%BA%E9%A1%B5%E6%B5%81%E7%A8%8B"><span class="nav-text">9.4.2 文件映射缺页流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-5-%E5%86%99%E6%97%B6%E5%A4%8D%E5%88%B6"><span class="nav-text">9.5 写时复制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-5-1-do-wp-page"><span class="nav-text">9.5.1 do_wp_page</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-5-2-COW-%E6%B5%81%E7%A8%8B"><span class="nav-text">9.5.2 COW 流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-6-%E5%A0%86%E6%A0%88%E6%89%A9%E5%B1%95"><span class="nav-text">9.6 堆栈扩展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-6-1-expand-stack"><span class="nav-text">9.6.1 expand_stack</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-6-2-%E6%A0%88%E6%89%A9%E5%B1%95%E6%B5%81%E7%A8%8B"><span class="nav-text">9.6.2 栈扩展流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-7-%E7%BC%BA%E9%A1%B5%E7%BB%9F%E8%AE%A1"><span class="nav-text">9.7 缺页统计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-1-vm-fault-%E7%BB%93%E6%9E%84-%E5%AE%8C%E6%95%B4%E7%89%88"><span class="nav-text">9.7.1 vm_fault 结构 (完整版)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-2-fault-flag-%E6%A0%87%E5%BF%97"><span class="nav-text">9.7.2 fault_flag 标志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-3-%E7%BC%BA%E9%A1%B5%E6%A0%87%E5%BF%97%E4%BD%8D%E8%AF%B4%E6%98%8E"><span class="nav-text">9.7.3 缺页标志位说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-4-vm-fault-%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-text">9.7.4 vm_fault 返回值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-5-proc-%E6%8E%A5%E5%8F%A3"><span class="nav-text">9.7.5 &#x2F;proc 接口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-8-%E7%BC%BA%E9%A1%B5%E5%A4%84%E7%90%86%E5%86%B3%E7%AD%96%E6%A0%91"><span class="nav-text">9.8 缺页处理决策树</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-8-1-%E5%AE%8C%E6%95%B4%E5%86%B3%E7%AD%96%E6%B5%81%E7%A8%8B"><span class="nav-text">9.8.1 完整决策流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-8-2-%E5%A4%84%E7%90%86%E8%B7%AF%E5%BE%84%E6%80%BB%E7%BB%93"><span class="nav-text">9.8.2 处理路径总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-9-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93%E4%B8%8E%E8%B7%A8%E7%AB%A0%E8%8A%82%E5%85%B3%E8%81%94"><span class="nav-text">9.9 本章小结与跨章节关联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-9-1-%E6%9C%AC%E7%AB%A0%E8%A6%81%E7%82%B9"><span class="nav-text">9.9.1 本章要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-9-2-%E4%B8%8E%E5%85%B6%E4%BB%96%E7%AB%A0%E8%8A%82%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">9.9.2 与其他章节的关系</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

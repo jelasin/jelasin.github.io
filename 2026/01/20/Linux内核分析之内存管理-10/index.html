@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-10/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-10">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-10/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:32.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:23.041Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-10 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-10</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:32</span>
+        <span class="mobile">2026-01-20 21:39:32</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:23</span>
+            <span class="mobile">2026-02-24 14:05:23</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第10章：页面回收"><a href="#第10章：页面回收" class="headerlink" title="第10章：页面回收"></a>第10章：页面回收</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="10-1-页面回收概述"><a href="#10-1-页面回收概述" class="headerlink" title="10.1 页面回收概述"></a>10.1 页面回收概述</h2><h3 id="10-1-1-为什么需要页面回收"><a href="#10-1-1-为什么需要页面回收" class="headerlink" title="10.1.1 为什么需要页面回收"></a>10.1.1 为什么需要页面回收</h3><p>当系统内存不足时，内核需要回收一些页面以满足新的分配请求。</p>
+<p><strong>回收触发条件:</strong></p>
+<ul>
+<li>水位低于 low watermark</li>
+<li>分配高阶页面失败</li>
+<li>用户空间请求更多内存</li>
+<li>系统进入低内存状态</li>
+</ul>
+<h3 id="10-1-2-回收策略"><a href="#10-1-2-回收策略" class="headerlink" title="10.1.2 回收策略"></a>10.1.2 回收策略</h3><p>Linux 使用多种策略回收页面：</p>
+<ol>
+<li><strong>LRU 算法</strong>: 最近最少使用算法</li>
+<li><strong>多代 LRU (Multi-Gen LRU)</strong>: Linux 6.x 默认</li>
+<li><strong>交换 (Swap)</strong>: 将页面换出到磁盘</li>
+<li><strong>直接回收</strong>: 同步回收页面</li>
+<li><strong>Slab 收缩</strong>: 回收 Slab 缓存</li>
+</ol>
+<hr>
+<h2 id="10-2-LRU-链表"><a href="#10-2-LRU-链表" class="headerlink" title="10.2 LRU 链表"></a>10.2 LRU 链表</h2><h3 id="10-2-1-LRU-类型定义"><a href="#10-2-1-LRU-类型定义" class="headerlink" title="10.2.1 LRU 类型定义"></a>10.2.1 LRU 类型定义</h3><p><strong>位置:</strong> <code>include/linux/mmzone.h</code> 和 <code>include/linux/mm_inline.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">lru_list</span> &#123;</span></span><br><span class="line">    LRU_INACTIVE_ANON = <span class="number">0</span>,    <span class="comment">/* 非活跃匿名页 */</span></span><br><span class="line">    LRU_ACTIVE_ANON,          <span class="comment">/* 活跃匿名页 */</span></span><br><span class="line">    LRU_INACTIVE_FILE,        <span class="comment">/* 非活跃文件页 */</span></span><br><span class="line">    LRU_ACTIVE_FILE,          <span class="comment">/* 活跃文件页 */</span></span><br><span class="line">    LRU_UNEVICTABLE,          <span class="comment">/* 不可驱逐页 */</span></span><br><span class="line">    NR_LRU_LISTS</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> for_each_lru(lru) for (lru = 0; lru &lt; NR_LRU_LISTS; lru++)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> for_each_evictable_lru(lru) for (lru = 0; lru &lt;= LRU_ACTIVE_FILE; lru++)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-2-2-LRU-链表结构"><a href="#10-2-2-LRU-链表结构" class="headerlink" title="10.2.2 LRU 链表结构"></a>10.2.2 LRU 链表结构</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     LRU 链表                                 │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                               │</span><br><span class="line">│  活跃匿名页: [A] ←→ [A] ←→ [A] ←→ [A] ←→ ...                 │</span><br><span class="line">│  非活跃匿名页: [I] ←→ [I] ←→ [I] ←→ [I] ←→ ...               │</span><br><span class="line">│  活跃文件页: [F] ←→ [F] ←→ [F] ←→ [F] ←→ ...                 │</span><br><span class="line">│  非活跃文件页: [F] ←→ [F] ←→ [F] ←→ [F] ←→ ...               │</span><br><span class="line">│  不可驱逐: [U] ←→ [U] ←→ [U] ←→ [U] ←→ ...                   │</span><br><span class="line">│                                                               │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">A = Active (最近被访问)</span><br><span class="line">I = Inactive (最近未被访问)</span><br><span class="line">F = File page (文件映射)</span><br><span class="line">U = Unevictable (mlock, swap cache 等)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-2-3-LRU-链表操作"><a href="#10-2-3-LRU-链表操作" class="headerlink" title="10.2.3 LRU 链表操作"></a>10.2.3 LRU 链表操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 添加页面到 LRU */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">lru_cache_add</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">lru_cache_add_inactive_or_unevictable</span><span class="params">(<span class="keyword">struct</span> page *page,</span></span><br><span class="line"><span class="params">                                            <span class="keyword">struct</span> lruvec *lruvec)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从 LRU 删除 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">lru_cache_del</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 激活页面 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">mark_page_accessed</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为活跃 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">lru_cache_add_active</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为非活跃 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">lru_cache_add_inactive</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-3-页面状态转换"><a href="#10-3-页面状态转换" class="headerlink" title="10.3 页面状态转换"></a>10.3 页面状态转换</h2><h3 id="10-3-1-状态机"><a href="#10-3-1-状态机" class="headerlink" title="10.3.1 状态机"></a>10.3.1 状态机</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                                                                  │</span><br><span class="line">│   ┌──────────┐     新分配      ┌────────────┐                   │</span><br><span class="line">│   │  新页面  │ ─────────────→  │ INACTIVE   │                   │</span><br><span class="line">│   │          │                │ (ANON/FILE) │                   │</span><br><span class="line">│   └──────────┘                └─────────────┘                   │</span><br><span class="line">│                                         │                        │</span><br><span class="line">│                                         │ 被引用                 │</span><br><span class="line">│                                         ▼                        │</span><br><span class="line">│                                  ┌────────────┐                 │</span><br><span class="line">│                                  │  ACTIVE    │                 │</span><br><span class="line">│                                  │ (ANON/FILE) │                 │</span><br><span class="line">│                                  └─────────────┘                 │</span><br><span class="line">│                                         │                        │</span><br><span class="line">│                                         │ 时间流逝                │</span><br><span class="line">│                                         ▼                        │</span><br><span class="line">│                                  ┌────────────┐                 │</span><br><span class="line">│                                  │ INACTIVE   │                 │</span><br><span class="line">│                                  └─────────────┘                 │</span><br><span class="line">│                                         │                        │</span><br><span class="line">│                                         │ 释放                   │</span><br><span class="line">│                                         ▼                        │</span><br><span class="line">│                                  ┌────────────┐                 │</span><br><span class="line">│                                  │  空闲      │                 │</span><br><span class="line">│                                  │  Free      │                 │</span><br><span class="line">│                                  └────────────┘                 │</span><br><span class="line">│                                                                  │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-3-2-状态转换操作"><a href="#10-3-2-状态转换操作" class="headerlink" title="10.3.2 状态转换操作"></a>10.3.2 状态转换操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 激活页面 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">mark_page_accessed</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!PageActive(page) &amp;&amp; !PageUnevictable(page) &amp;&amp; PageLRU(page))</span><br><span class="line">        activate_page(page);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为非活跃 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">lru_cache_add_inactive</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!PageUnevictable(page))</span><br><span class="line">        lru_cache_add(page);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为不可驱逐 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">mark_page_unevictable</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">clear_page_unevictable</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-4-kswapd-内核线程"><a href="#10-4-kswapd-内核线程" class="headerlink" title="10.4 kswapd 内核线程"></a>10.4 kswapd 内核线程</h2><h3 id="10-4-1-kswapd-概述"><a href="#10-4-1-kswapd-概述" class="headerlink" title="10.4.1 kswapd 概述"></a>10.4.1 kswapd 概述</h3><p>kswapd 是每个内存节点的内核换页线程，负责异步回收页面。</p>
+<h3 id="10-4-2-kswapd-主循环"><a href="#10-4-2-kswapd-主循环" class="headerlink" title="10.4.2 kswapd 主循环"></a>10.4.2 kswapd 主循环</h3><p><strong>位置:</strong> <code>mm/vmscan.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">kswapd</span><span class="params">(<span class="type">void</span> *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> *<span class="title">pgdat</span> =</span> p;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">tsk</span> =</span> current;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设置调度策略 */</span></span><br><span class="line">    tsk-&gt;flags |= PF_MEMALLOC | PF_KSWAPD;</span><br><span class="line">    set_freezable();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!kthread_should_stop()) &#123;</span><br><span class="line">        <span class="comment">/* 等待需要回收 */</span></span><br><span class="line">        wait_event_freezable(kswapd_wait,</span><br><span class="line">                             kswapd_run(pgdat));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 执行页面回收 */</span></span><br><span class="line">        kswapd_run(pgdat);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 平衡节点 */</span></span><br><span class="line">        balance_pgdat(pgdat, order, highest_zoneidx);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-4-3-回收触发条件"><a href="#10-4-3-回收触发条件" class="headerlink" title="10.4.3 回收触发条件"></a>10.4.3 回收触发条件</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 检查是否需要唤醒 kswapd */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">pgdat_watermark_ok</span><span class="params">(<span class="keyword">struct</span> pglist_data *pgdat,</span></span><br><span class="line"><span class="params">                                       <span class="type">int</span> classzone_idx)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt;= classzone_idx; i++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> pgdat-&gt;node_zones + i;</span><br><span class="line">        <span class="keyword">if</span> (!zone_watermark_ok(zone, order, <span class="number">0</span>, classzone_idx))</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 唤醒 kswapd */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">wakeup_kswapd</span><span class="params">(<span class="keyword">struct</span> zone *zone, <span class="type">unsigned</span> <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                         <span class="keyword">enum</span> zone_type highest_zoneidx)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!pgdat_watermark_ok(zone-&gt;zone_pgdat, highest_zoneidx)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (waitqueue_active(&amp;pgdat-&gt;kswapd_wait))</span><br><span class="line">            wake_up_interruptible(&amp;pgdat-&gt;kswapd_wait);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-4-4-kswapd-工作流程"><a href="#10-4-4-kswapd-工作流程" class="headerlink" title="10.4.4 kswapd 工作流程"></a>10.4.4 kswapd 工作流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    kswapd 工作流程                          │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                               │</span><br><span class="line">│  1. 等待唤醒 (kswapd_wait)                                   │</span><br><span class="line">│                                                               │</span><br><span class="line">│  2. 检查水位 (pgdat_watermark_ok)                           │</span><br><span class="line">│     - 如果水位 OK，继续等待                                  │</span><br><span class="line">│     - 如果水位不足，开始回收                                 │</span><br><span class="line">│                                                               │</span><br><span class="line">│  3. 执行回收 (balance_pgdat)                                │</span><br><span class="line">│     - 扫描 LRU 链表                                           │</span><br><span class="line">│     - 回收非活跃页面                                         │</span><br><span class="line">│     - 将匿名页换出到 swap                                    │</span><br><span class="line">│     - 释放文件页                                             │</span><br><span class="line">│                                                               │</span><br><span class="line">│  4. 检查是否达到水位                                        │</span><br><span class="line">│     - 如果达到 high watermark，停止回收                      │</span><br><span class="line">│     - 如果未达到，继续回收                                   │</span><br><span class="line">│                                                               │</span><br><span class="line">│  5. 返回等待状态                                             │</span><br><span class="line">│                                                               │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-5-直接回收"><a href="#10-5-直接回收" class="headerlink" title="10.5 直接回收"></a>10.5 直接回收</h2><h3 id="10-5-1-直接回收触发"><a href="#10-5-1-直接回收触发" class="headerlink" title="10.5.1 直接回收触发"></a>10.5.1 直接回收触发</h3><p>当 kswapd 无法快速满足分配请求时，会触发直接回收。</p>
+<h3 id="10-5-2-do-try-to-free-pages"><a href="#10-5-2-do-try-to-free-pages" class="headerlink" title="10.5.2 do_try_to_free_pages"></a>10.5.2 do_try_to_free_pages</h3><p><strong>位置:</strong> <code>mm/vmscan.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">do_try_to_free_pages</span><span class="params">(<span class="keyword">struct</span> zonelist *zonelist,</span></span><br><span class="line"><span class="params">                                   <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                                   <span class="type">gfp_t</span> gfp_mask)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">scan_control</span> <span class="title">sc</span> =</span> &#123;</span><br><span class="line">        .gfp_mask = gfp_mask,</span><br><span class="line">        .order = order,</span><br><span class="line">        .may_writepage = !laptop_mode,</span><br><span class="line">        .nr_to_reclaim = SWAP_CLUSTER_MAX,</span><br><span class="line">        .may_unmap = <span class="number">1</span>,</span><br><span class="line">        .may_swap = <span class="number">1</span>,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 执行回收扫描 */</span></span><br><span class="line">    <span class="keyword">while</span> (!sc.proactive) &#123;</span><br><span class="line">        <span class="comment">/* 收缩 slab */</span></span><br><span class="line">        shrink_slab(gfp_mask, order);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 收缩 LRU */</span></span><br><span class="line">        shrink_zones(zonelist, &amp;sc);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 检查是否完成 */</span></span><br><span class="line">        <span class="keyword">if</span> (sc.nr_reclaimed &gt;= sc.nr_to_reclaim)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> sc.nr_reclaimed;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-5-3-直接回收流程"><a href="#10-5-3-直接回收流程" class="headerlink" title="10.5.3 直接回收流程"></a>10.5.3 直接回收流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">alloc_pages() 失败</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 唤醒 kswapd                      │</span><br><span class="line">│    - 异步回收                        │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        仍然不够</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 直接回收 (do_try_to_free_pages)   │</span><br><span class="line">│    - 同步回收页面                    │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 收缩 slab                        │</span><br><span class="line">│    - shrink_slab                     │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 收缩 LRU                         │</span><br><span class="line">│    - shrink_zones                   │</span><br><span class="line">│    - shrink_node                    │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 再次尝试分配                     │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-6-页面回收算法"><a href="#10-6-页面回收算法" class="headerlink" title="10.6 页面回收算法"></a>10.6 页面回收算法</h2><h3 id="10-6-1-scan-control-结构"><a href="#10-6-1-scan-control-结构" class="headerlink" title="10.6.1 scan_control 结构"></a>10.6.1 scan_control 结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">scan_control</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 扫描目标 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_to_reclaim;     <span class="comment">/* 目标回收页面数 */</span></span><br><span class="line">    <span class="type">gfp_t</span> gfp_mask;                  <span class="comment">/* GFP 标志 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 扫描统计 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_scanned;        <span class="comment">/* 已扫描页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_reclaimed;      <span class="comment">/* 已回收页面数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 扫描选项 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> order;              <span class="comment">/* 分配阶数 */</span></span><br><span class="line">    <span class="type">int</span> may_writepage;               <span class="comment">/* 是否写回脏页 */</span></span><br><span class="line">    <span class="type">int</span> may_unmap;                   <span class="comment">/* 是否取消映射 */</span></span><br><span class="line">    <span class="type">int</span> may_swap;                    <span class="comment">/* 是否交换 */</span></span><br><span class="line">    <span class="type">int</span> proactive;                   <span class="comment">/* 主动回收 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-6-2-LRU-扫描"><a href="#10-6-2-LRU-扫描" class="headerlink" title="10.6.2 LRU 扫描"></a>10.6.2 LRU 扫描</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 扫描 LRU 链表 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">shrink_lruvec</span><span class="params">(<span class="keyword">struct</span> lruvec *lruvec, <span class="keyword">struct</span> scan_control *sc)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_to_scan;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">lru_list</span> <span class="title">lru</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 计算扫描数量 */</span></span><br><span class="line">    <span class="keyword">while</span> (sc-&gt;nr_reclaimed &lt; sc-&gt;nr_to_reclaim) &#123;</span><br><span class="line">        <span class="comment">/* 扫描每个 LRU */</span></span><br><span class="line">        for_each_evictable_lru(lru) &#123;</span><br><span class="line">            <span class="comment">/* 获取扫描数量 */</span></span><br><span class="line">            nr_to_scan = get_nr_to_scan(lruvec, lru, sc);</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 扫描页面 */</span></span><br><span class="line">            <span class="keyword">while</span> (nr_to_scan-- &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="comment">/* 获取页面 */</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span> =</span> isolate_lru_page(lruvec, lru);</span><br><span class="line"></span><br><span class="line">                <span class="comment">/* 检查是否可以回收 */</span></span><br><span class="line">                <span class="keyword">if</span> (!page)</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/* 尝试回收 */</span></span><br><span class="line">                <span class="keyword">if</span> (!page_reclaimable(page))</span><br><span class="line">                    putback_lru_page(page);</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                    reclaim_page(page, sc);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 检查是否完成 */</span></span><br><span class="line">        <span class="keyword">if</span> (sc-&gt;nr_reclaimed &gt;= sc-&gt;nr_to_reclaim)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-7-多代-LRU-Multi-Gen-LRU"><a href="#10-7-多代-LRU-Multi-Gen-LRU" class="headerlink" title="10.7 多代 LRU (Multi-Gen LRU)"></a>10.7 多代 LRU (Multi-Gen LRU)</h2><h3 id="10-7-1-MGLRU-概述"><a href="#10-7-1-MGLRU-概述" class="headerlink" title="10.7.1 MGLRU 概述"></a>10.7.1 MGLRU 概述</h3><p>Linux 6.x 引入了多代 LRU (Multi-Gen LRU，MGLRU)，替代了传统的 LRU 算法。</p>
+<p><strong>MGLRU 优势:</strong></p>
+<ul>
+<li>更好的页面老化机制</li>
+<li>减少误杀活跃页面</li>
+<li>更好的性能</li>
+<li>支持多代页面跟踪</li>
+</ul>
+<h3 id="10-7-2-MGLRU-数据结构"><a href="#10-7-2-MGLRU-数据结构" class="headerlink" title="10.7.2 MGLRU 数据结构"></a>10.7.2 MGLRU 数据结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* MGLRU 配置 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAX_NR_GENS    3   <span class="comment">/* 最大代数 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* MGLRU 状态 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_mm_walk</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mem_cgroup</span> *<span class="title">memcg</span>;</span></span><br><span class="line">    <span class="type">lru_gen_fn_t</span> fn;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> bitmap;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> max_seq;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> start_seq;</span><br><span class="line">    <span class="type">int</span> batch_size;</span><br><span class="line">    <span class="type">int</span> nr_pages[MAX_NR_GENS][ANON_AND_FILE];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* MGLRU 统计 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_memcg</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> timestamp;</span><br><span class="line">    <span class="type">int</span> nr_nodes;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_mm_walk</span> <span class="title">nodes</span>[];</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-7-3-MGLRU-初始化"><a href="#10-7-3-MGLRU-初始化" class="headerlink" title="10.7.3 MGLRU 初始化"></a>10.7.3 MGLRU 初始化</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化 MGLRU */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">lru_gen_init_lruvec</span><span class="params">(<span class="keyword">struct</span> lruvec *lruvec)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> i, j;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; MIN_NR_GENS + <span class="number">1</span>; i++) &#123;</span><br><span class="line">        <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; ANON_AND_FILE; j++) &#123;</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_struct</span> *<span class="title">lrugen</span> =</span> &amp;lruvec-&gt;lrugen[i][j];</span><br><span class="line">            lrugen-&gt;max_seq = <span class="number">0</span>;</span><br><span class="line">            lrugen-&gt;min_seq = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-8-Slab-收缩"><a href="#10-8-Slab-收缩" class="headerlink" title="10.8 Slab 收缩"></a>10.8 Slab 收缩</h2><h3 id="10-8-1-shrinker-接口"><a href="#10-8-1-shrinker-接口" class="headerlink" title="10.8.1 shrinker 接口"></a>10.8.1 shrinker 接口</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* shrinker 结构 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">shrinker</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="title function_">long</span> <span class="params">(*count_objects)</span><span class="params">(<span class="keyword">struct</span> shrinker *,</span></span><br><span class="line"><span class="params">                                    <span class="keyword">struct</span> shrink_control *sc)</span>;</span><br><span class="line">    <span class="type">unsigned</span> <span class="title function_">long</span> <span class="params">(*scan_objects)</span><span class="params">(<span class="keyword">struct</span> shrinker *,</span></span><br><span class="line"><span class="params">                                   <span class="keyword">struct</span> shrink_control *sc)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> seeks;                      <span class="comment">/* 寻找次数 */</span></span><br><span class="line">    <span class="type">long</span> batch;                     <span class="comment">/* 批量大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 注册 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span></span><br><span class="line">    <span class="type">void</span> *private_data;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-8-2-注册-shrinker"><a href="#10-8-2-注册-shrinker" class="headerlink" title="10.8.2 注册 shrinker"></a>10.8.2 注册 shrinker</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 注册 shrinker */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">register_shrinker</span><span class="params">(<span class="keyword">struct</span> shrinker *shrinker)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 注销 shrinker */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">unregister_shrinker</span><span class="params">(<span class="keyword">struct</span> shrinker *shrinker)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 注册动态 shrinker */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">prealloc_shrinker</span><span class="params">(<span class="keyword">struct</span> shrinker *shrinker)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">free_prealloced_shrinker</span><span class="params">(<span class="keyword">struct</span> shrinker *shrinker)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-8-3-收缩-Slab"><a href="#10-8-3-收缩-Slab" class="headerlink" title="10.8.3 收缩 Slab"></a>10.8.3 收缩 Slab</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 收缩 slab 缓存 */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">shrink_slab</span><span class="params">(<span class="type">gfp_t</span> gfp_mask, <span class="type">int</span> order)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">shrink_control</span> <span class="title">sc</span> =</span> &#123;</span><br><span class="line">        .gfp_mask = gfp_mask,</span><br><span class="line">        .nr_to_scan = <span class="number">0</span>,</span><br><span class="line">        .nr_scanned = <span class="number">0</span>,</span><br><span class="line">        .nr_reclaimed = <span class="number">0</span>,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 遍历所有 shrinker */</span></span><br><span class="line">    do_shrinker_register(&amp;sc);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> sc.nr_reclaimed;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-9-回收统计"><a href="#10-9-回收统计" class="headerlink" title="10.9 回收统计"></a>10.9 回收统计</h2><h3 id="10-9-1-proc-vmstat"><a href="#10-9-1-proc-vmstat" class="headerlink" title="10.9.1 &#x2F;proc&#x2F;vmstat"></a>10.9.1 &#x2F;proc&#x2F;vmstat</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看页面回收统计</span></span><br><span class="line"><span class="built_in">cat</span> /proc/vmstat | grep -i reclaim</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出</span></span><br><span class="line"><span class="comment"># nr_reclaimed: 12345678         /* 总回收页面数 */</span></span><br><span class="line"><span class="comment"># nr_slab_reclaimable: 12345     /* 可回收 slab 对象 */</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-9-2-proc-meminfo"><a href="#10-9-2-proc-meminfo" class="headerlink" title="10.9.2 &#x2F;proc&#x2F;meminfo"></a>10.9.2 &#x2F;proc&#x2F;meminfo</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看内存信息</span></span><br><span class="line"><span class="built_in">cat</span> /proc/meminfo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出</span></span><br><span class="line"><span class="comment"># Active:          12345678 kB   /* 活跃页面 */</span></span><br><span class="line"><span class="comment"># Inactive:        12345678 kB   /* 非活跃页面 */</span></span><br><span class="line"><span class="comment"># Active(anon):     1234567 kB    /* 活跃匿名页 */</span></span><br><span class="line"><span class="comment"># Inactive(anon):   1234567 kB    /* 非活跃匿名页 */</span></span><br><span class="line"><span class="comment"># Active(file):     1234567 kB    /* 活跃文件页 */</span></span><br><span class="line"><span class="comment"># Inactive(file):   1234567 kB    /* 非活跃文件页 */</span></span><br><span class="line"><span class="comment"># Unevictable:      12345 kB      /* 不可驱逐页 */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<hr>
+<h2 id="10-10-内存回收协同机制"><a href="#10-10-内存回收协同机制" class="headerlink" title="10.10 内存回收协同机制"></a>10.10 内存回收协同机制</h2><h3 id="10-10-1-回收协同工作流"><a href="#10-10-1-回收协同工作流" class="headerlink" title="10.10.1 回收协同工作流"></a>10.10.1 回收协同工作流</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    内存回收协同机制                                  │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│  触发条件: free_pages &lt; low_wmark                                  │</span><br><span class="line">│                                                                     │</span><br><span class="line">│  ┌────────────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │                      分配请求                                │    │</span><br><span class="line">│  │                 alloc_pages(order=2)                        │    │</span><br><span class="line">│  └──────────────────────────────┬─────────────────────────────┘    │</span><br><span class="line">│                                 │                                   │</span><br><span class="line">│                                 ▼                                   │</span><br><span class="line">│                    检查水位 (zone_watermark_ok)                     │</span><br><span class="line">│                                 │                                   │</span><br><span class="line">│              ┌──────────────────┼──────────────────┐                │</span><br><span class="line">│              │                  │                  │                │</span><br><span class="line">│         水位OK           水位&lt;low           水位&lt;min               │</span><br><span class="line">│              │                  │                  │                │</span><br><span class="line">│              ▼                  ▼                  ▼                │</span><br><span class="line">│         直接返回      ┌──────────────────┐   OOM Killer          │</span><br><span class="line">│                      │ 异步回收          │      │                 │</span><br><span class="line">│                      │ wakeup_kswapd()  │      │                 │</span><br><span class="line">│                      │   继续尝试分配    │      │                 │</span><br><span class="line">│                      └────────┬─────────┘      │                 │</span><br><span class="line">│                               │               │                 │</span><br><span class="line">│                               │ 仍不足?         │                 │</span><br><span class="line">│                               ▼               ▼                 │</span><br><span class="line">│                      ┌──────────────────┐   触发OOM             │</span><br><span class="line">│                      │ 同步回收          │                        │</span><br><span class="line">│                      │ do_try_to_free   │                        │</span><br><span class="line">│                      │   _pages()        │                        │</span><br><span class="line">│                      └────────┬─────────┘                        │</span><br><span class="line">│                               │                                   │</span><br><span class="line">│                               ▼                                   │</span><br><span class="line">│               ┌───────────────────────────────────┐                │</span><br><span class="line">│               │        回收协同工作流              │                │</span><br><span class="line">│               ├───────────────────────────────────┤                │</span><br><span class="line">│               │                                   │                │</span><br><span class="line">│               │  ┌─────────┐    ┌─────────┐     │                │</span><br><span class="line">│               │  │ kswapd  │    │kcompactd│     │                │</span><br><span class="line">│               │  │ 后台    │    │ 后台    │     │                │</span><br><span class="line">│               │  │ 回收    │    │ 压缩    │     │                │</span><br><span class="line">│               │  └────┬────┘    └────┬────┘     │                │</span><br><span class="line">│               │       │              │         │                │</span><br><span class="line">│               │       ▼              ▼         │                │</span><br><span class="line">│               │  ┌─────────────────────────┐  │                │</span><br><span class="line">│               │  │  LRU扫描 (shrink_lruvec) │  │                │</span><br><span class="line">│               │  │  ├─ 匿名页 → swap        │  │                │</span><br><span class="line">│               │  │  ├─ 文件页 → 释放        │  │                │</span><br><span class="line">│               │  │  └─ Slab → shrink_slab   │  │                │</span><br><span class="line">│               │  └─────────────────────────┘  │                │</span><br><span class="line">│               │                                   │                │</span><br><span class="line">│               │  ┌─────────────────────────┐     │                │</span><br><span class="line">│               │  │  内存压缩 (compact_zone)│     │                │</span><br><span class="line">│               │  │  └─ 迁移可移动页面      │     │                │</span><br><span class="line">│               │  │     整理内存碎片        │     │                │</span><br><span class="line">│               │  └─────────────────────────┘     │                │</span><br><span class="line">│               │                                   │                │</span><br><span class="line">│               └───────────────────────────────────┘                │</span><br><span class="line">│                           │                                       │</span><br><span class="line">│                           ▼                                       │</span><br><span class="line">│                   达到水位要求?                                       │</span><br><span class="line">│                           │                                       │</span><br><span class="line">│              ┌──────────────┼──────────────┐                        │</span><br><span class="line">│              │              │              │                        │</span><br><span class="line">│             YES            NO             继续尝试                   │</span><br><span class="line">│              │              │              │                        │</span><br><span class="line">│              ▼              ▼              ▼                        │</span><br><span class="line">│          分配成功     分配失败        触发OOM                         │</span><br><span class="line">│                                                                     │</span><br><span class="line">│  相关章节:                                                         │</span><br><span class="line">│  ─────────                                                         │</span><br><span class="line">│  • ch02 - 水位管理 (watermark)                                     │</span><br><span class="line">│  • ch03 - 页面分配 (快速/慢速路径)                                  │</span><br><span class="line">│  • ch10 - 页面回收 (kswapd, 直接回收)                                │</span><br><span class="line">│  • ch13 - 内存压缩 (kcompactd, page migration)                       │</span><br><span class="line">│  • ch14 - memcg (内存限制与 OOM)                                    │</span><br><span class="line">│                                                                     │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="10-10-2-回收组件协作"><a href="#10-10-2-回收组件协作" class="headerlink" title="10.10.2 回收组件协作"></a>10.10.2 回收组件协作</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    回收组件协作图                            │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                            │</span><br><span class="line">│   分配请求 (alloc_pages)                                   │</span><br><span class="line">│         │                                                  │</span><br><span class="line">│         ▼                                                  │</span><br><span class="line">│   ┌─────────────────────────────────────┐                 │</span><br><span class="line">│   │         检查水位 (watermark)        │                 │</span><br><span class="line">│   └─────────────────────────────────────┘                 │</span><br><span class="line">│         │                                                  │</span><br><span class="line">│         ├──► 水位 &lt; min ──► OOM Killer  │                  │</span><br><span class="line">│         │                                (ch14:memcg)       │</span><br><span class="line">│         │                                                  │</span><br><span class="line">│         ├──► 水位 &lt; low ──► wakeup_kswapd()                │</span><br><span class="line">│         │                      │                          │</span><br><span class="line">│         │                      ▼                          │</span><br><span class="line">│         │              ┌────────────────┐                 │</span><br><span class="line">│         │              │   kswapd      │                 │</span><br><span class="line">│         │              │  异步回收      │                 │</span><br><span class="line">│         │              └───────┬────────┘                 │</span><br><span class="line">│         │                      │                          │</span><br><span class="line">│         │                      ├──► LRU扫描               │</span><br><span class="line">│         │                      │    (匿名→swap)          │</span><br><span class="line">│         │                      │    (文件→释放)          │</span><br><span class="line">│         │                      │                          │</span><br><span class="line">│         │                      └───► 唤醒 kcompactd       │</span><br><span class="line">│         │                                (ch13)            │</span><br><span class="line">│         │                                                  │</span><br><span class="line">│         └──► 仍然不足 ──► do_try_to_free_pages()         │</span><br><span class="line">│                            │                             │</span><br><span class="line">│                            ▼                             │</span><br><span class="line">│                    ┌───────────────┐                      │</span><br><span class="line">│                    │  直接回收      │                      │</span><br><span class="line">│                    │  (同步阻塞)    │                      │</span><br><span class="line">│                    └───────┬───────┘                      │</span><br><span class="line">│                            │                             │</span><br><span class="line">│                            ├──► shrink_lruvec           │</span><br><span class="line">│                            │    (回收页面)               │</span><br><span class="line">│                            │                             │</span><br><span class="line">│                            ├──► shrink_slab             │</span><br><span class="line">│                            │    (回收缓存)               │</span><br><span class="line">│                            │                             │</span><br><span class="line">│                            └──► compact_zone            │</span><br><span class="line">│                                 (内存压缩)                │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="10-11-本章小结与跨章节关联"><a href="#10-11-本章小结与跨章节关联" class="headerlink" title="10.11 本章小结与跨章节关联"></a>10.11 本章小结与跨章节关联</h2><h3 id="10-11-1-本章要点"><a href="#10-11-1-本章要点" class="headerlink" title="10.11.1 本章要点"></a>10.11.1 本章要点</h3><p>本章介绍了 Linux 6.12 的页面回收：</p>
+<ol>
+<li><strong>回收概述</strong>: 水位低于 low 时触发回收</li>
+<li><strong>LRU 链表</strong>: 活跃&#x2F;非活跃，匿名&#x2F;文件页分类</li>
+<li><strong>页面状态</strong>: 新页面 → INACTIVE → ACTIVE → 空闲</li>
+<li><strong>kswapd</strong>: 异步回收内核线程</li>
+<li><strong>直接回收</strong>: 同步回收，分配失败时触发</li>
+<li><strong>回收算法</strong>: scan_control，LRU 扫描</li>
+<li><strong>MGLRU</strong>: 多代 LRU，更好的页面老化</li>
+<li><strong>Slab 收缩</strong>: shrinker 接口</li>
+</ol>
+<h3 id="10-11-2-与其他章节的关系"><a href="#10-11-2-与其他章节的关系" class="headerlink" title="10.11.2 与其他章节的关系"></a>10.11.2 与其他章节的关系</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 本章内容 (页面回收)                                          │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                            │</span><br><span class="line">│  watermark检查 ──▶ ch02:Zone水位                            │</span><br><span class="line">│                    (min/low/high/promo)                      │</span><br><span class="line">│                                                            │</span><br><span class="line">│  kswapd唤醒 ────▶ ch02:pglist_data (kswapd_wait/kswapd)      │</span><br><span class="line">│                                                            │</span><br><span class="line">│  LRU扫描 ───────▶ ch02:Page状态 (PG_active/PG_lru)          │</span><br><span class="line">│                                                            │</span><br><span class="line">│  shrink_lruvec ──▶ ch02:lruvec (LRU向量管理)                │</span><br><span class="line">│                                                            │</span><br><span class="line">│  匿名页回收 ────▶ ch12:Swap (换出到磁盘)                     │</span><br><span class="line">│                                                            │</span><br><span class="line">│  文件页回收 ────▶ ch12:页缓存 (释放干净页面)                 │</span><br><span class="line">│                                                            │</span><br><span class="line">│  shrink_slab ───▶ ch08:Slab分配器 (收缩slab缓存)             │</span><br><span class="line">│                                                            │</span><br><span class="line">│  直接回收 ──────▶ ch07:alloc_pages (分配失败触发)            │</span><br><span class="line">│                                                            │</span><br><span class="line">│  kcompactd ─────▶ ch13:内存压缩 (整理碎片)                   │</span><br><span class="line">│                                                            │</span><br><span class="line">│  OOM Killer ────▶ ch14:memcg (内存限制触发)                  │</span><br><span class="line">│                                                            │</span><br><span class="line">│  MGLRU ─────────▶ ch02:lruvec (多代LRU数据结构)              │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键回收路径：</strong></p>
+<ol>
+<li><p><strong>异步回收</strong>: <code>水位不足</code> → <code>wakeup_kswapd()</code> → <code>LRU扫描</code> → <code>swap/释放</code> → <code>水位恢复</code></p>
+<ul>
+<li>相关章节: ch02 (watermark), ch12 (swap机制)</li>
+</ul>
+</li>
+<li><p><strong>直接回收</strong>: <code>alloc_pages失败</code> → <code>do_try_to_free_pages()</code> → <code>同步回收</code> → <code>重试分配</code></p>
+<ul>
+<li>相关章节: ch07 (页面分配)</li>
+</ul>
+</li>
+<li><p><strong>压缩配合</strong>: <code>高阶分配失败</code> → <code>wakeup_kcompactd()</code> → <code>页面迁移</code> → <code>碎片整理</code></p>
+<ul>
+<li>相关章节: ch13 (内存压缩)</li>
+</ul>
+</li>
+<li><p><strong>OOM处理</strong>: <code>回收失败</code> → <code>OOM触发</code> → <code>memcg检查</code> → <code>OOM Killer</code></p>
+<ul>
+<li>相关章节: ch14 (memcg, OOM控制)</li>
+</ul>
+</li>
+</ol>
+<p>下一章将介绍内存映射。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-10</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:32</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:23
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-10/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-11/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-11</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-09/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-09</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-10</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC10%E7%AB%A0%EF%BC%9A%E9%A1%B5%E9%9D%A2%E5%9B%9E%E6%94%B6"><span class="nav-text">第10章：页面回收</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#10-1-%E9%A1%B5%E9%9D%A2%E5%9B%9E%E6%94%B6%E6%A6%82%E8%BF%B0"><span class="nav-text">10.1 页面回收概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E9%A1%B5%E9%9D%A2%E5%9B%9E%E6%94%B6"><span class="nav-text">10.1.1 为什么需要页面回收</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-2-%E5%9B%9E%E6%94%B6%E7%AD%96%E7%95%A5"><span class="nav-text">10.1.2 回收策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-2-LRU-%E9%93%BE%E8%A1%A8"><span class="nav-text">10.2 LRU 链表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-1-LRU-%E7%B1%BB%E5%9E%8B%E5%AE%9A%E4%B9%89"><span class="nav-text">10.2.1 LRU 类型定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-2-LRU-%E9%93%BE%E8%A1%A8%E7%BB%93%E6%9E%84"><span class="nav-text">10.2.2 LRU 链表结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-3-LRU-%E9%93%BE%E8%A1%A8%E6%93%8D%E4%BD%9C"><span class="nav-text">10.2.3 LRU 链表操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-3-%E9%A1%B5%E9%9D%A2%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="nav-text">10.3 页面状态转换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-3-1-%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-text">10.3.1 状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-3-2-%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2%E6%93%8D%E4%BD%9C"><span class="nav-text">10.3.2 状态转换操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-4-kswapd-%E5%86%85%E6%A0%B8%E7%BA%BF%E7%A8%8B"><span class="nav-text">10.4 kswapd 内核线程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-1-kswapd-%E6%A6%82%E8%BF%B0"><span class="nav-text">10.4.1 kswapd 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-2-kswapd-%E4%B8%BB%E5%BE%AA%E7%8E%AF"><span class="nav-text">10.4.2 kswapd 主循环</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-3-%E5%9B%9E%E6%94%B6%E8%A7%A6%E5%8F%91%E6%9D%A1%E4%BB%B6"><span class="nav-text">10.4.3 回收触发条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-4-kswapd-%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-text">10.4.4 kswapd 工作流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-5-%E7%9B%B4%E6%8E%A5%E5%9B%9E%E6%94%B6"><span class="nav-text">10.5 直接回收</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-5-1-%E7%9B%B4%E6%8E%A5%E5%9B%9E%E6%94%B6%E8%A7%A6%E5%8F%91"><span class="nav-text">10.5.1 直接回收触发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-5-2-do-try-to-free-pages"><span class="nav-text">10.5.2 do_try_to_free_pages</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-5-3-%E7%9B%B4%E6%8E%A5%E5%9B%9E%E6%94%B6%E6%B5%81%E7%A8%8B"><span class="nav-text">10.5.3 直接回收流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-6-%E9%A1%B5%E9%9D%A2%E5%9B%9E%E6%94%B6%E7%AE%97%E6%B3%95"><span class="nav-text">10.6 页面回收算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-6-1-scan-control-%E7%BB%93%E6%9E%84"><span class="nav-text">10.6.1 scan_control 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-6-2-LRU-%E6%89%AB%E6%8F%8F"><span class="nav-text">10.6.2 LRU 扫描</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-7-%E5%A4%9A%E4%BB%A3-LRU-Multi-Gen-LRU"><span class="nav-text">10.7 多代 LRU (Multi-Gen LRU)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-7-1-MGLRU-%E6%A6%82%E8%BF%B0"><span class="nav-text">10.7.1 MGLRU 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-7-2-MGLRU-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">10.7.2 MGLRU 数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-7-3-MGLRU-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">10.7.3 MGLRU 初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-8-Slab-%E6%94%B6%E7%BC%A9"><span class="nav-text">10.8 Slab 收缩</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-8-1-shrinker-%E6%8E%A5%E5%8F%A3"><span class="nav-text">10.8.1 shrinker 接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-8-2-%E6%B3%A8%E5%86%8C-shrinker"><span class="nav-text">10.8.2 注册 shrinker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-8-3-%E6%94%B6%E7%BC%A9-Slab"><span class="nav-text">10.8.3 收缩 Slab</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-9-%E5%9B%9E%E6%94%B6%E7%BB%9F%E8%AE%A1"><span class="nav-text">10.9 回收统计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-9-1-proc-vmstat"><span class="nav-text">10.9.1 &#x2F;proc&#x2F;vmstat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-9-2-proc-meminfo"><span class="nav-text">10.9.2 &#x2F;proc&#x2F;meminfo</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-10-%E5%86%85%E5%AD%98%E5%9B%9E%E6%94%B6%E5%8D%8F%E5%90%8C%E6%9C%BA%E5%88%B6"><span class="nav-text">10.10 内存回收协同机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-10-1-%E5%9B%9E%E6%94%B6%E5%8D%8F%E5%90%8C%E5%B7%A5%E4%BD%9C%E6%B5%81"><span class="nav-text">10.10.1 回收协同工作流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-10-2-%E5%9B%9E%E6%94%B6%E7%BB%84%E4%BB%B6%E5%8D%8F%E4%BD%9C"><span class="nav-text">10.10.2 回收组件协作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-11-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93%E4%B8%8E%E8%B7%A8%E7%AB%A0%E8%8A%82%E5%85%B3%E8%81%94"><span class="nav-text">10.11 本章小结与跨章节关联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-11-1-%E6%9C%AC%E7%AB%A0%E8%A6%81%E7%82%B9"><span class="nav-text">10.11.1 本章要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-11-2-%E4%B8%8E%E5%85%B6%E4%BB%96%E7%AB%A0%E8%8A%82%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">10.11.2 与其他章节的关系</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

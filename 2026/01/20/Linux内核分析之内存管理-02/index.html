@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-02/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-02">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-02/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:38:51.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:04:44.078Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-02 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-02</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:38:51</span>
+        <span class="mobile">2026-01-20 21:38:51</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:04:44</span>
+            <span class="mobile">2026-02-24 14:04:44</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第2章：物理内存模型"><a href="#第2章：物理内存模型" class="headerlink" title="第2章：物理内存模型"></a>第2章：物理内存模型</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="2-1-内存节点-Node"><a href="#2-1-内存节点-Node" class="headerlink" title="2.1 内存节点 (Node)"></a>2.1 内存节点 (Node)</h2><h3 id="2-1-1-UMA-vs-NUMA-架构"><a href="#2-1-1-UMA-vs-NUMA-架构" class="headerlink" title="2.1.1 UMA vs NUMA 架构"></a>2.1.1 UMA vs NUMA 架构</h3><p>Linux 内核支持两种主要的物理内存架构模型：</p>
+<h4 id="UMA-Uniform-Memory-Access-均匀内存访问"><a href="#UMA-Uniform-Memory-Access-均匀内存访问" class="headerlink" title="UMA (Uniform Memory Access) - 均匀内存访问"></a>UMA (Uniform Memory Access) - 均匀内存访问</h4><p><strong>定义</strong>：所有处理器访问所有内存单元的时间相同，内存是统一共享的。</p>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>单一共享内存空间，所有 CPU 通过相同的内存总线访问内存</li>
+<li>统一的内存控制器，无本地&#x2F;远程内存之分</li>
+<li>内存访问延迟对所有 CPU 一致</li>
+<li>结构简单，编程模型直观</li>
+</ul>
+<p><strong>典型应用</strong>：</p>
+<ul>
+<li>单处理器系统</li>
+<li>对称多处理器 (SMP) 工作站</li>
+<li>小型服务器</li>
+<li>嵌入式系统</li>
+</ul>
+<p><strong>优缺点</strong>：</p>
+<ul>
+<li>✅ 简单的内存访问模型，易于编程</li>
+<li>✅ 无需考虑内存局部性优化</li>
+<li>❌ 扩展性差，内存总线成为瓶颈</li>
+<li>❌ 多 CPU 竞争内存带宽</li>
+</ul>
+<p><strong>UMA 架构示意图：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    UMA 架构 (SMP 系统)                      │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│   CPU0    CPU1    CPU2    CPU3                             │</span><br><span class="line">│    │       │       │       │                               │</span><br><span class="line">│    └───────┴───────┴───────┘                               │</span><br><span class="line">│            │                                               │</span><br><span class="line">│            ▼                                               │</span><br><span class="line">│   ┌─────────────────────┐                                  │</span><br><span class="line">│   │   统一内存控制器     │                                  │</span><br><span class="line">│   └─────────┬───────────┘                                  │</span><br><span class="line">│             │                                               │</span><br><span class="line">│             ▼                                               │</span><br><span class="line">│   ┌─────────────────────────────────┐                      │</span><br><span class="line">│   │                                 │                      │</span><br><span class="line">│   │   物理内存 (统一地址空间)        │                      │</span><br><span class="line">│   │                                 │                      │</span><br><span class="line">│   │   Node 0 (contig_page_data)    │                      │</span><br><span class="line">│   │   ├── Zone DMA                  │                      │</span><br><span class="line">│   │   ├── Zone Normal               │                      │</span><br><span class="line">│   │   └── Zone Movable              │                      │</span><br><span class="line">│   │                                 │                      │</span><br><span class="line">│   └─────────────────────────────────┘                      │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">所有 CPU 访问内存的延迟相同</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="NUMA-Non-Uniform-Memory-Access-非均匀内存访问"><a href="#NUMA-Non-Uniform-Memory-Access-非均匀内存访问" class="headerlink" title="NUMA (Non-Uniform Memory Access) - 非均匀内存访问"></a>NUMA (Non-Uniform Memory Access) - 非均匀内存访问</h4><p><strong>定义</strong>：处理器访问本地内存的速度快于访问远程内存。</p>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>多个节点 (Node)，每个节点包含 CPU 和本地内存</li>
+<li>节点间通过互联总线连接 (QPI, HyperTransport, Infinity Fabric 等)</li>
+<li>存在本地内存 (快速访问) 和远程内存 (慢速访问)</li>
+<li>需要考虑内存局部性优化</li>
+</ul>
+<p><strong>典型应用</strong>：</p>
+<ul>
+<li>大型服务器 (2 路、4 路、8 路及以上)</li>
+<li>高性能计算 (HPC) 集群</li>
+<li>虚拟化主机</li>
+</ul>
+<p><strong>优缺点</strong>：</p>
+<ul>
+<li>✅ 扩展性好，支持大量 CPU 和内存</li>
+<li>✅ 每个 CPU 有专属内存带宽</li>
+<li>❌ 编程复杂，需考虑内存亲和性</li>
+<li>❌ 远程内存访问存在延迟惩罚</li>
+</ul>
+<p><strong>NUMA 架构示意图：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                  NUMA 架构 (多节点系统)                      │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│   Node 0                            Node 1                 │</span><br><span class="line">│   ┌──────────────────┐             ┌──────────────────┐   │</span><br><span class="line">│   │ CPU0             │             │ CPU2             │   │</span><br><span class="line">│   │ CPU1             │             │ CPU3             │   │</span><br><span class="line">│   │                  │             │                  │   │</span><br><span class="line">│   │ 本地内存         │◄─────►      │ 本地内存         │   │</span><br><span class="line">│   │ (快速访问)       │  QPI/HT     │ (快速访问)       │   │</span><br><span class="line">│   │                  │  互联总线   │                  │   │</span><br><span class="line">│   └──────────────────┘             └──────────────────┘   │</span><br><span class="line">│        │       ▲                        │       ▲          │</span><br><span class="line">│        └───────┴────────────────────────┴───────┘          │</span><br><span class="line">│               互联网络 (Interconnect)                      │</span><br><span class="line">│                                                             │</span><br><span class="line">│   访问 Node 0 内存: CPU0, CPU1 ≈ 80ns                     │</span><br><span class="line">│   访问 Node 1 内存: CPU0, CPU1 ≈ 120-150ns (跨节点)         │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="Linux-内核中的统一处理"><a href="#Linux-内核中的统一处理" class="headerlink" title="Linux 内核中的统一处理"></a>Linux 内核中的统一处理</h4><p><strong>关键设计</strong>：Linux 使用相同的数据结构 (<code>pglist_data</code>) 统一处理 UMA 和 NUMA，通过条件编译实现差异。</p>
+<p><strong>内存模型类型</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 三种内存模型 (Linux 6.12)</span></span><br><span class="line">CONFIG_FLATMEM       <span class="comment">// 平坦内存模型 (UMA 系统使用)</span></span><br><span class="line">CONFIG_SPARSEMEM     <span class="comment">// 稀疏内存模型 (NUMA 系统使用)</span></span><br><span class="line">CONFIG_DISCONTIGMEM  <span class="comment">// 不连续内存模型 (已废弃)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>内核源码位置</strong>：</p>
+<ul>
+<li><code>mm/memblock.c:100</code> - UMA 的 <code>contig_page_data</code> 定义</li>
+<li><code>include/linux/mmzone.h:1580</code> - <code>NODE_DATA()</code> 宏定义</li>
+<li><code>include/linux/numa.h:33</code> - NUMA 的 <code>node_data[]</code> 声明</li>
+</ul>
+<h3 id="2-1-2-pglist-data-结构"><a href="#2-1-2-pglist-data-结构" class="headerlink" title="2.1.2 pglist_data 结构"></a>2.1.2 pglist_data 结构</h3><p><strong>位置:</strong> <code>include/linux/mmzone.h:1298</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * node_zones 包含当前节点的所有 zone。</span></span><br><span class="line"><span class="comment">     * 不是所有 zone 都会被填充，但这是完整的列表。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> <span class="title">node_zones</span>[<span class="title">MAX_NR_ZONES</span>];</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * node_zonelists 包含所有节点的所有 zone 引用。</span></span><br><span class="line"><span class="comment">     * 用于分配时的内存区域回退策略。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zonelist</span> <span class="title">node_zonelists</span>[<span class="title">MAX_ZONELISTS</span>];</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> nr_zones;                    <span class="comment">/* 当前节点填充的 zone 数量 */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_FLATMEM</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">node_mem_map</span>;</span>       <span class="comment">/* 节点的页面数组 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">if</span> defined(CONFIG_MEMORY_HOTPLUG) || defined(CONFIG_DEFERRED_STRUCT_PAGE_INIT)</span></span><br><span class="line">    <span class="type">spinlock_t</span> node_size_lock;       <span class="comment">/* 保护 node_start_pfn 等字段 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> node_start_pfn;    <span class="comment">/* 节点起始页面帧号 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> node_present_pages; <span class="comment">/* 物理页面总数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> node_spanned_pages; <span class="comment">/* 物理页面范围(包含空洞) */</span></span><br><span class="line">    <span class="type">int</span> node_id;                     <span class="comment">/* 节点 ID */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* kswapd 等待队列 - 内核换页线程 */</span></span><br><span class="line">    <span class="type">wait_queue_head_t</span> kswapd_wait;</span><br><span class="line">    <span class="type">wait_queue_head_t</span> pfmemalloc_wait;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 为不同原因限制回收的工作队列 */</span></span><br><span class="line">    <span class="type">wait_queue_head_t</span> reclaim_wait[NR_VMSCAN_THROTTLE];</span><br><span class="line"></span><br><span class="line">    <span class="type">atomic_t</span> nr_writeback_throttled; <span class="comment">/* 写回限制的任务数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_reclaim_start;  <span class="comment">/* 限制开始时写入的页面数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMORY_HOTPLUG</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mutex</span> <span class="title">kswapd_lock</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">kswapd</span>;</span>      <span class="comment">/* kswapd 内核线程 */</span></span><br><span class="line">    <span class="type">int</span> kswapd_order;                <span class="comment">/* kswapd 正在回收的 order */</span></span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> <span class="title">kswapd_highest_zoneidx</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> kswapd_failures;             <span class="comment">/* &#x27;reclaimed == 0&#x27; 的次数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_COMPACTION</span></span><br><span class="line">    <span class="type">int</span> kcompactd_max_order;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> <span class="title">kcompactd_highest_zoneidx</span>;</span></span><br><span class="line">    <span class="type">wait_queue_head_t</span> kcompactd_wait;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">kcompactd</span>;</span>   <span class="comment">/* 内存压缩内核线程 */</span></span><br><span class="line">    <span class="type">bool</span> proactive_compact_trigger;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 每个节点的保留页面，不可用于用户空间分配</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> totalreserve_pages;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 当存在更多未映射页面时，节点回收变得活跃</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> min_unmapped_pages;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> min_slab_pages;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_DEFERRED_STRUCT_PAGE_INIT</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 如果大机器上的内存初始化被延迟，</span></span><br><span class="line"><span class="comment">     * 这是需要初始化的第一个 PFN</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> first_deferred_pfn;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_TRANSPARENT_HUGEPAGE</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">deferred_split</span> <span class="title">deferred_split_queue</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA_BALANCING</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> nbp_rl_start;       <span class="comment">/* 当前限制周期的开始时间(ms) */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nbp_rl_nr_cand;    <span class="comment">/* 开始时的候选页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> nbp_threshold;      <span class="comment">/* 提升阈值(ms) */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 注意：如果启用了 MEMCG，这个字段未使用 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">lruvec</span> __<span class="title">lruvec</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;             <span class="comment">/* 节点标志 */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_LRU_GEN</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_mm_walk</span> <span class="title">mm_walk</span>;</span>  <span class="comment">/* kswap mm walk 数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">lru_gen_memcg</span> <span class="title">memcg_lru</span>;</span>  <span class="comment">/* lru_gen_folio 列表 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 每节点 vmstat */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_nodestat</span> __<span class="title">percpu</span> *<span class="title">per_cpu_nodestats</span>;</span></span><br><span class="line">    <span class="type">atomic_long_t</span> vm_stat[NR_VM_NODE_STAT_ITEMS];</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memory_tier</span> __<span class="title">rcu</span> *<span class="title">memtier</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMORY_FAILURE</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memory_failure_stats</span> <span class="title">mf_stats</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125; <span class="type">pg_data_t</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-1-3-节点状态"><a href="#2-1-3-节点状态" class="headerlink" title="2.1.3 节点状态"></a>2.1.3 节点状态</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">node_states</span> &#123;</span></span><br><span class="line">    N_POSSIBLE,      <span class="comment">// 节点可能存在</span></span><br><span class="line">    N_ONLINE,        <span class="comment">// 节点在线</span></span><br><span class="line">    N_NORMAL_MEMORY, <span class="comment">// 普通内存</span></span><br><span class="line">    N_HIGH_MEMORY,   <span class="comment">// 高端内存 (有 DMA)</span></span><br><span class="line">    N_MEMORY,        <span class="comment">// 包含内存</span></span><br><span class="line">    N_CPU,           <span class="comment">// 包含 CPU</span></span><br><span class="line">    NR_NODE_STATES</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-1-4-UMA-NUMA-内核代码实现"><a href="#2-1-4-UMA-NUMA-内核代码实现" class="headerlink" title="2.1.4 UMA&#x2F;NUMA 内核代码实现"></a>2.1.4 UMA&#x2F;NUMA 内核代码实现</h3><h4 id="UMA-系统的实现"><a href="#UMA-系统的实现" class="headerlink" title="UMA 系统的实现"></a>UMA 系统的实现</h4><p>在 UMA 系统中，内核使用单一的 <code>pglist_data</code> 结构来管理所有内存。</p>
+<p>**contig_page_data 定义 (mm&#x2F;memblock.c:100)**：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifndef</span> CONFIG_NUMA</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> __<span class="title">refdata</span> <span class="title">contig_page_data</span>;</span></span><br><span class="line">EXPORT_SYMBOL(contig_page_data);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure></div>
+
+<p>**UMA 的 NODE_DATA() 宏 (include&#x2F;linux&#x2F;mmzone.h:1580)**：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifndef</span> CONFIG_NUMA</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> <span class="title">contig_page_data</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * UMA 系统：所有节点访问返回同一个 pglist_data</span></span><br><span class="line"><span class="comment"> * 这样 NUMA 和 UMA 系统可以使用相同的代码路径</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> pglist_data *<span class="title function_">NODE_DATA</span><span class="params">(<span class="type">int</span> nid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> &amp;contig_page_data;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* !CONFIG_NUMA */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键特性</strong>：</p>
+<ul>
+<li>无论传入什么 nid，总是返回 <code>&amp;contig_page_data</code></li>
+<li>只有一个 Node (Node 0)</li>
+<li><code>node_states[N_ONLINE]</code> 只包含 Node 0</li>
+</ul>
+<h4 id="NUMA-系统的实现"><a href="#NUMA-系统的实现" class="headerlink" title="NUMA 系统的实现"></a>NUMA 系统的实现</h4><p>在 NUMA 系统中，每个节点有独立的 <code>pglist_data</code> 结构。</p>
+<p>**node_data 数组声明 (include&#x2F;linux&#x2F;numa.h:33)**：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;asm/sparsemem.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> *<span class="title">node_data</span>[];</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NODE_DATA(nid)	(node_data[nid])</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">alloc_node_data</span><span class="params">(<span class="type">int</span> nid)</span>;</span><br><span class="line"><span class="type">void</span> __init <span class="title function_">alloc_offline_node_data</span><span class="params">(<span class="type">int</span> nid)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>NUMA 的节点初始化</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/mm_init.c 或特定架构的 init 代码</span></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">alloc_node_data</span><span class="params">(<span class="type">int</span> nid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> *<span class="title">pgdat</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 为每个节点分配 pglist_data 结构</span></span><br><span class="line">    pgdat = memblock_alloc_node(<span class="keyword">sizeof</span>(*pgdat), SMP_CACHE_BYTES, nid);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 初始化节点的各种字段</span></span><br><span class="line">    pgdat-&gt;node_id = nid;</span><br><span class="line">    <span class="comment">// ... 更多初始化</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保存到 node_data 数组</span></span><br><span class="line">    NODE_DATA(nid) = pgdat;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键特性</strong>：</p>
+<ul>
+<li><code>node_data[]</code> 是指针数组，每个元素指向一个节点的 <code>pglist_data</code></li>
+<li><code>NODE_DATA(nid)</code> 返回对应节点的结构</li>
+<li><code>MAX_NUMNODES</code> 由 <code>CONFIG_NODES_SHIFT</code> 决定（默认 0，最大 11）</li>
+</ul>
+<h4 id="内存模型详解"><a href="#内存模型详解" class="headerlink" title="内存模型详解"></a>内存模型详解</h4><p>Linux 6.12 支持三种内存模型，用于描述物理内存到 <code>struct page</code> 数组的映射：</p>
+<p><strong>1. FLATMEM (平坦内存模型)</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 配置选项</span></span><br><span class="line">CONFIG_FLATMEM        y</span><br><span class="line"># CONFIG_SPARSEMEM is not <span class="built_in">set</span></span><br><span class="line"># CONFIG_FLAT_NODE_MEM_MAP is not <span class="built_in">set</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>物理内存是连续的 (或近似连续)</li>
+<li>使用单一的 <code>mem_map</code> 数组</li>
+<li><code>pfn_to_page(page_nr)</code> 简单的线性映射</li>
+</ul>
+<p><strong>实现</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// FLATMEM 的页面映射</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pfn_to_page(pfn)    (mem_map + ((pfn) - ARCH_PFN_OFFSET))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> page_to_pfn(page)   ((unsigned long)((page) - mem_map) + ARCH_PFN_OFFSET)</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">mem_map</span>;</span>  <span class="comment">// 全局的页面数组</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>适用场景</strong>：UMA 系统、内存连续的简单系统</p>
+<hr>
+<p><strong>2. SPARSEMEM (稀疏内存模型)</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 配置选项</span></span><br><span class="line">CONFIG_SPARSEMEM              y</span><br><span class="line">CONFIG_SPARSEMEM_EXTREME      y    <span class="comment">// 支持超大内存</span></span><br><span class="line">CONFIG_SPARSEMEM_VMEMMAP      y    <span class="comment">// 使用虚拟地址映射 memmap</span></span><br><span class="line">CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOPOLOGY n</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>支持内存空洞和不连续内存</li>
+<li>内存按 section (通常是 128MB) 划分</li>
+<li>只有存在物理内存的 section 才分配 <code>struct page</code> 数组</li>
+<li>NUMA 系统的默认模型</li>
+</ul>
+<p><strong>数据结构</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/mmzone.h</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mem_section</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 该 section 的页面数组 (struct page 数组)</span></span><br><span class="line"><span class="comment">     * 只有 section 存在时才分配</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> section_mem_map;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 热插拔相关字段</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">section_root_page</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>实现</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// SPARSEMEM 的页面映射</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pfn_to_section(pfn) \</span></span><br><span class="line"><span class="meta">    ((pfn) &gt;&gt; PFN_SECTION_SHIFT)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> section_to_mem_map(ms) \</span></span><br><span class="line"><span class="meta">    ((struct page *)((ms)-&gt;section_mem_map &amp; ~SECTION_MARKED_PRESENT))</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __pfn_to_page(pfn) \</span></span><br><span class="line"><span class="meta">    section_to_mem_map(__pfn_to_section(pfn))</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __page_to_pfn(pg) \</span></span><br><span class="line"><span class="meta">    (__section_to_pfn(__page_to_section(pg)) + \</span></span><br><span class="line"><span class="meta">     ((unsigned long)((pg) - section_to_mem_map(__page_to_section(pg)))))</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>Section 大小</strong>：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 由 SECTION_SIZE_BITS 决定，架构相关</span></span><br><span class="line"><span class="comment">// x86_64: SECTION_SIZE_BITS = 27 (128MB per section)</span></span><br><span class="line"><span class="comment">// ARM64: SECTION_SIZE_BITS = 27 (128MB per section)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PAGES_PER_SECTION (1UL &lt;&lt; (SECTION_SIZE_BITS - PAGE_SHIFT))</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>适用场景</strong>：NUMA 系统、支持内存热插拔的系统、大内存系统</p>
+<hr>
+<p><strong>3. DISCONTIGMEM (不连续内存模型)</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 已废弃，不再推荐使用</span></span><br><span class="line">CONFIG_DISCONTIGMEM</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>历史遗留模型，用于支持不连续物理内存</li>
+<li>已被 SPARSEMEM 完全替代</li>
+<li>Linux 6.12 中仍存在但已标记为废弃</li>
+</ul>
+<h4 id="节点与内存模型的对应关系"><a href="#节点与内存模型的对应关系" class="headerlink" title="节点与内存模型的对应关系"></a>节点与内存模型的对应关系</h4><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    节点与内存模型关系                         │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│   UMA 系统:                                                 │</span><br><span class="line">│   ┌─────────────────────────────────────────────────┐      │</span><br><span class="line">│   │  内存模型: FLATMEM                               │      │</span><br><span class="line">│   │  节点数: 1 (Node 0)                              │      │</span><br><span class="line">│   │  数据结构: contig_page_data (单一 pglist_data)   │      │</span><br><span class="line">│   │  页面映射: mem_map (单一数组)                    │      │</span><br><span class="line">│   └─────────────────────────────────────────────────┘      │</span><br><span class="line">│                                                             │</span><br><span class="line">│   NUMA 系统:                                                │</span><br><span class="line">│   ┌─────────────────────────────────────────────────┐      │</span><br><span class="line">│   │  内存模型: SPARSEMEM                             │      │</span><br><span class="line">│   │  节点数: 2+ (Node 0, Node 1, ...)                │      │</span><br><span class="line">│   │  数据结构: node_data[] (pglist_data 指针数组)    │      │</span><br><span class="line">│   │  页面映射: mem_section[][] (二维数组)            │      │</span><br><span class="line">│   │                                                  │      │</span><br><span class="line">│   │  Node 0 ──▶ pglist_data ──▶ zones ──▶ pages     │      │</span><br><span class="line">│   │  Node 1 ──▶ pglist_data ──▶ zones ──▶ pages     │      │</span><br><span class="line">│   └─────────────────────────────────────────────────┘      │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="常用-API"><a href="#常用-API" class="headerlink" title="常用 API"></a>常用 API</h4><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取节点数据</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> pglist_data *<span class="title function_">NODE_DATA</span><span class="params">(<span class="type">int</span> nid)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取节点的起始 PFN</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> node_start_pfn(nid) (NODE_DATA(nid)-&gt;node_start_pfn)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取节点的页面总数</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> node_present_pages(nid) (NODE_DATA(nid)-&gt;node_present_pages)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取节点的 spanned 页面数 (包含空洞)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> node_spanned_pages(nid) (NODE_DATA(nid)-&gt;node_spanned_pages)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取节点的某个 zone</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> zone *<span class="title function_">node_zone</span><span class="params">(<span class="type">int</span> nid, <span class="keyword">enum</span> zone_type zone_type)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> &amp;NODE_DATA(nid)-&gt;node_zones[zone_type];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 遍历所有在线节点</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> for_each_online_node(node)    \</span></span><br><span class="line"><span class="meta">    for ((node) = 0; (node) &lt; MAX_NUMNODES; (node)++) \</span></span><br><span class="line"><span class="meta">        <span class="keyword">if</span> (node_online((node)))</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 检查节点是否在线</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">node_online</span><span class="params">(<span class="type">int</span> nid)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> nid &gt;= <span class="number">0</span> &amp;&amp; nid &lt; MAX_NUMNODES &amp;&amp;</span><br><span class="line">           node_isset(nid, node_states[N_ONLINE]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// CPU 到节点的映射</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">cpu_to_node</span><span class="params">(<span class="type">int</span> cpu)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> early_cpu_to_node(cpu);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 获取当前 CPU 的节点 ID</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">numa_node_id</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_USE_PERCPU_NUMA_NODE_ID</span></span><br><span class="line">    <span class="keyword">return</span> __this_cpu_read(numa_node);</span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;  <span class="comment">// UMA 系统</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-2-内存区域-Zone"><a href="#2-2-内存区域-Zone" class="headerlink" title="2.2 内存区域 (Zone)"></a>2.2 内存区域 (Zone)</h2><h3 id="2-2-1-Zone-类型"><a href="#2-2-1-Zone-类型" class="headerlink" title="2.2.1 Zone 类型"></a>2.2.1 Zone 类型</h3><p>为了解决不同硬件对内存访问的限制，Linux 将每个节点的内存划分为多个区域 (zone)。</p>
+<p><strong>位置:</strong> <code>include/linux/mmzone.h:723</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> &#123;</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ZONE_DMA 和 ZONE_DMA32 用于某些外设无法 DMA 到所有可寻址内存的情况。</span></span><br><span class="line"><span class="comment">     * 当这个区域覆盖整个 32 位地址空间时使用 ZONE_DMA32。</span></span><br><span class="line"><span class="comment">     * ZONE_DMA 用于更小的 DMA 寻址限制。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_ZONE_DMA</span></span><br><span class="line">    ZONE_DMA,          <span class="comment">// DMA 可访问区域 (&lt;16MB)</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_ZONE_DMA32</span></span><br><span class="line">    ZONE_DMA32,        <span class="comment">// 32位 DMA 可访问区域 (&lt;4GB)</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ZONE_NORMAL 是可寻址的正常内存。</span></span><br><span class="line"><span class="comment">     * 如果 DMA 设备支持传输到所有可寻址内存，可以在 ZONE_NORMAL 上执行 DMA 操作。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ZONE_NORMAL,       <span class="comment">// 正常内存区域</span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_HIGHMEM</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ZONE_HIGHMEM 只能通过内核将部分映射到自己的地址空间来寻址。</span></span><br><span class="line"><span class="comment">     * 例如 i386 使用它来让内核访问超过 900MB 的内存。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ZONE_HIGHMEM,      <span class="comment">// 高端内存 (32位系统)</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * ZONE_MOVABLE 类似于 ZONE_NORMAL，但它包含可移动页面。</span></span><br><span class="line"><span class="comment">     * 主要用途：</span></span><br><span class="line"><span class="comment">     * 1. 使内存离线/拔出更有可能成功</span></span><br><span class="line"><span class="comment">     * 2. 本地限制不可移动分配 - 例如增加 THP/巨页数量</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ZONE_MOVABLE,      <span class="comment">// 可迁移内存区域</span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_ZONE_DEVICE</span></span><br><span class="line">    ZONE_DEVICE,       <span class="comment">// 设备内存 (持久内存等)</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    __MAX_NR_ZONES</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-2-2-Zone-结构"><a href="#2-2-2-Zone-结构" class="headerlink" title="2.2.2 Zone 结构"></a>2.2.2 Zone 结构</h3><p><strong>位置:</strong> <code>include/linux/mmzone.h:818</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">zone</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 只读字段 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* zone 水位，使用 *_wmark_pages(zone) 宏访问 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> _watermark[NR_WMARK];</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> watermark_boost;</span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_reserved_highatomic;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_free_highatomic;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 我们必须保留较低 zone 的一些内存，</span></span><br><span class="line"><span class="comment">     * 否则冒着在较低 zone 上 OOM 的风险，尽管在更高 zone 有大量可释放内存。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">long</span> lowmem_reserve[MAX_NR_ZONES];</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">    <span class="type">int</span> node;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> *<span class="title">zone_pgdat</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> __<span class="title">percpu</span> *<span class="title">per_cpu_pageset</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_zonestat</span> __<span class="title">percpu</span> *<span class="title">per_cpu_zonestats</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * high 和 batch 值被复制到各个 pageset 以加快访问速度</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span> pageset_high_min;</span><br><span class="line">    <span class="type">int</span> pageset_high_max;</span><br><span class="line">    <span class="type">int</span> pageset_batch;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifndef</span> CONFIG_SPARSEMEM</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> *pageblock_flags;  <span class="comment">/* pageblock 的标志 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> zone_start_pfn;    <span class="comment">/* zone 的起始 PFN */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * spanned_pages 是 zone 覆盖的总页数(包括空洞)</span></span><br><span class="line"><span class="comment">     * present_pages 是 zone 中存在的物理页面</span></span><br><span class="line"><span class="comment">     * managed_pages 是 buddy 系统管理的页面数</span></span><br><span class="line"><span class="comment">     * cma_pages 是分配给 CMA 使用的页面数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">atomic_long_t</span> managed_pages;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> spanned_pages;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> present_pages;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMORY_HOTPLUG</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> present_early_pages;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_CMA</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> cma_pages;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="type">char</span> *name;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMORY_ISOLATION</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_isolate_pageblock;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMORY_HOTPLUG</span></span><br><span class="line">    <span class="type">seqlock_t</span> span_seqlock;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> initialized;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面分配器使用的写密集字段 */</span></span><br><span class="line">    CACHELINE_PADDING(_pad1_);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 不同大小的空闲区域 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">free_area</span> <span class="title">free_area</span>[<span class="title">NR_PAGE_ORDERS</span>];</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_UNACCEPTED_MEMORY</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">unaccepted_pages</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line"></span><br><span class="line">    <span class="type">spinlock_t</span> lock;  <span class="comment">/* 主要保护 free_area */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 压缩和 vmstat 使用的写密集字段 */</span></span><br><span class="line">    CACHELINE_PADDING(_pad2_);</span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> percpu_drift_mark;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">if</span> defined CONFIG_COMPACTION || defined CONFIG_CMA</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> compact_cached_free_pfn;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> compact_cached_migrate_pfn[ASYNC_AND_SYNC];</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> compact_init_migrate_pfn;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> compact_init_free_pfn;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_COMPACTION</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> compact_considered;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> compact_defer_shift;</span><br><span class="line">    <span class="type">int</span> compact_order_failed;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">if</span> defined CONFIG_COMPACTION || defined CONFIG_CMA</span></span><br><span class="line">    <span class="type">bool</span> compact_blockskip_flush;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="type">bool</span> contiguous;</span><br><span class="line"></span><br><span class="line">    CACHELINE_PADDING(_pad3_);</span><br><span class="line">    <span class="comment">/* Zone 统计 */</span></span><br><span class="line">    <span class="type">atomic_long_t</span> vm_stat[NR_VM_ZONE_STAT_ITEMS];</span><br><span class="line">    <span class="type">atomic_long_t</span> vm_numa_event[NR_VM_NUMA_EVENT_ITEMS];</span><br><span class="line">&#125; ____cacheline_internodealigned_in_smp;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-2-3-内存布局示例"><a href="#2-2-3-内存布局示例" class="headerlink" title="2.2.3 内存布局示例"></a>2.2.3 内存布局示例</h3><p><strong>x86_64 (64位系统):</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        物理内存                             │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  Node 0 (正常内存节点)                                      │</span><br><span class="line">│  ├── Zone DMA    (0-16MB)         - 用于 ISA DMA           │</span><br><span class="line">│  ├── Zone DMA32  (16MB-4GB)       - 用于 32位 DMA          │</span><br><span class="line">│  ├── Zone Normal (4GB-128GB)      - 正常内存区域           │</span><br><span class="line">│  └── Zone Movable (可配置)        - 可迁移内存             │</span><br><span class="line">│                                                             │</span><br><span class="line">│  Node 1 (NUMA 节点，如果存在)                                │</span><br><span class="line">│  ├── Zone Normal                                          │</span><br><span class="line">│  └── Zone Movable                                         │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>i386 (32位系统):</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        物理内存                             │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  Zone DMA     (0-16MB)                                     │</span><br><span class="line">│  Zone Normal  (16MB-896MB)                                  │</span><br><span class="line">│  Zone HighMem (896MB-4GB, 需要动态映射)                       │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-3-水位-Watermark"><a href="#2-3-水位-Watermark" class="headerlink" title="2.3 水位 (Watermark)"></a>2.3 水位 (Watermark)</h2><h3 id="2-3-1-水位类型"><a href="#2-3-1-水位类型" class="headerlink" title="2.3.1 水位类型"></a>2.3.1 水位类型</h3><p>水位是 Linux 内核用于判断是否需要启动页面回收的关键阈值。</p>
+<p><strong>位置:</strong> <code>include/linux/mmzone.h:647</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">zone_watermarks</span> &#123;</span></span><br><span class="line">    WMARK_MIN,      <span class="comment">// 最小水位：系统紧急使用</span></span><br><span class="line">    WMARK_LOW,      <span class="comment">// 低水位：低于此值开始异步回收</span></span><br><span class="line">    WMARK_HIGH,     <span class="comment">// 高水位：低于此值开始同步回收</span></span><br><span class="line">    WMARK_PROMO,    <span class="comment">// 提升水位：用于多代 LRU</span></span><br><span class="line">    NR_WMARK</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-2-水位计算"><a href="#2-3-2-水位计算" class="headerlink" title="2.3.2 水位计算"></a>2.3.2 水位计算</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">wmark_pages</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> zone *z,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">enum</span> zone_watermarks w)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> z-&gt;_watermark[w] + z-&gt;watermark_boost;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> min_wmark_pages(z) wmark_pages(z, WMARK_MIN)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> low_wmark_pages(z) wmark_pages(z, WMARK_LOW)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> high_wmark_pages(z) wmark_pages(z, WMARK_HIGH)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> promo_wmark_pages(z) wmark_pages(z, WMARK_PROMO)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-3-水位示意图"><a href="#2-3-3-水位示意图" class="headerlink" title="2.3.3 水位示意图"></a>2.3.3 水位示意图</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">        │</span><br><span class="line">        │              min    low    high    promo</span><br><span class="line">        │               │      │      │       │</span><br><span class="line">        │               ▼      ▼      ▼       ▼</span><br><span class="line">        │</span><br><span class="line">pages ─ ├─────────────────────────────────────────</span><br><span class="line">        │</span><br><span class="line">        │  ┌─────────┬────────┬─────────┬───────┐</span><br><span class="line">        │  │  min    │   low  │  high   │ promo │</span><br><span class="line">        │  │ 临界   │  警告  │  正常   │  提升 │</span><br><span class="line">        │  └─────────┴────────┴─────────┴───────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line"></span><br><span class="line">min   : 最小保留页面 (系统紧急使用，GFP_ATOMIC 可用)</span><br><span class="line">low   : 低于此值唤醒 kswapd 异步回收</span><br><span class="line">high  : 低于此值同步回收，直到达到 high</span><br><span class="line">promo : 多代 LRU 的提升水位</span><br><span class="line"></span><br><span class="line">watermark_boost: 动态提升的水位值</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-3-4-水位相关-API"><a href="#2-3-4-水位相关-API" class="headerlink" title="2.3.4 水位相关 API"></a>2.3.4 水位相关 API</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 检查水位是否 OK */</span></span><br><span class="line"><span class="type">bool</span> __zone_watermark_ok(<span class="keyword">struct</span> zone *z, <span class="type">unsigned</span> <span class="type">int</span> order,</span><br><span class="line">                          <span class="type">unsigned</span> <span class="type">long</span> mark, <span class="type">int</span> highest_zoneidx,</span><br><span class="line">                          <span class="type">unsigned</span> <span class="type">int</span> alloc_flags, <span class="type">long</span> free_pages);</span><br><span class="line"></span><br><span class="line"><span class="type">bool</span> <span class="title function_">zone_watermark_ok</span><span class="params">(<span class="keyword">struct</span> zone *z, <span class="type">unsigned</span> <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                       <span class="type">unsigned</span> <span class="type">long</span> mark, <span class="type">int</span> highest_zoneidx,</span></span><br><span class="line"><span class="params">                       <span class="type">unsigned</span> <span class="type">int</span> alloc_flags)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-4-物理页面-Page"><a href="#2-4-物理页面-Page" class="headerlink" title="2.4 物理页面 (Page)"></a>2.4 物理页面 (Page)</h2><h3 id="2-4-1-page-结构"><a href="#2-4-1-page-结构" class="headerlink" title="2.4.1 page 结构"></a>2.4.1 page 结构</h3><p><strong>位置:</strong> <code>include/linux/mm_types.h:72</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;          <span class="comment">/* 原子标志，可能异步更新 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span>    <span class="comment">/* 页缓存和匿名页面 */</span></span><br><span class="line">            <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">lru</span>;</span>           <span class="comment">/* LRU 链表 */</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">                    <span class="type">void</span> *__filler;</span><br><span class="line">                    <span class="type">unsigned</span> <span class="type">int</span> mlock_count;    <span class="comment">/* mlock 计数 */</span></span><br><span class="line">                &#125;;</span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">buddy_list</span>;</span>    <span class="comment">/* 空闲页面 */</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">pcp_list</span>;</span>       <span class="comment">/* Per-CPU 缓存 */</span></span><br><span class="line">            &#125;;</span><br><span class="line"></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">address_space</span> *<span class="title">mapping</span>;</span>      <span class="comment">/* 页缓存映射 */</span></span><br><span class="line">            <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">                <span class="type">pgoff_t</span> index;                 <span class="comment">/* 在映射中的偏移 */</span></span><br><span class="line">                <span class="type">unsigned</span> <span class="type">long</span> share;            <span class="comment">/* fsdax 共享计数 */</span></span><br><span class="line">            &#125;;</span><br><span class="line"></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> private;             <span class="comment">/* 私有数据 */</span></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span>    <span class="comment">/* page_pool (网络栈使用) */</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> pp_magic;</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">page_pool</span> *<span class="title">pp</span>;</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _pp_mapping_pad;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> dma_addr;</span><br><span class="line">            <span class="type">atomic_long_t</span> pp_ref_count;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span>    <span class="comment">/* 复合页的尾页面 */</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> compound_head;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span>    <span class="comment">/* ZONE_DEVICE 页面 */</span></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">dev_pagemap</span> *<span class="title">pgmap</span>;</span></span><br><span class="line">            <span class="type">void</span> *zone_device_data;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">rcu_head</span>;</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">int</span> page_type;     <span class="comment">/* 页面类型 */</span></span><br><span class="line">        <span class="type">atomic_t</span> _mapcount;         <span class="comment">/* 页表映射计数 */</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="type">atomic_t</span> _refcount;             <span class="comment">/* 引用计数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMCG</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> memcg_data;       <span class="comment">/* 内存控制组数据 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">elif</span> defined(CONFIG_SLAB_OBJ_EXT)</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> _unused_slab_obj_exts;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">if</span> defined(WANT_PAGE_VIRTUAL)</span></span><br><span class="line">    <span class="type">void</span> *virtual;                  <span class="comment">/* 内核虚拟地址 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> LAST_CPUPID_NOT_IN_PAGE_FLAGS</span></span><br><span class="line">    <span class="type">int</span> _last_cpupid;              <span class="comment">/* 最后访问的 CPU 和进程 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125; _struct_page_alignment;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-4-2-页面标志"><a href="#2-4-2-页面标志" class="headerlink" title="2.4.2 页面标志"></a>2.4.2 页面标志</h3><p><strong>位置:</strong> <code>include/linux/page-flags.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 页面状态标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_locked           0   <span class="comment">/* 页面锁定 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_error            1   <span class="comment">/* 页面错误 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_referenced       2   <span class="comment">/* 页面被引用 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_uptodate         3   <span class="comment">/* 页面最新 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_dirty            4   <span class="comment">/* 页面脏 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_lru              5   <span class="comment">/* 在 LRU 链表中 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_active           6   <span class="comment">/* 活跃页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_slab             7   <span class="comment">/* Slab 页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_owner_priv_1     8   <span class="comment">/* 所有者私有 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_arch_1           9   <span class="comment">/* 架构私有 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_reserved         10  <span class="comment">/* 保留页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_private          11  <span class="comment">/* 私有数据 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_writeback        12  <span class="comment">/* 正在回写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_head             14  <span class="comment">/* 复合页首页 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_swapcache        15  <span class="comment">/* 在交换缓存中 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_mappedtodisk     16  <span class="comment">/* 已映射到磁盘 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_reclaim          17  <span class="comment">/* 正在回收 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_swapbacked       18  <span class="comment">/* 有交换后端 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PG_unevictable      19  <span class="comment">/* 不可驱逐 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-5-复合页与-Folio"><a href="#2-5-复合页与-Folio" class="headerlink" title="2.5 复合页与 Folio"></a>2.5 复合页与 Folio</h2><h3 id="2-5-1-复合页结构"><a href="#2-5-1-复合页结构" class="headerlink" title="2.5.1 复合页结构"></a>2.5.1 复合页结构</h3><p>Linux 使用复合页来管理多个连续的物理页面。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│                   复合页 (order = 2)                        │</span><br><span class="line">│                    4KB × 4 = 16KB                           │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                              │</span><br><span class="line">│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │</span><br><span class="line">│  │   页面 0    │   页面 1    │   页面 2    │   页面 3    │  │</span><br><span class="line">│  │  (PG_head)  │  (PG_tail)  │  (PG_tail)  │  (PG_tail)  │  │</span><br><span class="line">│  │             │             │             │             │  │</span><br><span class="line">│  │ compound    │             │             │             │  │</span><br><span class="line">│  │ _order = 2  │             │             │             │  │</span><br><span class="line">│  │             │             │             │             │  │</span><br><span class="line">│  └─────────────┴─────────────┴─────────────┴─────────────┘  │</span><br><span class="line">│        │           ▲              ▲              ▲          │</span><br><span class="line">│        └───────────┴──────────────┴──────────────┘          │</span><br><span class="line">│                    compound_head 指向页面 0                   │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-5-2-Folio-结构"><a href="#2-5-2-Folio-结构" class="headerlink" title="2.5.2 Folio 结构"></a>2.5.2 Folio 结构</h3><p>Linux 5.15+ 引入 folio 结构来更好地管理多页复合页。</p>
+<p><strong>位置:</strong> <code>include/linux/mm_types.h:324</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">folio</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line">            <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">lru</span>;</span></span><br><span class="line">                <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">                    <span class="type">void</span> *__filler;</span><br><span class="line">                    <span class="type">unsigned</span> <span class="type">int</span> mlock_count;</span><br><span class="line">                &#125;;</span><br><span class="line">            &#125;;</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">address_space</span> *<span class="title">mapping</span>;</span></span><br><span class="line">            <span class="type">pgoff_t</span> index;</span><br><span class="line">            <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">                <span class="type">void</span> *private;</span><br><span class="line">                <span class="type">swp_entry_t</span> swap;</span><br><span class="line">            &#125;;</span><br><span class="line">            <span class="type">atomic_t</span> _mapcount;</span><br><span class="line">            <span class="type">atomic_t</span> _refcount;</span><br><span class="line">            <span class="meta">#<span class="keyword">ifdef</span> CONFIG_MEMCG</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> memcg_data;</span><br><span class="line">            <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">            <span class="type">void</span> *virtual;</span><br><span class="line">            <span class="type">int</span> _last_cpupid;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">page</span> <span class="title">page</span>;</span></span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _flags_1;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _head_1;</span><br><span class="line">            <span class="type">atomic_t</span> _large_mapcount;</span><br><span class="line">            <span class="type">atomic_t</span> _entire_mapcount;</span><br><span class="line">            <span class="type">atomic_t</span> _nr_pages_mapped;</span><br><span class="line">            <span class="type">atomic_t</span> _pincount;</span><br><span class="line">            <span class="meta">#<span class="keyword">ifdef</span> CONFIG_64BIT</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">int</span> _folio_nr_pages;</span><br><span class="line">            <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">page</span> __<span class="title">page_1</span>;</span></span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _flags_2;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _head_2;</span><br><span class="line">            <span class="type">void</span> *_hugetlb_subpool;</span><br><span class="line">            <span class="type">void</span> *_hugetlb_cgroup;</span><br><span class="line">            <span class="type">void</span> *_hugetlb_cgroup_rsvd;</span><br><span class="line">            <span class="type">void</span> *_hugetlb_hwpoison;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _flags_2a;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> _head_2a;</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> _<span class="title">deferred_list</span>;</span></span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">page</span> __<span class="title">page_2</span>;</span></span><br><span class="line">    &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-5-3-Folio-操作-API"><a href="#2-5-3-Folio-操作-API" class="headerlink" title="2.5.3 Folio 操作 API"></a>2.5.3 Folio 操作 API</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 页面到 folio 转换 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> folio *<span class="title function_">page_folio</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取 folio 的页面数 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">unsigned</span> <span class="type">int</span> <span class="title function_">folio_nr_pages</span><span class="params">(<span class="keyword">struct</span> folio *folio)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取 folio 的 order */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">unsigned</span> <span class="type">int</span> <span class="title function_">folio_order</span><span class="params">(<span class="keyword">struct</span> folio *folio)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配 folio */</span></span><br><span class="line"><span class="keyword">struct</span> folio *<span class="title function_">folio_alloc</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">unsigned</span> <span class="type">int</span> order)</span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *__<span class="title">folio_alloc_node</span>(<span class="title">gfp_t</span> <span class="title">gfp</span>, <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>, <span class="title">int</span> <span class="title">nid</span>);</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放 folio */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">folio_put</span><span class="params">(<span class="keyword">struct</span> folio *folio)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<hr>
+<h2 id="2-6-页面生命周期状态机"><a href="#2-6-页面生命周期状态机" class="headerlink" title="2.6 页面生命周期状态机"></a>2.6 页面生命周期状态机</h2><h3 id="2-6-1-页面状态转换"><a href="#2-6-1-页面状态转换" class="headerlink" title="2.6.1 页面状态转换"></a>2.6.1 页面状态转换</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        页面生命周期状态机                            │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│   分配              首次访问            被引用            回收       │</span><br><span class="line">│     │                │                 │               │            │</span><br><span class="line">│     ▼                ▼                 ▼               ▼            │</span><br><span class="line">│  ┌──────┐         ┌──────┐          ┌──────┐       ┌──────┐      │</span><br><span class="line">│  │ FREE │ ───▶   │ NEW  │ ─────▶   │ACTIVE│ ───▶  │INACTIVE│     │</span><br><span class="line">│  │      │   无    │      │  mark_   │      │  时间 │        │     │</span><br><span class="line">│  │      │   映射  │      │  page_   │      │  流逝 │        │     │</span><br><span class="line">│  │      │        │      │  accessed │      │       │        │     │</span><br><span class="line">│  └──────┘         └──────┘          └──────┘       └──────┘      │</span><br><span class="line">│     ▲                │                 ▲               │            │</span><br><span class="line">│     │                │                 │               ▼            │</span><br><span class="line">│     │           释放/回收              │            ┌──────┐       │</span><br><span class="line">│     │                │                 │            │SWAP  │       │</span><br><span class="line">│     └────────────────┴─────────────────┴──────────│      │       │</span><br><span class="line">│                                                 │ cache│       │</span><br><span class="line">│                                                 └──────┘       │</span><br><span class="line">│                                                     │           │</span><br><span class="line">│                                                     ▼           │</span><br><span class="line">│                                                 ┌──────┐       │</span><br><span class="line">│                                                 │ FREE │◀──────┘</span><br><span class="line">│                                                 └──────┘       │</span><br><span class="line">│                                                                 │</span><br><span class="line">│   状态说明:                                                       │</span><br><span class="line">│   ────────                                                       │</span><br><span class="line">│   FREE     : 在 Buddy System 的 free_area 中                     │</span><br><span class="line">│   NEW      : 刚分配，未加入 LRU                                   │</span><br><span class="line">│   ACTIVE   : 被频繁访问，在 LRU_ACTIVE 链表中                      │</span><br><span class="line">│   INACTIVE : 很少访问，在 LRU_INACTIVE 链表中                     │</span><br><span class="line">│   SWAP     : 被 swap 到磁盘                                       │</span><br><span class="line">│                                                                 │</span><br><span class="line">│   相关章节:                                                      │</span><br><span class="line">│   ─────────                                                       │</span><br><span class="line">│   • ch02 - 物理内存模型 (page 结构)                               │</span><br><span class="line">│   • ch03 - Buddy System (free_area 管理)                          │</span><br><span class="line">│   • ch07 - 页面分配 (alloc_pages)                                 │</span><br><span class="line">│   • ch10 - 页面回收 (LRU 管理, kswapd)                            │</span><br><span class="line">│   • ch12 - Swap 机制                                              │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-6-2-页面状态转换操作"><a href="#2-6-2-页面状态转换操作" class="headerlink" title="2.6.2 页面状态转换操作"></a>2.6.2 页面状态转换操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 激活页面 - 从 INACTIVE 转为 ACTIVE */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">mark_page_accessed</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!PageActive(page) &amp;&amp; !PageUnevictable(page) &amp;&amp; PageLRU(page))</span><br><span class="line">        activate_page(page);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为非活跃 - 从 ACTIVE 转为 INACTIVE */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">lru_cache_add_inactive</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!PageUnevictable(page))</span><br><span class="line">        lru_cache_add(page);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 标记为不可驱逐 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">mark_page_unevictable</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">clear_page_unevictable</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放页面 - 回到 FREE 状态 */</span></span><br><span class="line"><span class="type">void</span> __free_pages(<span class="keyword">struct</span> page *page, <span class="type">unsigned</span> <span class="type">int</span> order);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="2-7-本章小结与跨章节关联"><a href="#2-7-本章小结与跨章节关联" class="headerlink" title="2.7 本章小结与跨章节关联"></a>2.7 本章小结与跨章节关联</h2><h3 id="2-7-1-本章要点"><a href="#2-7-1-本章要点" class="headerlink" title="2.7.1 本章要点"></a>2.7.1 本章要点</h3><p>本章介绍了 Linux 6.12 的物理内存模型：</p>
+<ol>
+<li><p><strong>UMA vs NUMA 架构</strong>：</p>
+<ul>
+<li>UMA (均匀内存访问)：单一内存空间，所有 CPU 访问延迟相同，使用 <code>contig_page_data</code></li>
+<li>NUMA (非均匀内存访问)：多节点架构，本地内存访问快于远程，使用 <code>node_data[]</code> 数组</li>
+</ul>
+</li>
+<li><p>**内存节点 (Node)**：<code>pglist_data</code> 结构，通过 <code>NODE_DATA(nid)</code> 访问</p>
+</li>
+<li><p><strong>内存模型</strong>：</p>
+<ul>
+<li>FLATMEM：平坦内存模型，UMA 系统使用</li>
+<li>SPARSEMEM：稀疏内存模型，NUMA 系统使用，支持内存热插拔</li>
+<li>DISCONTIGMEM：已废弃</li>
+</ul>
+</li>
+<li><p>**内存区域 (Zone)**：解决硬件访问限制，DMA、Normal、HighMem、Movable、Device</p>
+</li>
+<li><p>**水位 (Watermark)**：min、low、high、promo 四个水位控制页面回收</p>
+</li>
+<li><p>**物理页面 (Page)**：<code>struct page</code> 描述符，flags、refcount、mapcount</p>
+</li>
+<li><p><strong>复合页与 Folio</strong>：多页管理，folio 是 Linux 5.15+ 的新抽象</p>
+</li>
+<li><p><strong>页面生命周期</strong>：从分配到回收的完整状态转换</p>
+</li>
+</ol>
+<h3 id="2-7-2-与其他章节的关系"><a href="#2-7-2-与其他章节的关系" class="headerlink" title="2.7.2 与其他章节的关系"></a>2.7.2 与其他章节的关系</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 本章内容 (物理内存模型)                                      │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                            │</span><br><span class="line">│  Node/Zone/Page ──▶ ch03:Buddy System分配器               │</span><br><span class="line">│                          (如何使用这些结构分配内存)          │</span><br><span class="line">│                                                            │</span><br><span class="line">│  Page 结构 ──────▶ ch07:页面分配 (alloc_pages返回什么)      │</span><br><span class="line">│                                                            │</span><br><span class="line">│  watermark ──────▶ ch10:页面回收 (何时触发回收)             │</span><br><span class="line">│                                                            │</span><br><span class="line">│  zone ────────────▶ ch04:虚拟地址空间 (如何映射到zone)       │</span><br><span class="line">│                                                            │</span><br><span class="line">│  folio ──────────▶ ch12:页缓存 (folio在缓存中的使用)        │</span><br><span class="line">│                                                            │</span><br><span class="line">│  页面生命周期 ────▶ ch09:缺页处理 (页面状态的触发)           │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键关联路径：</strong></p>
+<ol>
+<li><p><strong>分配路径</strong>: <code>ch02(物理内存模型)</code> → <code>ch03(Buddy分配器)</code> → <code>ch07(alloc_pages API)</code></p>
+</li>
+<li><p><strong>回收路径</strong>: <code>ch02(watermark检查)</code> → <code>ch10(kswapd/直接回收)</code> → <code>ch02(FREE状态)</code></p>
+</li>
+<li><p><strong>映射路径</strong>: <code>ch02(Page结构)</code> → <code>ch05(页表管理)</code> → <code>ch06(VMA)</code> → <code>ch09(缺页处理)</code></p>
+</li>
+</ol>
+<p>下一章将介绍物理内存分配器 (Buddy System)。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-02</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:38:51</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:04:44
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-02/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-03/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-03</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-01/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-01</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-02</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC2%E7%AB%A0%EF%BC%9A%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="nav-text">第2章：物理内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%86%85%E5%AD%98%E8%8A%82%E7%82%B9-Node"><span class="nav-text">2.1 内存节点 (Node)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-UMA-vs-NUMA-%E6%9E%B6%E6%9E%84"><span class="nav-text">2.1.1 UMA vs NUMA 架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-2-pglist-data-%E7%BB%93%E6%9E%84"><span class="nav-text">2.1.2 pglist_data 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-3-%E8%8A%82%E7%82%B9%E7%8A%B6%E6%80%81"><span class="nav-text">2.1.3 节点状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-4-UMA-NUMA-%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-text">2.1.4 UMA&#x2F;NUMA 内核代码实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%86%85%E5%AD%98%E5%8C%BA%E5%9F%9F-Zone"><span class="nav-text">2.2 内存区域 (Zone)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-Zone-%E7%B1%BB%E5%9E%8B"><span class="nav-text">2.2.1 Zone 类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-Zone-%E7%BB%93%E6%9E%84"><span class="nav-text">2.2.2 Zone 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-3-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E7%A4%BA%E4%BE%8B"><span class="nav-text">2.2.3 内存布局示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E6%B0%B4%E4%BD%8D-Watermark"><span class="nav-text">2.3 水位 (Watermark)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E6%B0%B4%E4%BD%8D%E7%B1%BB%E5%9E%8B"><span class="nav-text">2.3.1 水位类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E6%B0%B4%E4%BD%8D%E8%AE%A1%E7%AE%97"><span class="nav-text">2.3.2 水位计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-%E6%B0%B4%E4%BD%8D%E7%A4%BA%E6%84%8F%E5%9B%BE"><span class="nav-text">2.3.3 水位示意图</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-4-%E6%B0%B4%E4%BD%8D%E7%9B%B8%E5%85%B3-API"><span class="nav-text">2.3.4 水位相关 API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4-%E7%89%A9%E7%90%86%E9%A1%B5%E9%9D%A2-Page"><span class="nav-text">2.4 物理页面 (Page)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-1-page-%E7%BB%93%E6%9E%84"><span class="nav-text">2.4.1 page 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-2-%E9%A1%B5%E9%9D%A2%E6%A0%87%E5%BF%97"><span class="nav-text">2.4.2 页面标志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-5-%E5%A4%8D%E5%90%88%E9%A1%B5%E4%B8%8E-Folio"><span class="nav-text">2.5 复合页与 Folio</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-1-%E5%A4%8D%E5%90%88%E9%A1%B5%E7%BB%93%E6%9E%84"><span class="nav-text">2.5.1 复合页结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-2-Folio-%E7%BB%93%E6%9E%84"><span class="nav-text">2.5.2 Folio 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-3-Folio-%E6%93%8D%E4%BD%9C-API"><span class="nav-text">2.5.3 Folio 操作 API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-6-%E9%A1%B5%E9%9D%A2%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-text">2.6 页面生命周期状态机</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-1-%E9%A1%B5%E9%9D%A2%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="nav-text">2.6.1 页面状态转换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-2-%E9%A1%B5%E9%9D%A2%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2%E6%93%8D%E4%BD%9C"><span class="nav-text">2.6.2 页面状态转换操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-7-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93%E4%B8%8E%E8%B7%A8%E7%AB%A0%E8%8A%82%E5%85%B3%E8%81%94"><span class="nav-text">2.7 本章小结与跨章节关联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-1-%E6%9C%AC%E7%AB%A0%E8%A6%81%E7%82%B9"><span class="nav-text">2.7.1 本章要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-2-%E4%B8%8E%E5%85%B6%E4%BB%96%E7%AB%A0%E8%8A%82%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">2.7.2 与其他章节的关系</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

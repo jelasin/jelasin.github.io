@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-07/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-07">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-07/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:19.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:13.316Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-07 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-07</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:19</span>
+        <span class="mobile">2026-01-20 21:39:19</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:13</span>
+            <span class="mobile">2026-02-24 14:05:13</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第7章：页面分配"><a href="#第7章：页面分配" class="headerlink" title="第7章：页面分配"></a>第7章：页面分配</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="7-1-页面分配概述"><a href="#7-1-页面分配概述" class="headerlink" title="7.1 页面分配概述"></a>7.1 页面分配概述</h2><h3 id="7-1-1-分配层次"><a href="#7-1-1-分配层次" class="headerlink" title="7.1.1 分配层次"></a>7.1.1 分配层次</h3><p>Linux 内核提供了多种内存分配方式，适用于不同的场景：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    内存分配层次                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  高层分配 (kmalloc, vmalloc)                                │</span><br><span class="line">│       ↓                                                     │</span><br><span class="line">│  页面分配 (alloc_pages, __get_free_pages)                   │</span><br><span class="line">│       ↓                                                     │</span><br><span class="line">│  Buddy System (伙伴系统)                                    │</span><br><span class="line">│       ↓                                                     │</span><br><span class="line">│  物理页面 (struct page)                                     │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-1-2-用户空间内存分配完整调用链"><a href="#7-1-2-用户空间内存分配完整调用链" class="headerlink" title="7.1.2 用户空间内存分配完整调用链"></a>7.1.2 用户空间内存分配完整调用链</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                 用户空间内存分配完整调用链                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│  用户代码                                                          │</span><br><span class="line">│  ┌────────────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  ptr = malloc(1024)                                         │    │</span><br><span class="line">│  │         │                                                   │    │</span><br><span class="line">│  │         ▼                                                   │    │</span><br><span class="line">│  │  brk() / mmap(MAP_ANONYMOUS)  ────────┐                    │    │</span><br><span class="line">│  └────────────────────────────────────────┼────────────────────┘    │</span><br><span class="line">│  系统调用                                           │                 │</span><br><span class="line">│  │                                                   │             │</span><br><span class="line">│  ▼                                                   ▼             │</span><br><span class="line">│  ┌────────────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  sys_brk / sys_mmap_pgoff (ch11, ch12)                      │    │</span><br><span class="line">│  │         │                                                   │    │</span><br><span class="line">│  │         ▼                                                   │    │</span><br><span class="line">│  │  do_mmap() → 创建 VMA (vm_area_struct)                      │    │</span><br><span class="line">│  │         │                                                   │    │</span><br><span class="line">│  │         ▼                                                   │    │</span><br><span class="line">│  │  ┌───────────────────────────────────────────────────────┐  │    │</span><br><span class="line">│  │  │  首次访问触发缺页异常 (Page Fault)                      │  │    │</span><br><span class="line">│  │  │                                                         │  │    │</span><br><span class="line">│  │  │  do_page_fault() → handle_mm_fault()                   │  │    │</span><br><span class="line">│  │  │         │                                               │  │    │</span><br><span class="line">│  │  │         ▼                                               │  │    │</span><br><span class="line">│  │  │  do_anonymous_page() (ch09)                             │  │    │</span><br><span class="line">│  │  │         │                                               │  │    │</span><br><span class="line">│  │  │         ▼                                               │  │    │</span><br><span class="line">│  │  │  alloc_pages(GFP_KERNEL, order) ──┐                    │  │    │</span><br><span class="line">│  │  │                                    │                    │  │    │</span><br><span class="line">│  │  └────────────────────────────────────┼────────────────────┘  │    │</span><br><span class="line">│  │                                     │                         │    │</span><br><span class="line">│  │  ┌────────────────────────────────────┼────────────────────┐  │    │</span><br><span class="line">│  │  │       __alloc_pages_noprof()       │                    │  │    │</span><br><span class="line">│  │  │         │                         │                    │  │    │</span><br><span class="line">│  │  │         ├──► 快速路径: PCP缓存 ────┤                    │  │    │</span><br><span class="line">│  │  │         │   (per_cpu_pages)        │                    │  │    │</span><br><span class="line">│  │  │         │                         │                    │  │    │</span><br><span class="line">│  │  │         ├──► 慢速路径:             │                    │  │    │</span><br><span class="line">│  │  │         │   - 唤醒 kswapd          │                    │  │    │</span><br><span class="line">│  │  │         │   - Buddy分配           │                    │  │    │</span><br><span class="line">│  │  │         │   - 直接回收 (ch10)      │                    │  │    │</span><br><span class="line">│  │  │         │   - 内存压缩 (ch13)      │                    │  │    │</span><br><span class="line">│  │  │         │                         │                    │  │    │</span><br><span class="line">│  │  │         ▼                         ▼                    │  │    │</span><br><span class="line">│  │  │  struct page *page (物理页面)                           │  │    │</span><br><span class="line">│  │  └─────────────────────────────────────────────────────────┘  │    │</span><br><span class="line">│  │                                                              │    │</span><br><span class="line">│  │  设置页表: set_pte_at() ──▶ 建立虚拟→物理映射 (ch05)        │    │</span><br><span class="line">│  └──────────────────────────────────────────────────────────────┘    │</span><br><span class="line">│                                                                     │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │  Slab小对象分配 (kmalloc)                                     │   │</span><br><span class="line">│  │                                                              │   │</span><br><span class="line">│  │  kmalloc(128)                                                │   │</span><br><span class="line">│  │       │                                                      │   │</span><br><span class="line">│  │       ▼                                                      │   │</span><br><span class="line">│  │  kmem_cache_alloc(kmalloc_caches[index])                     │   │</span><br><span class="line">│  │       │                                                      │   │</span><br><span class="line">│  │       ▼                                                      │   │</span><br><span class="line">│  │  __do_kmalloc() → 如果size &gt; PAGE_SIZE, 调用 alloc_pages()   │   │</span><br><span class="line">│  └──────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                     │</span><br><span class="line">│  图例说明:                                                         │</span><br><span class="line">│  ─────────                                                          │</span><br><span class="line">│  ───►    : 直接调用流                                              │</span><br><span class="line">│  ──┐     : 条件分支                                                │</span><br><span class="line">│  │ │                                                             │</span><br><span class="line">│  └─┘                                                             │</span><br><span class="line">│  (chXX)   : 对应章节                                               │</span><br><span class="line">│                                                                     │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-1-3-分配-API-分类"><a href="#7-1-3-分配-API-分类" class="headerlink" title="7.1.3 分配 API 分类"></a>7.1.3 分配 API 分类</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>API</th>
+<th>单位</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>物理页面</td>
+<td><code>alloc_pages()</code></td>
+<td>页 (4KB)</td>
+<td>物理内存分配</td>
+</tr>
+<tr>
+<td>虚拟地址</td>
+<td><code>__get_free_pages()</code></td>
+<td>页 (4KB)</td>
+<td>直接映射区虚拟地址</td>
+</tr>
+<tr>
+<td>字节</td>
+<td><code>kmalloc()</code></td>
+<td>字节</td>
+<td>小对象分配</td>
+</tr>
+<tr>
+<td>非连续</td>
+<td><code>vmalloc()</code></td>
+<td>字节</td>
+<td>非连续虚拟内存</td>
+</tr>
+<tr>
+<td>精确</td>
+<td><code>alloc_pages_exact()</code></td>
+<td>字节</td>
+<td>精确大小分配</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-2-alloc-pages-函数族"><a href="#7-2-alloc-pages-函数族" class="headerlink" title="7.2 alloc_pages 函数族"></a>7.2 alloc_pages 函数族</h2><h3 id="7-2-1-核心分配函数"><a href="#7-2-1-核心分配函数" class="headerlink" title="7.2.1 核心分配函数"></a>7.2.1 核心分配函数</h3><p><strong>位置:</strong> <code>include/linux/gfp.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配 2^order 个连续页面，返回 struct page */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">alloc_pages_noprof</span>(<span class="title">gfp_t</span> <span class="title">gfp</span>, <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>,</span></span><br><span class="line"><span class="class">                                   <span class="title">int</span> <span class="title">preferred_nid</span>, <span class="title">nodemask_t</span> *<span class="title">nodemask</span>);</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配单页 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> alloc_page(gfp_mask) alloc_pages(gfp_mask, 0)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配多个页面 */</span></span><br><span class="line"><span class="keyword">struct</span> page *<span class="title function_">alloc_pages_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">unsigned</span> <span class="type">int</span> order)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从指定节点分配 */</span></span><br><span class="line"><span class="keyword">struct</span> page *<span class="title function_">alloc_pages_node_noprof</span><span class="params">(<span class="type">int</span> nid, <span class="type">gfp_t</span> gfp_mask,</span></span><br><span class="line"><span class="params">                                      <span class="type">unsigned</span> <span class="type">int</span> order)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从指定节点分配 (带 NUMA_NO_NODE 检查) */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> page *<span class="title function_">alloc_pages_node_noprof</span><span class="params">(<span class="type">int</span> nid, <span class="type">gfp_t</span> gfp_mask,</span></span><br><span class="line"><span class="params">                                                    <span class="type">unsigned</span> <span class="type">int</span> order)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (nid == NUMA_NO_NODE)</span><br><span class="line">        nid = numa_mem_id();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> __alloc_pages_node_noprof(nid, gfp_mask, order);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-2-2-从-VMA-分配"><a href="#7-2-2-从-VMA-分配" class="headerlink" title="7.2.2 从 VMA 分配"></a>7.2.2 从 VMA 分配</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 从 VMA 分配页面 (考虑 VMA 策略) */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> page *<span class="title function_">alloc_page_vma_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp,</span></span><br><span class="line"><span class="params">                                                  <span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                                  <span class="type">unsigned</span> <span class="type">long</span> addr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span> =</span> vma_alloc_folio_noprof(gfp, <span class="number">0</span>, vma, addr, <span class="literal">false</span>);</span><br><span class="line">    <span class="keyword">return</span> &amp;folio-&gt;page;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配 folio */</span></span><br><span class="line"><span class="keyword">struct</span> folio *<span class="title function_">vma_alloc_folio_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                                      <span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                      <span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">bool</span> hugepage)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-2-3-使用示例"><a href="#7-2-3-使用示例" class="headerlink" title="7.2.3 使用示例"></a>7.2.3 使用示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配单页 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span> =</span> alloc_page(GFP_KERNEL);</span><br><span class="line"><span class="keyword">if</span> (!page)</span><br><span class="line">    <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配 8 页 (order=3, 32KB) */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">pages</span> =</span> alloc_pages(GFP_KERNEL, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">if</span> (!pages)</span><br><span class="line">    <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 使用页面 */</span></span><br><span class="line"><span class="type">void</span> *addr = page_address(page);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放页面 */</span></span><br><span class="line">__free_pages(page, <span class="number">0</span>);</span><br><span class="line">__free_pages(pages, <span class="number">3</span>);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-3-get-free-pages-函数族"><a href="#7-3-get-free-pages-函数族" class="headerlink" title="7.3 __get_free_pages 函数族"></a>7.3 __get_free_pages 函数族</h2><h3 id="7-3-1-函数定义"><a href="#7-3-1-函数定义" class="headerlink" title="7.3.1 函数定义"></a>7.3.1 函数定义</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配页面并返回内核虚拟地址 */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">get_free_pages_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp_mask, <span class="type">unsigned</span> <span class="type">int</span> order)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配并清零 */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">get_zeroed_page_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp_mask)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 快捷宏 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __get_free_page(gfp_mask) \</span></span><br><span class="line"><span class="meta">    __get_free_pages((gfp_mask), 0)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __get_dma_pages(gfp_mask, order) \</span></span><br><span class="line"><span class="meta">    __get_free_pages((gfp_mask) | GFP_DMA, (order))</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-3-2-使用示例"><a href="#7-3-2-使用示例" class="headerlink" title="7.3.2 使用示例"></a>7.3.2 使用示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配一个页面，返回虚拟地址 */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> addr = __get_free_page(GFP_KERNEL);</span><br><span class="line"><span class="keyword">if</span> (!addr)</span><br><span class="line">    <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 使用内存 */</span></span><br><span class="line"><span class="built_in">memset</span>((<span class="type">void</span> *)addr, <span class="number">0</span>, PAGE_SIZE);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放 */</span></span><br><span class="line">free_page(addr);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-3-3-与-alloc-pages-的区别"><a href="#7-3-3-与-alloc-pages-的区别" class="headerlink" title="7.3.3 与 alloc_pages 的区别"></a>7.3.3 与 alloc_pages 的区别</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th><code>alloc_pages()</code></th>
+<th><code>__get_free_pages()</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>返回类型</td>
+<td><code>struct page *</code></td>
+<td><code>unsigned long</code> (虚拟地址)</td>
+</tr>
+<tr>
+<td>地址范围</td>
+<td>任意物理内存</td>
+<td>直接映射区</td>
+</tr>
+<tr>
+<td>高端内存</td>
+<td>支持</td>
+<td>仅当启用 <code>CONFIG_HIGHMEM</code></td>
+</tr>
+<tr>
+<td>典型用途</td>
+<td>需要操作 struct page</td>
+<td>需要直接访问内存</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-4-释放页面"><a href="#7-4-释放页面" class="headerlink" title="7.4 释放页面"></a>7.4 释放页面</h2><h3 id="7-4-1-释放函数"><a href="#7-4-1-释放函数" class="headerlink" title="7.4.1 释放函数"></a>7.4.1 释放函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 释放页面 (已知 struct page) */</span></span><br><span class="line"><span class="type">void</span> __free_pages(<span class="keyword">struct</span> page *page, <span class="type">unsigned</span> <span class="type">int</span> order);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放页面 (已知虚拟地址) */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">free_pages</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">unsigned</span> <span class="type">int</span> order)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放单页快捷宏 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __free_page(page) __free_pages((page), 0)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> free_page(addr) free_pages((addr), 0)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-4-2-释放流程"><a href="#7-4-2-释放流程" class="headerlink" title="7.4.2 释放流程"></a>7.4.2 释放流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">__free_pages(page, order=2)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ 1. 检查页面有效性        │</span><br><span class="line">│    - 检查引用计数 (_refcount)  │</span><br><span class="line">│    - 检查页面标志 (flags)    │</span><br><span class="line">└──────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ 2. 检查是否为复合页      │</span><br><span class="line">│    - 如果是 folio，特殊处理 │</span><br><span class="line">└──────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ 3. 释放页面到 buddy      │</span><br><span class="line">│    - 放入 free_area[2]   │</span><br><span class="line">└──────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ 4. 检查 buddy 是否空闲   │</span><br><span class="line">│    - buddy = page ^ 2^2  │</span><br><span class="line">│    - 如果空闲，合并       │</span><br><span class="line">└──────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ 5. 递归向上合并          │</span><br><span class="line">│    - order 2 → order 3   │</span><br><span class="line">│    - order 3 → order 4   │</span><br><span class="line">│    - ...                 │</span><br><span class="line">└──────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-4-3-释放注意事项"><a href="#7-4-3-释放注意事项" class="headerlink" title="7.4.3 释放注意事项"></a>7.4.3 释放注意事项</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 不要释放 NULL 页面 */</span></span><br><span class="line"><span class="keyword">if</span> (page)</span><br><span class="line">    __free_pages(page, order);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 不要释放引用计数不为 0 的页面 */</span></span><br><span class="line"><span class="keyword">if</span> (page_ref_count(page) == <span class="number">0</span>)</span><br><span class="line">    __free_pages(page, order);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 正确的释放模式 */</span></span><br><span class="line">get_page(page);  <span class="comment">/* 增加引用 */</span></span><br><span class="line"><span class="comment">/* ... 使用页面 ... */</span></span><br><span class="line">put_page(page);  <span class="comment">/* 减少引用，如果为 0 则释放 */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-5-页面引用计数"><a href="#7-5-页面引用计数" class="headerlink" title="7.5 页面引用计数"></a>7.5 页面引用计数</h2><h3 id="7-5-1-引用计数操作"><a href="#7-5-1-引用计数操作" class="headerlink" title="7.5.1 引用计数操作"></a>7.5.1 引用计数操作</h3><p><strong>位置:</strong> <code>include/linux/page_ref.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 增加引用计数 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">get_page</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="keyword">struct</span> page *<span class="title function_">grab_page</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 减少引用计数 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">put_page</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 尝试获取引用 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">try_get_page</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查引用计数 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">page_ref_count</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 设置引用计数 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">set_page_count</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> v)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 原子操作 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">page_ref_inc</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">page_ref_dec</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">page_ref_add</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> nr)</span>;</span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">page_ref_sub</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> nr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 条件操作 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">page_ref_add_unless</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> nr, <span class="type">int</span> unless)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">page_ref_sub_and_test</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> nr)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">page_ref_inc_and_test</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">page_ref_dec_and_test</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">page_ref_freeze</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> count)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">page_ref_unfreeze</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="type">int</span> count)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-5-2-引用计数使用"><a href="#7-5-2-引用计数使用" class="headerlink" title="7.5.2 引用计数使用"></a>7.5.2 引用计数使用</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 获取页面引用 */</span></span><br><span class="line">get_page(page);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 使用页面 */</span></span><br><span class="line"><span class="comment">/* ... */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放引用 */</span></span><br><span class="line">put_page(page);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 条件释放 */</span></span><br><span class="line"><span class="keyword">if</span> (page_ref_sub_and_test(page, <span class="number">1</span>)) &#123;</span><br><span class="line">    <span class="comment">/* 引用计数为 0，释放页面 */</span></span><br><span class="line">    __free_pages(page, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-6-精确分配"><a href="#7-6-精确分配" class="headerlink" title="7.6 精确分配"></a>7.6 精确分配</h2><h3 id="7-6-1-alloc-pages-exact"><a href="#7-6-1-alloc-pages-exact" class="headerlink" title="7.6.1 alloc_pages_exact"></a>7.6.1 alloc_pages_exact</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配指定大小的连续内存 */</span></span><br><span class="line"><span class="type">void</span> *<span class="title function_">alloc_pages_exact_noprof</span><span class="params">(<span class="type">size_t</span> size, <span class="type">gfp_t</span> gfp_mask)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放精确分配的内存 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">free_pages_exact</span><span class="params">(<span class="type">void</span> *virt, <span class="type">size_t</span> size)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从指定节点精确分配 */</span></span><br><span class="line">__meminit <span class="type">void</span> *<span class="title function_">alloc_pages_exact_nid_noprof</span><span class="params">(<span class="type">int</span> nid, <span class="type">size_t</span> size, <span class="type">gfp_t</span> gfp_mask)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-6-2-使用场景"><a href="#7-6-2-使用场景" class="headerlink" title="7.6.2 使用场景"></a>7.6.2 使用场景</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配 10KB 的连续内存 (非 2^n 次幂) */</span></span><br><span class="line"><span class="type">void</span> *mem = alloc_pages_exact(<span class="number">10240</span>, GFP_KERNEL);</span><br><span class="line"><span class="keyword">if</span> (!mem)</span><br><span class="line">    <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 使用内存 */</span></span><br><span class="line"><span class="built_in">memcpy</span>(mem, data, <span class="number">10240</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放 */</span></span><br><span class="line">free_pages_exact(mem, <span class="number">10240</span>);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-7-批量分配"><a href="#7-7-批量分配" class="headerlink" title="7.7 批量分配"></a>7.7 批量分配</h2><h3 id="7-7-1-批量分配-API"><a href="#7-7-1-批量分配-API" class="headerlink" title="7.7.1 批量分配 API"></a>7.7.1 批量分配 API</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 批量分配到列表 */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">alloc_pages_bulk_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">int</span> preferred_nid,</span></span><br><span class="line"><span class="params">                                        <span class="type">nodemask_t</span> *nodemask, <span class="type">int</span> nr_pages,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">struct</span> list_head *page_list,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">struct</span> page **page_array)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 快捷宏 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> alloc_pages_bulk_list(_gfp, _nr_pages, _list) \</span></span><br><span class="line"><span class="meta">    __alloc_pages_bulk(_gfp, numa_mem_id(), NULL, _nr_pages, _list, NULL)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> alloc_pages_bulk_array(_gfp, _nr_pages, _page_array) \</span></span><br><span class="line"><span class="meta">    __alloc_pages_bulk(_gfp, numa_mem_id(), NULL, _nr_pages, NULL, _page_array)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从指定节点批量分配 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">unsigned</span> <span class="type">long</span></span><br><span class="line"><span class="title function_">alloc_pages_bulk_array_node_noprof</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">int</span> nid, <span class="type">unsigned</span> <span class="type">long</span> nr_pages,</span></span><br><span class="line"><span class="params">                                   <span class="keyword">struct</span> page **page_array)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (nid == NUMA_NO_NODE)</span><br><span class="line">        nid = numa_mem_id();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> alloc_pages_bulk_noprof(gfp, nid, <span class="literal">NULL</span>, nr_pages, <span class="literal">NULL</span>, page_array);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-7-2-批量分配示例"><a href="#7-7-2-批量分配示例" class="headerlink" title="7.7.2 批量分配示例"></a>7.7.2 批量分配示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 批量分配 128 个页面到数组 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">pages</span>[128];</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> nr = alloc_pages_bulk_array(GFP_KERNEL, <span class="number">128</span>, pages);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 使用页面 */</span></span><br><span class="line"><span class="keyword">for</span> (<span class="type">unsigned</span> <span class="type">long</span> i = <span class="number">0</span>; i &lt; nr; i++) &#123;</span><br><span class="line">    <span class="type">void</span> *addr = page_address(pages[i]);</span><br><span class="line">    <span class="comment">/* ... 使用内存 ... */</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放页面 */</span></span><br><span class="line"><span class="keyword">for</span> (<span class="type">unsigned</span> <span class="type">long</span> i = <span class="number">0</span>; i &lt; nr; i++) &#123;</span><br><span class="line">    __free_page(pages[i]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-8-页面转换"><a href="#7-8-页面转换" class="headerlink" title="7.8 页面转换"></a>7.8 页面转换</h2><h3 id="7-8-1-page-和虚拟地址转换"><a href="#7-8-1-page-和虚拟地址转换" class="headerlink" title="7.8.1 page 和虚拟地址转换"></a>7.8.1 page 和虚拟地址转换</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* page → 虚拟地址 */</span></span><br><span class="line"><span class="type">void</span> *<span class="title function_">page_address</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> *<span class="title function_">lowmem_page_address</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 虚拟地址 → page (仅直接映射区) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> virt_to_page(addr)    pfn_to_page(PFN_DOWN(__pa(addr)))</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* PFN → page */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pfn_to_page(pfn)      (mem_map + ((pfn) - ARCH_PFN_OFFSET))</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* page → PFN */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> page_to_pfn(page)     ((unsigned long)((page) - mem_map) + \</span></span><br><span class="line"><span class="meta">                                 ARCH_PFN_OFFSET)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 虚拟地址 → 物理地址 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __pa(x)               ((unsigned long)(x) - PAGE_OFFSET)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 物理地址 → 虚拟地址 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __va(x)               ((void *)((unsigned long)(x) + PAGE_OFFSET))</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-8-2-高端内存映射"><a href="#7-8-2-高端内存映射" class="headerlink" title="7.8.2 高端内存映射"></a>7.8.2 高端内存映射</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 临时映射高端内存页面 */</span></span><br><span class="line"><span class="type">void</span> *<span class="title function_">kmap_atomic</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">kunmap_atomic</span><span class="params">(<span class="type">void</span> *kvaddr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 永久映射高端内存页面 */</span></span><br><span class="line"><span class="type">void</span> *<span class="title function_">kmap</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">kunmap</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 映射页面到用户空间 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">map_vm_area</span><span class="params">(<span class="keyword">struct</span> vm_struct *area, <span class="type">pgprot_t</span> prot,</span></span><br><span class="line"><span class="params">                <span class="keyword">struct</span> page **pages)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">unmap_vm_area</span><span class="params">(<span class="keyword">struct</span> vm_struct *area)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-9-分配跟踪与调试"><a href="#7-9-分配跟踪与调试" class="headerlink" title="7.9 分配跟踪与调试"></a>7.9 分配跟踪与调试</h2><h3 id="7-9-1-分配跟踪"><a href="#7-9-1-分配跟踪" class="headerlink" title="7.9.1 分配跟踪"></a>7.9.1 分配跟踪</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配跟踪钩子 (CONFIG_MEM_ALLOC_PROFILING) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> alloc_hooks(__alloc_fn)   alloc_hooks_branch(__alloc_fn)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 内存分配标签 (CONFIG_MEM_ALLOC_PROFILING) */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">alloc_tag</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 分配标签信息 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-9-2-调试选项"><a href="#7-9-2-调试选项" class="headerlink" title="7.9.2 调试选项"></a>7.9.2 调试选项</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_DEBUG_PAGEALLOC         # 调试页面分配</span><br><span class="line">CONFIG_DEBUG_PAGEALLOC_ENABLE_DEFAULT</span><br><span class="line">CONFIG_PAGE_POISONING          # 页面投毒</span><br><span class="line">CONFIG_PAGE_POISONING_NO_SANITY</span><br><span class="line">CONFIG_PAGE_POISONING_ZERO     # 投毒后清零</span><br><span class="line">CONFIG_PAGE_OWNER              # 跟踪页面所有者</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK          # 内存泄漏检测</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="7-9-3-调试函数"><a href="#7-9-3-调试函数" class="headerlink" title="7.9.3 调试函数"></a>7.9.3 调试函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 检查页面是否保留 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">PageReserved</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查页面是否 slab */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">PageSlab</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查页面是否在伙伴系统 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">PageBuddy</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取页面 order */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">page_order</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> page *page)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="7-10-本章小结与跨章节关联"><a href="#7-10-本章小结与跨章节关联" class="headerlink" title="7.10 本章小结与跨章节关联"></a>7.10 本章小结与跨章节关联</h2><h3 id="7-10-1-本章要点"><a href="#7-10-1-本章要点" class="headerlink" title="7.10.1 本章要点"></a>7.10.1 本章要点</h3><p>本章介绍了 Linux 6.12 的页面分配：</p>
+<ol>
+<li><strong>分配层次</strong>: kmalloc&#x2F;vmalloc → alloc_pages → Buddy System → 物理页面</li>
+<li><strong>alloc_pages 函数族</strong>: 返回 struct page，分配物理页面</li>
+<li><strong>__get_free_pages 函数族</strong>: 返回虚拟地址，直接映射区</li>
+<li><strong>释放页面</strong>: __free_pages，伙伴合并</li>
+<li><strong>引用计数</strong>: get_page&#x2F;put_page，页面生命周期管理</li>
+<li><strong>精确分配</strong>: alloc_pages_exact，非 2^n 次幂分配</li>
+<li><strong>批量分配</strong>: alloc_pages_bulk，提高效率</li>
+<li><strong>页面转换</strong>: page 和虚拟地址互转</li>
+<li><strong>分配跟踪</strong>: 调试选项和函数</li>
+</ol>
+<h3 id="7-10-2-与其他章节的关系"><a href="#7-10-2-与其他章节的关系" class="headerlink" title="7.10.2 与其他章节的关系"></a>7.10.2 与其他章节的关系</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 本章内容 (页面分配)                                          │</span><br><span class="line">├────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch02:Node/Zone/Page                       │</span><br><span class="line">│                    (从哪个结构分配)                          │</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch03:Buddy System                          │</span><br><span class="line">│                    (底层分配算法)                            │</span><br><span class="line">│                                                            │</span><br><span class="line">│  快速路径 ────▶ ch02:per_cpu_pages                         │</span><br><span class="line">│  (PCP缓存)          (Per-CPU 页面缓存)                       │</span><br><span class="line">│                                                            │</span><br><span class="line">│  慢速路径 ────▶ ch10:页面回收 (kswapd/直接回收)              │</span><br><span class="line">│                    (回收满足分配需求)                         │</span><br><span class="line">│                                                            │</span><br><span class="line">│  慢速路径 ────▶ ch13:内存压缩 (kcompactd)                   │</span><br><span class="line">│                    (整理碎片满足高阶分配)                     │</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch05:页表管理 (设置页表映射)                │</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch06:VMA (匿名映射分配)                     │</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch09:缺页处理 (do_anonymous_page调用)        │</span><br><span class="line">│                                                            │</span><br><span class="line">│  alloc_pages ──▶ ch12:页缓存 (文件页分配)                    │</span><br><span class="line">│                                                            │</span><br><span class="line">│  kmalloc ─────▶ ch08:Slab分配器                              │</span><br><span class="line">│                    (小对象分配基于页面分配)                    │</span><br><span class="line">│                                                            │</span><br><span class="line">│  GFP标志 ─────▶ ch14:memcg (内存限制检查)                    │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键分配路径：</strong></p>
+<ol>
+<li><p><strong>快速路径</strong>: <code>alloc_pages()</code> → <code>per_cpu_pages</code> (PCP缓存) → 直接返回</p>
+<ul>
+<li>相关章节: ch02 (per_cpu_pages结构)</li>
+</ul>
+</li>
+<li><p><strong>慢速路径 - 低水位</strong>: <code>alloc_pages()</code> → <code>wakeup_kswapd()</code> → <code>kswapd回收</code></p>
+<ul>
+<li>相关章节: ch02 (watermark), ch10 (kswapd实现)</li>
+</ul>
+</li>
+<li><p><strong>慢速路径 - 直接回收</strong>: <code>alloc_pages()</code> → <code>__alloc_pages_direct_reclaim()</code></p>
+<ul>
+<li>相关章节: ch10 (直接回收)</li>
+</ul>
+</li>
+<li><p><strong>慢速路径 - 压缩</strong>: <code>alloc_pages()</code> → <code>__alloc_pages_direct_compact()</code></p>
+<ul>
+<li>相关章节: ch13 (内存压缩)</li>
+</ul>
+</li>
+<li><p><strong>用户空间分配</strong>: <code>malloc()</code> → <code>brk()/mmap()</code> → <code>缺页异常</code> → <code>alloc_pages()</code></p>
+<ul>
+<li>相关章节: ch09 (缺页处理), ch11 (mmap), ch12 (匿名内存)</li>
+</ul>
+</li>
+</ol>
+<p>下一章将介绍 Slab 分配器。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-07</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:19</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:13
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-07/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-08/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-08</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-06/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-06</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-07</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC7%E7%AB%A0%EF%BC%9A%E9%A1%B5%E9%9D%A2%E5%88%86%E9%85%8D"><span class="nav-text">第7章：页面分配</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#7-1-%E9%A1%B5%E9%9D%A2%E5%88%86%E9%85%8D%E6%A6%82%E8%BF%B0"><span class="nav-text">7.1 页面分配概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-1-%E5%88%86%E9%85%8D%E5%B1%82%E6%AC%A1"><span class="nav-text">7.1.1 分配层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-2-%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E5%AE%8C%E6%95%B4%E8%B0%83%E7%94%A8%E9%93%BE"><span class="nav-text">7.1.2 用户空间内存分配完整调用链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-3-%E5%88%86%E9%85%8D-API-%E5%88%86%E7%B1%BB"><span class="nav-text">7.1.3 分配 API 分类</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-2-alloc-pages-%E5%87%BD%E6%95%B0%E6%97%8F"><span class="nav-text">7.2 alloc_pages 函数族</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-1-%E6%A0%B8%E5%BF%83%E5%88%86%E9%85%8D%E5%87%BD%E6%95%B0"><span class="nav-text">7.2.1 核心分配函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-2-%E4%BB%8E-VMA-%E5%88%86%E9%85%8D"><span class="nav-text">7.2.2 从 VMA 分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-3-%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.2.3 使用示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-3-get-free-pages-%E5%87%BD%E6%95%B0%E6%97%8F"><span class="nav-text">7.3 __get_free_pages 函数族</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-1-%E5%87%BD%E6%95%B0%E5%AE%9A%E4%B9%89"><span class="nav-text">7.3.1 函数定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-2-%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.3.2 使用示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-3-%E4%B8%8E-alloc-pages-%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-text">7.3.3 与 alloc_pages 的区别</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-4-%E9%87%8A%E6%94%BE%E9%A1%B5%E9%9D%A2"><span class="nav-text">7.4 释放页面</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-1-%E9%87%8A%E6%94%BE%E5%87%BD%E6%95%B0"><span class="nav-text">7.4.1 释放函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-2-%E9%87%8A%E6%94%BE%E6%B5%81%E7%A8%8B"><span class="nav-text">7.4.2 释放流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-3-%E9%87%8A%E6%94%BE%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-text">7.4.3 释放注意事项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-5-%E9%A1%B5%E9%9D%A2%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0"><span class="nav-text">7.5 页面引用计数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-1-%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E6%93%8D%E4%BD%9C"><span class="nav-text">7.5.1 引用计数操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-2-%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E4%BD%BF%E7%94%A8"><span class="nav-text">7.5.2 引用计数使用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-6-%E7%B2%BE%E7%A1%AE%E5%88%86%E9%85%8D"><span class="nav-text">7.6 精确分配</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-6-1-alloc-pages-exact"><span class="nav-text">7.6.1 alloc_pages_exact</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-6-2-%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-text">7.6.2 使用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-7-%E6%89%B9%E9%87%8F%E5%88%86%E9%85%8D"><span class="nav-text">7.7 批量分配</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-7-1-%E6%89%B9%E9%87%8F%E5%88%86%E9%85%8D-API"><span class="nav-text">7.7.1 批量分配 API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-7-2-%E6%89%B9%E9%87%8F%E5%88%86%E9%85%8D%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.7.2 批量分配示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-8-%E9%A1%B5%E9%9D%A2%E8%BD%AC%E6%8D%A2"><span class="nav-text">7.8 页面转换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-1-page-%E5%92%8C%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E8%BD%AC%E6%8D%A2"><span class="nav-text">7.8.1 page 和虚拟地址转换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-2-%E9%AB%98%E7%AB%AF%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84"><span class="nav-text">7.8.2 高端内存映射</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-9-%E5%88%86%E9%85%8D%E8%B7%9F%E8%B8%AA%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="nav-text">7.9 分配跟踪与调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-9-1-%E5%88%86%E9%85%8D%E8%B7%9F%E8%B8%AA"><span class="nav-text">7.9.1 分配跟踪</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-9-2-%E8%B0%83%E8%AF%95%E9%80%89%E9%A1%B9"><span class="nav-text">7.9.2 调试选项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-9-3-%E8%B0%83%E8%AF%95%E5%87%BD%E6%95%B0"><span class="nav-text">7.9.3 调试函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-10-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93%E4%B8%8E%E8%B7%A8%E7%AB%A0%E8%8A%82%E5%85%B3%E8%81%94"><span class="nav-text">7.10 本章小结与跨章节关联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-10-1-%E6%9C%AC%E7%AB%A0%E8%A6%81%E7%82%B9"><span class="nav-text">7.10.1 本章要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-10-2-%E4%B8%8E%E5%85%B6%E4%BB%96%E7%AB%A0%E8%8A%82%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">7.10.2 与其他章节的关系</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

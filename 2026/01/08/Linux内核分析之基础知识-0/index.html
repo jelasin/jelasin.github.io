@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/08/linux内核分析之基础知识-0/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-0">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-0/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-07T17:17:49.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:00.825Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-0 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-0</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-08 01:17:49</span>
+        <span class="mobile">2026-01-08 01:17:49</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05</span>
+            <span class="mobile">2026-02-24 14:05</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>推荐学习顺序：</p>
+<p>基础知识 → 进程管理 → 内存管理 → 进程间通信 → 文件系统 → 设备驱动 → 网络协议栈 → 虚拟化 → 安全模块。</p>
+<h1 id="环境搭建"><a href="#环境搭建" class="headerlink" title="环境搭建"></a>环境搭建</h1><blockquote>
+<p>工具链：<br>通过网盘分享的文件：LKR_TOOL.tgz<br>链接: <a class="link"   target="_blank" rel="noopener" href="https://pan.baidu.com/s/1SCRsg9bSmILlvNN2moxXXw?pwd=s274" >https://pan.baidu.com/s/1SCRsg9bSmILlvNN2moxXXw?pwd=s274<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> 提取码: s274<br>–来自百度网盘超级会员v6的分享</p>
+</blockquote>
+<p>交叉编译工具链下载 <strong><a class="link"   target="_blank" rel="noopener" href="https://toolchains.bootlin.com/toolchains.html" >toolchains-bootlin<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></strong> <strong><a class="link"   target="_blank" rel="noopener" href="https://musl.cc/" >musl-cc<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></strong> 裸机编译工具链可以自行寻找。</p>
+<p>大家可以使用<code>ubuntu 24.04</code>或者<code>windows+wsl2</code>，<code>Mac</code>的配置和<code>Linux</code>大同小异。<code>qemu</code>有<code>windwos</code>的安装包，也可以使用<code>windows</code>的<code>qemu</code>，即<code>WSL2+WINDOWS</code>。这一部分内容可以参考我之前写的<code>Pwn_kernel</code>的内核模块开发部分。需要注意的是<code>Windwos</code>的<code>qemu</code>和<code>Linux</code>的<code>qemu</code>在启动命令上是有些不同的，<code>linux</code>的一些指令和功能特性是<code>Windows</code>不支持的。也可以选择在<code>wsl2</code>中编译<code>qemu</code>。建议使用<code>Linux</code>的<code>qemu</code>，功能更为完善强大。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo apt update</span><br><span class="line">sudo apt install build-essential -y</span><br><span class="line">sudo apt install gdb gdb-multiarch -y</span><br><span class="line">sudo apt install build-essential uuid-dev iasl git nasm python3 ovmf</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="windows"><a href="#windows" class="headerlink" title="windows"></a>windows</h2><div class="code-container" data-rel="Powershell"><figure class="iseeu highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">choco install git msys2 cmake make ninja <span class="literal">-y</span></span><br><span class="line">git lfs install</span><br><span class="line">choco install visualstudio2022community <span class="literal">--package-parameters</span> <span class="string">&quot;--add Microsoft.VisualStudio.Workload.NativeDesktop&quot;</span> <span class="literal">-y</span></span><br><span class="line">choco install iasl <span class="literal">-y</span></span><br><span class="line">choco upgrade all <span class="literal">-y</span></span><br></pre></td></tr></table></figure></div>
+
+<p>**<code>msys2-&gt;clang64</code> &#x2F; <code>msys2-&gt;ucrt64</code>**。</p>
+<div class="code-container" data-rel="Shell"><figure class="iseeu highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">pacman -Syu</span><br><span class="line"></span><br><span class="line">pacman -S base-devel wget curl coreutils binutils</span><br><span class="line"></span><br><span class="line">pacman -S mingw-w64-clang-x86_64-toolchain \</span><br><span class="line">		  mingw-w64-clang-x86_64-clang \</span><br><span class="line">          mingw-w64-clang-x86_64-llvm</span><br><span class="line"></span><br><span class="line">pacman -S mingw-w64-clang-x86_64-cmake \</span><br><span class="line">          mingw-w64-clang-x86_64-ninja</span><br><span class="line"></span><br><span class="line">pacman -S mingw-w64-clang-x86_64-clang-tools-extra \</span><br><span class="line">          mingw-w64-clang-x86_64-bear</span><br><span class="line"></span><br><span class="line">gcc --version</span><br><span class="line">g++ --version</span><br><span class="line">clang --version</span><br><span class="line">cmake --version</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>包前缀对照表</strong></p>
+<table>
+<thead>
+<tr>
+<th align="left">环境</th>
+<th align="left">完整前缀</th>
+<th align="left">缩写提示</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">MINGW64</td>
+<td align="left"><code>mingw-w64-x86_64-</code></td>
+<td align="left"><code>x86_64</code></td>
+</tr>
+<tr>
+<td align="left">UCRT64</td>
+<td align="left"><code>mingw-w64-ucrt-x86_64-</code></td>
+<td align="left"><code>ucrt64</code></td>
+</tr>
+<tr>
+<td align="left">CLANG64</td>
+<td align="left"><code>mingw-w64-clang-x86_64-</code></td>
+<td align="left"><code>clang64</code></td>
+</tr>
+</tbody></table>
+<h2 id="zsh-omz-安装"><a href="#zsh-omz-安装" class="headerlink" title="zsh-omz 安装"></a>zsh-omz 安装</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install zsh -y</span><br><span class="line">chsh -s $(<span class="built_in">which</span> zsh)</span><br><span class="line">sh -c <span class="string">&quot;<span class="subst">$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)</span>&quot;</span></span><br><span class="line"><span class="comment"># zsh-syntax-highlighting</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/zsh-users/zsh-syntax-highlighting.git <span class="variable">$&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;</span>/plugins/zsh-syntax-highlighting</span><br><span class="line"><span class="comment"># zsh-autosuggestions</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/zsh-users/zsh-autosuggestions <span class="variable">$&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;</span>/plugins/zsh-autosuggestions</span><br><span class="line"></span><br><span class="line">vim ~/.zshrc</span><br><span class="line"></span><br><span class="line">plugins=(git z zsh-syntax-highlighting zsh-autosuggestions)</span><br><span class="line"></span><br><span class="line"><span class="built_in">source</span> ~/.zshrc</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="Linux内核编译所需的库"><a href="#Linux内核编译所需的库" class="headerlink" title="Linux内核编译所需的库"></a>Linux内核编译所需的库</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 核心编译工具</span></span><br><span class="line">sudo apt install gcc make bc bison flex libssl-dev libelf-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 内核配置工具</span></span><br><span class="line">sudo apt install libncurses5-dev libncursesw5-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 压缩相关库</span></span><br><span class="line">sudo apt install zlib1g-dev liblz4-dev liblzma-dev libzstd-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 其他常用库</span></span><br><span class="line">sudo apt install dwarves rsync kmod cpio initramfs-tools-core</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="Busybox编译所需的库"><a href="#Busybox编译所需的库" class="headerlink" title="Busybox编译所需的库"></a>Busybox编译所需的库</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 基本C库开发包</span></span><br><span class="line">sudo apt install libc6-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 静态库支持（如果需要静态编译）</span></span><br><span class="line">sudo apt install libc6-dev-i386 lib32gcc-s1 lib32stdc++6</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="Qemu编译所需的库"><a href="#Qemu编译所需的库" class="headerlink" title="Qemu编译所需的库"></a>Qemu编译所需的库</h2><p><strong>QEMU编译核心依赖</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 核心编译工具</span></span><br><span class="line">sudo apt install -y gcc make cmake ninja-build pkg-config</span><br><span class="line"></span><br><span class="line"><span class="comment"># Python相关（QEMU构建系统需要）</span></span><br><span class="line">sudo apt install -y python3 python3-pip python3-dev python3-venv</span><br><span class="line"></span><br><span class="line">sudo apt install -y libc6-dev-i386 libglib2.0-dev libpixman-1-dev libmount-dev libunistring-dev libp11-kit-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 基础库</span></span><br><span class="line">sudo apt install zlib1g-dev libglib2.0-dev libpixman-1-dev libslirp-dev</span><br><span class="line"></span><br><span class="line">sudo apt install -y \</span><br><span class="line">    liburing-dev \</span><br><span class="line">    libnfs-dev</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>图形和显示支持</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># SDL支持（图形界面）</span></span><br><span class="line">sudo apt install libsdl2-dev libsdl2-image-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># GTK支持</span></span><br><span class="line">sudo apt install libgtk-3-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># VNC支持</span></span><br><span class="line">sudo apt install libvncserver-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># Spice支持（高级图形）</span></span><br><span class="line">sudo apt install libspice-server-dev libspice-protocol-dev</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>网络和存储支持</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 网络库</span></span><br><span class="line">sudo apt install libcap-ng-dev libattr1-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 存储格式支持</span></span><br><span class="line">sudo apt install libaio-dev libcap-dev libiscsi-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 压缩库</span></span><br><span class="line">sudo apt install liblzo2-dev libsnappy-dev libbz2-dev liblzma-dev libzstd-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 加密库</span></span><br><span class="line">sudo apt install libgcrypt20-dev libgnutls28-dev</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>音频支持</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install libasound2-dev libpulse-dev</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>虚拟化和硬件加速</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># KVM支持</span></span><br><span class="line">sudo apt install libvirt-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># USB支持</span></span><br><span class="line">sudo apt install libusb-1.0-0-dev libusbredirparser-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 智能卡支持</span></span><br><span class="line">sudo apt install libcacard-dev</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>可选高级功能</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 调试工具</span></span><br><span class="line">sudo apt install valgrind</span><br><span class="line"></span><br><span class="line"><span class="comment"># 文档生成</span></span><br><span class="line">sudo apt install texinfo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 额外协议支持</span></span><br><span class="line">sudo apt install libcurl4-gnutls-dev libssh-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># RDMA支持</span></span><br><span class="line">sudo apt install librdmacm-dev libibverbs-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安全启动支持</span></span><br><span class="line">sudo apt install libseccomp-dev</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="Buildroot编译需要的库"><a href="#Buildroot编译需要的库" class="headerlink" title="Buildroot编译需要的库"></a>Buildroot编译需要的库</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install -y git make gcc g++ unzip patch bc libncurses5-dev \</span><br><span class="line">    libssl-dev libelf-dev bison flex rsync cpio python3 python3-pip \</span><br><span class="line">    file wget</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="交叉编译工具链安装"><a href="#交叉编译工具链安装" class="headerlink" title="交叉编译工具链安装"></a>交叉编译工具链安装</h2><p><strong>ARM EABI 交叉编译工具链</strong></p>
+<p>ARM EABI（Embedded Application Binary Interface）主要用于较老的ARM处理器：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ARM EABI 工具链</span></span><br><span class="line">sudo apt update</span><br><span class="line">sudo apt install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi</span><br><span class="line">sudo apt install libc6-dev-armel-cross</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>ARM EABIHF 交叉编译工具链</strong></p>
+<p>ARM EABIHF（Hard Float）支持硬件浮点运算，适用于ARMv7架构：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ARM EABIHF 工具链</span></span><br><span class="line">sudo apt install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf</span><br><span class="line">sudo apt install libc6-dev-armhf-cross</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>AArch64 交叉编译工具链</strong></p>
+<p>AArch64是ARM的64位架构：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># AArch64 工具链</span></span><br><span class="line">sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu</span><br><span class="line">sudo apt install libc6-dev-arm64-cross</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>RISC-V 交叉编译工具链</strong></p>
+<p>ubuntu缺乏riscv-32位相关的包，我们需要从官网进行下载编译。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># RISC-V 64位工具链</span></span><br><span class="line">sudo apt install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu</span><br><span class="line">sudo apt install libc6-dev-riscv64-cross</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>其他工具链安装</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 需要安装这几个库，riscv32库还需手动安装</span></span><br><span class="line">sudo apt install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi -y</span><br><span class="line">sudo apt install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf -y</span><br><span class="line">sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-x86-64-linux-gnu g++-x86-64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-i686-linux-gnu g++-i686-linux-gnu -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 下面的库除了mips和ppc可能会用到，其他架构我们暂且用不到。</span></span><br><span class="line">sudo apt install gcc-mipsel-linux-gnu g++-mipsel-linux-gnu -y</span><br><span class="line">sudo apt install gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64 -y</span><br><span class="line">sudo apt install gcc-mips-linux-gnu g++-mips-linux-gnu -y</span><br><span class="line">sudo apt install gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 -y</span><br><span class="line">sudo apt install gcc-powerpc-linux-gnu g++-powerpc-linux-gnu -y</span><br><span class="line">sudo apt install gcc-powerpc64-linux-gnu g++-powerpc64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-alpha-linux-gnu g++-alpha-linux-gnu -y</span><br><span class="line">sudo apt install gcc-s390x-linux-gnu g++-s390x-linux-gnu -y</span><br><span class="line">sudo apt install gcc-sparc64-linux-gnu g++-sparc64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-arc-linux-gnu g++-arc-linux-gnu -y</span><br><span class="line">sudo apt install gcc-m68k-linux-gnu g++-m68k-linux-gnu -y</span><br><span class="line"><span class="comment"># ...... 还有很多其他的库可以通过 apt search 查看，这里就不列举了</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p>由于是做相关项目，我们将相关的交叉编译工具链单独放在了项目文件夹里。大家可以通过绝对路径来引用，当然你也可以将其添加到你的环境变量上。我们使用的是<code>glibc</code>和<code>elf</code>，也就是使用<code>glibc</code>库和裸机编译。</p>
+<p>我们现在暂时用不到裸机编译工具链<code>none, unknow-elf</code>版本，所以可以不下载。</p>
+<p><strong><a class="link"   target="_blank" rel="noopener" href="https://toolchains.bootlin.com/toolchains.html" >toolchains-bootlin<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></strong><br>下面是aarch64工具链的区别对比，其他架构也大同小异。</p>
+<p><strong>主要区别对比</strong></p>
+<table>
+<thead>
+<tr>
+<th align="left">特性</th>
+<th align="left">aarch64-none-linux-gnu</th>
+<th align="left">aarch64-none-elf-gnu</th>
+<th align="left">aarch64-linux-gnu</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">目标环境</td>
+<td align="left">Linux用户空间</td>
+<td align="left">裸机&#x2F;固件</td>
+<td align="left">Linux用户空间</td>
+</tr>
+<tr>
+<td align="left">系统调用</td>
+<td align="left">支持Linux系统调用</td>
+<td align="left">无系统调用</td>
+<td align="left">支持Linux系统调用</td>
+</tr>
+<tr>
+<td align="left">标准库</td>
+<td align="left">glibc</td>
+<td align="left">newlib或无</td>
+<td align="left">glibc</td>
+</tr>
+<tr>
+<td align="left">内存管理</td>
+<td align="left">虚拟内存</td>
+<td align="left">物理内存</td>
+<td align="left">虚拟内存</td>
+</tr>
+<tr>
+<td align="left">启动方式</td>
+<td align="left">操作系统加载</td>
+<td align="left">直接启动</td>
+<td align="left">操作系统加载</td>
+</tr>
+</tbody></table>
+<p>我们学习Linux内核用到的架构只有常用的 RISCV-64，ARM64，x86_64三种64位架构。</p>
+<h2 id="完整的一键安装命令"><a href="#完整的一键安装命令" class="headerlink" title="完整的一键安装命令"></a>完整的一键安装命令</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br></pre></td><td class="code"><pre><span class="line">sudo apt update &amp;&amp; sudo apt install -y \</span><br><span class="line">    build-essential \</span><br><span class="line">    gcc make bc bison flex \</span><br><span class="line">    libssl-dev libelf-dev \</span><br><span class="line">    libncurses5-dev libncursesw5-dev \</span><br><span class="line">    zlib1g-dev liblz4-dev liblzma-dev libzstd-dev \</span><br><span class="line">    dwarves rsync kmod cpio initramfs-tools-core \</span><br><span class="line">    libc6-dev git curl wget</span><br><span class="line">sudo apt update &amp;&amp; sudo apt install -y \</span><br><span class="line">    build-essential \</span><br><span class="line">    gcc make cmake ninja-build pkg-config \</span><br><span class="line">    python3 python3-pip python3-dev python3-venv \</span><br><span class="line">    zlib1g-dev libglib2.0-dev libpixman-1-dev \</span><br><span class="line">    libsdl2-dev libsdl2-image-dev \</span><br><span class="line">    libgtk-3-dev libvncserver-dev \</span><br><span class="line">    libspice-server-dev libspice-protocol-dev \</span><br><span class="line">    libcap-ng-dev libattr1-dev \</span><br><span class="line">    libaio-dev libcap-dev libiscsi-dev \</span><br><span class="line">    liblzo2-dev libsnappy-dev libbz2-dev liblzma-dev libzstd-dev \</span><br><span class="line">    libgcrypt20-dev libgnutls28-dev \</span><br><span class="line">    libasound2-dev libpulse-dev \</span><br><span class="line">    libvirt-dev \</span><br><span class="line">    libusb-1.0-0-dev libusbredirparser-dev \</span><br><span class="line">    libcacard-dev \</span><br><span class="line">    texinfo \</span><br><span class="line">    libcurl4-gnutls-dev libssh-dev \</span><br><span class="line">    libseccomp-dev</span><br><span class="line">    </span><br><span class="line">sudo apt install -y git make gcc g++ clang unzip patch bc libncurses5-dev \</span><br><span class="line">    libssl-dev libelf-dev bison flex rsync cpio python3 python3-pip \</span><br><span class="line">    file wget bear</span><br><span class="line"></span><br><span class="line"><span class="comment"># 核心编译工具</span></span><br><span class="line">sudo apt install gcc make cmake ninja-build pkg-config -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># Python相关（QEMU构建系统需要）</span></span><br><span class="line">sudo apt install python3 python3-pip python3-dev python3-venv -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 基础库</span></span><br><span class="line">sudo apt install zlib1g-dev libglib2.0-dev libpixman-1-dev libslirp-dev -y</span><br><span class="line"></span><br><span class="line">sudo apt install -y liburing-dev libnfs-dev</span><br><span class="line"></span><br><span class="line">sudo apt install -y genisoimage</span><br><span class="line"></span><br><span class="line">sudo apt install -y libc6-dev-i386 libglib2.0-dev libpixman-1-dev \</span><br><span class="line">					libmount-dev libunistring-dev libp11-kit-dev</span><br><span class="line"></span><br><span class="line">sudo apt install -y libdw-dev</span><br><span class="line"></span><br><span class="line">sudo apt install libncurses-dev libtinfo-dev</span><br><span class="line"><span class="comment"># 兼容 version 5 （可选）</span></span><br><span class="line"><span class="comment"># sudo ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6.4 /usr/lib/x86_64-linux-gnu/libncurses.so.5</span></span><br><span class="line"><span class="comment"># sudo ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6.4 /usr/lib/x86_64-linux-gnu/libtinfo.so.5</span></span><br><span class="line"></span><br><span class="line">sudo apt install -y devscripts config-package-dev debhelper-compat golang</span><br><span class="line"></span><br><span class="line"><span class="comment"># 音频相关 jackd2 -&gt; choose NO</span></span><br><span class="line">sudo apt install -y jackd2 libjack-jackd2-dev libpipewire-0.3-dev pipewire-jack</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装图形加速支持</span></span><br><span class="line">sudo apt install -y libvirglrenderer-dev libepoxy-dev libgbm-dev</span><br><span class="line"></span><br><span class="line">sudo apt install -y libvte-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 VDE 网络支持</span></span><br><span class="line">sudo apt install -y libvdeplug-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># SDL支持（图形界面）</span></span><br><span class="line">sudo apt install libsdl2-dev libsdl2-image-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># GTK支持</span></span><br><span class="line">sudo apt install libgtk-3-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># VNC支持</span></span><br><span class="line">sudo apt install libvncserver-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># Spice支持（高级图形）</span></span><br><span class="line">sudo apt install libspice-server-dev libspice-protocol-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 网络库</span></span><br><span class="line">sudo apt install libcap-ng-dev libattr1-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 存储格式支持</span></span><br><span class="line">sudo apt install libaio-dev libcap-dev libiscsi-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 压缩库</span></span><br><span class="line">sudo apt install liblzo2-dev libsnappy-dev libbz2-dev liblzma-dev libzstd-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 加密库</span></span><br><span class="line">sudo apt install libgcrypt20-dev libgnutls28-dev -y</span><br><span class="line"></span><br><span class="line">sudo apt install libasound2-dev libpulse-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># KVM支持</span></span><br><span class="line">sudo apt install libvirt-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># USB支持</span></span><br><span class="line">sudo apt install libusb-1.0-0-dev libusbredirparser-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 智能卡支持</span></span><br><span class="line">sudo apt install libcacard-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 调试工具</span></span><br><span class="line">sudo apt install valgrind -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 文档生成</span></span><br><span class="line">sudo apt install texinfo -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 额外协议支持</span></span><br><span class="line">sudo apt install libcurl4-gnutls-dev libssh-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># RDMA支持</span></span><br><span class="line">sudo apt install librdmacm-dev libibverbs-dev -y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安全启动支持</span></span><br><span class="line">sudo apt install libseccomp-dev -y</span><br><span class="line"></span><br><span class="line">sudo apt update &amp;&amp; sudo apt install -y linux-headers-generic linux-libc-dev </span><br><span class="line"><span class="comment"># virt-make-fs 工具（可选）</span></span><br><span class="line">sudo apt install libguestfs-tools</span><br><span class="line"><span class="comment"># 下面工具根据需求自行选择安装，建议去官网安装。</span></span><br><span class="line">sudo apt install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi -y</span><br><span class="line">sudo apt install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf -y</span><br><span class="line">sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-x86-64-linux-gnu g++-x86-64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-i686-linux-gnu g++-i686-linux-gnu -y</span><br><span class="line">sudo apt install gcc-mipsel-linux-gnu g++-mipsel-linux-gnu -y</span><br><span class="line">sudo apt install gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64 -y</span><br><span class="line">sudo apt install gcc-mips-linux-gnu g++-mips-linux-gnu -y</span><br><span class="line">sudo apt install gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 -y</span><br><span class="line">sudo apt install gcc-powerpc-linux-gnu g++-powerpc-linux-gnu -y</span><br><span class="line">sudo apt install gcc-powerpc64-linux-gnu g++-powerpc64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-alpha-linux-gnu g++-alpha-linux-gnu -y</span><br><span class="line">sudo apt install gcc-s390x-linux-gnu g++-s390x-linux-gnu -y</span><br><span class="line">sudo apt install gcc-sparc64-linux-gnu g++-sparc64-linux-gnu -y</span><br><span class="line">sudo apt install gcc-arc-linux-gnu g++-arc-linux-gnu -y</span><br><span class="line">sudo apt install gcc-m68k-linux-gnu g++-m68k-linux-gnu -y</span><br><span class="line"><span class="comment"># ......还有很多其他的库可以通过 apt search 查看，这里就不列举了</span></span><br><span class="line"></span><br><span class="line">sudo apt update &amp;&amp; sudo apt autoremove &amp;&amp; sudo apt full-upgrade -y</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="编译步骤提示"><a href="#编译步骤提示" class="headerlink" title="编译步骤提示"></a>编译步骤提示</h2><h3 id="Linux内核编译："><a href="#Linux内核编译：" class="headerlink" title="Linux内核编译："></a><strong>Linux内核编译：</strong></h3><p>Linux内核下载：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">wget https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.15.188.tar.gz</span><br><span class="line">tar -xvf linux-5.15.188.tar.gz</span><br><span class="line">wget https://www.kernel.org/pub/linux/kernel/v6.x/linux-6.12.38.tar.gz</span><br><span class="line">tar -xvf linux-6.12.38.tar.gz</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 配置内核</span></span><br><span class="line">make menuconfig  <span class="comment"># 或 make defconfig</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译</span></span><br><span class="line">make bzImage -j$(<span class="built_in">nproc</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装模块 (可选)</span></span><br><span class="line">sudo make modules_install</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装内核 (可选)</span></span><br><span class="line">sudo make install</span><br></pre></td></tr></table></figure></div>
+
+<p><a class="link"   target="_blank" rel="noopener" href="https://mirrors.tuna.tsinghua.edu.cn/kernel/" >清华源<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<ol>
+<li><strong><code>make menuconfig</code></strong></li>
+</ol>
+<p>这里我们主要关注调试方面的选项，依次进入到 <code>Kernel hacking -&gt; Compile-time checks and compiler options</code>，然后勾选如下选项<code>Compile the kernel with debug info</code>，以便于调试。不过似乎现在是默认开启的。如果要使用 <code>kgdb</code> 调试内核，则需要选中 <code>KGDB: kernel debugger</code>，并选中 <code>KGDB</code> 下的所有选项。</p>
+<blockquote>
+<p>报错处理：</p>
+<p>【1】</p>
+<p>问题概述：</p>
+<p><code>make[1]: *** No rule to make target &#39;debian/canonical-certs.pem&#39;, needed by &#39;certs/x509_certificate_list&#39;.  Stop.</code></p>
+<p>解决方法：</p>
+<p>编辑 <code>.config</code> 文件，搜索<code>debian/canonical-certs.pem</code>并把这个字符串删掉。</p>
+<p>删除前：</p>
+<ul>
+<li>CONFIG_SYSTEM_TRUSTED_KEYS&#x3D;”debian&#x2F;canonical-certs.pem”</li>
+</ul>
+<p>删除后</p>
+<ul>
+<li>CONFIG_SYSTEM_TRUSTED_KEYS&#x3D;””</li>
+</ul>
+<p>【2】</p>
+<p>问题概述：</p>
+<p><code>make[2]: *** No rule to make target &#39;net/netfilter/xt_TCPMSS.o&#39;, needed by &#39;net/netfilter/built-in.a&#39;.  Stop.</code></p>
+<p>解决方法：</p>
+<p>Makefile 中的 xt_TCPMSS.c 是大写的，而源文件名 (xt_tcpmss.c) 是小写的。这是一个大小写不匹配的问题。</p>
+<p>【3】</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/usr/bin/ld: scripts/dtc/dtc-parser.tab.o:(.bss+0x10): multiple definition of `yylloc&#x27;; scripts/dtc/dtc-lexer.lex.o:(.bss+0x0): first defined here</span><br><span class="line">collect2: error: ld returned 1 exit status</span><br><span class="line">make[2]: *** [scripts/Makefile.host:100: scripts/dtc/dtc] Error 1</span><br><span class="line">make[1]: *** [scripts/Makefile.build:403: scripts/dtc] Error 2</span><br><span class="line">make: *** [Makefile:555: scripts] Error 2</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">修改scripts/dtc目录下的dtc-lexer.lex.c_shipped文件中找到</span><br><span class="line">YYLTYPE yyloc这一行，在640行，在之前面加上extern </span><br><span class="line">保存退出，</span><br><span class="line">make 编译 </span><br><span class="line">正常编译</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>验证源文件名</strong></p>
+<p>你可以先检查一下实际的源文件名：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">ls</span> net/netfilter/xt_*tcpmss*</span><br></pre></td></tr></table></figure></div>
+
+<p>这应该会显示实际的文件名是 <code>xt_tcpmss.c</code>（小写）。</p>
+<p><strong>1. 找到并编辑 Makefile</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim net/netfilter/Makefile</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>2. 找到第157行左右的内容</strong></p>
+<p>寻找类似这样的行：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">obj-<span class="variable">$(CONFIG_NETFILTER_XT_TARGET_TCPMSS)</span> += xt_TCPMSS.o</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>3. 将大写的 TCPMSS 改为小写的 tcpmss</strong></p>
+<p>修改为：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">obj-<span class="variable">$(CONFIG_NETFILTER_XT_TARGET_TCPMSS)</span> += xt_tcpmss.o</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>4. 保存并重新编译</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make bzImage -j$(<span class="built_in">nproc</span>)</span><br></pre></td></tr></table></figure></div>
+</blockquote>
+<ol start="2">
+<li><strong><code>make bzImage -j4</code></strong></li>
+</ol>
+<blockquote>
+<p>注意事项：</p>
+<p>注意 gcc 版本问题，<code>4.*</code>一般用 <code>gcc-5</code>，<code>5.*</code>一般用 <code>gcc-7</code>。</p>
+<p>gcc多版本共存请参考<a class="link"   target="_blank" rel="noopener" href="https://blog.csdn.net/wr1997/article/details/107737706" >这里<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+</blockquote>
+<ol start="3">
+<li><strong>编译成功后</strong></li>
+</ol>
+<p>我们一般主要关注于如下的文件</p>
+<p><strong>RISC-V64</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>Image</code></li>
+<li><strong>路径</strong>: <code>arch/riscv/boot/Image</code></li>
+<li><strong>说明</strong>: 与ARM64一样，RISC-V也使用未压缩的Image格式</li>
+</ul>
+<p><strong>x86_64</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>bzImage</code></li>
+<li><strong>路径</strong>: <code>arch/x86/boot/bzImage</code></li>
+<li><strong>说明</strong>: “big zImage”的缩写，实际上是压缩的内核镜像</li>
+</ul>
+<p><strong>ARM64</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>Image</code></li>
+<li><strong>路径</strong>: <code>arch/arm64/boot/Image</code></li>
+<li><strong>说明</strong>: 未压缩的内核镜像</li>
+</ul>
+<p><strong>MIPS</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>vmlinux.bin</code> 或 <code>vmlinux</code></li>
+<li><strong>路径</strong>: <code>arch/mips/boot/vmlinux.bin</code></li>
+<li><strong>说明</strong>: MIPS架构通常使用vmlinux.bin，某些情况下也会有压缩版本</li>
+</ul>
+<p><strong>PowerPC</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>zImage</code> 或 <code>uImage</code></li>
+<li><strong>路径</strong>: <code>arch/powerpc/boot/zImage</code></li>
+<li><strong>说明</strong>: PowerPC使用zImage（压缩镜像）或uImage（U-Boot格式）</li>
+</ul>
+<p><strong>ARM32</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>zImage</code> 或 <code>uImage</code></li>
+<li><strong>路径</strong>: <code>arch/arm/boot/zImage</code></li>
+<li><strong>说明</strong>: 32位ARM使用压缩的zImage格式</li>
+</ul>
+<p><strong>SPARC</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>zImage</code> 或 <code>vmlinux</code></li>
+<li><strong>路径</strong>: <code>arch/sparc/boot/zImage</code></li>
+</ul>
+<p><strong>Alpha</strong></p>
+<ul>
+<li><strong>镜像名</strong>: <code>vmlinux</code></li>
+<li><strong>路径</strong>: <code>vmlinux</code></li>
+</ul>
+<p><strong>查看所有可用的镜像目标</strong></p>
+<p>你可以通过以下命令查看特定架构支持的所有镜像格式：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看当前架构支持的镜像目标</span></span><br><span class="line">make <span class="built_in">help</span> | grep -A 10 <span class="string">&quot;Architecture specific targets&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者查看make的所有目标</span></span><br><span class="line">make <span class="built_in">help</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>镜像格式说明</strong></p>
+<ul>
+<li><strong>Image</strong>: 未压缩的内核镜像，主要用于ARM64和RISC-V</li>
+<li><strong>zImage</strong>: 压缩的内核镜像，自解压，常用于ARM32、PowerPC等</li>
+<li><strong>bzImage</strong>: “big zImage”，x86架构的压缩内核镜像</li>
+<li><strong>uImage</strong>: U-Boot格式的内核镜像，包含加载地址等信息</li>
+<li><strong>vmlinux</strong>: 未压缩的ELF格式内核镜像，主要用于调试</li>
+</ul>
+<p><strong>实际编译示例</strong></p>
+<p>对于不同架构，你可以明确指定要编译的镜像类型：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># RISC-V</span></span><br><span class="line">make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(<span class="built_in">nproc</span>) menuconfig</span><br><span class="line">scripts/config -e BLK_DEV_INITRD</span><br><span class="line">scripts/config -e DEVTMPFS</span><br><span class="line">scripts/config -e DEVTMPFS_MOUNT</span><br><span class="line">scripts/config -e TMPFS</span><br><span class="line">scripts/config -e SYSFS</span><br><span class="line">scripts/config -e PROC_FS</span><br><span class="line">scripts/config -e VIRTIO</span><br><span class="line">scripts/config -e VIRTIO_MMIO</span><br><span class="line">scripts/config -e NET</span><br><span class="line">scripts/config -e VIRTIO_NET</span><br><span class="line">scripts/config -e VIRTIO_CONSOLE</span><br><span class="line">scripts/config -e VIRTIO_BLK</span><br><span class="line">scripts/config -e SERIAL_8250</span><br><span class="line">scripts/config -e SERIAL_8250_CONSOLE</span><br><span class="line">scripts/config -d VIRTIO_MMIO_CMDLINE_DEVICES</span><br><span class="line">make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(<span class="built_in">nproc</span>) Image</span><br><span class="line"></span><br><span class="line"><span class="comment"># x86_64</span></span><br><span class="line">make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- -j$(<span class="built_in">nproc</span>) menuconfig</span><br><span class="line">make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- -j$(<span class="built_in">nproc</span>) bzImage</span><br><span class="line"></span><br><span class="line"><span class="comment"># ARM64</span></span><br><span class="line">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(<span class="built_in">nproc</span>) defconfig</span><br><span class="line">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(<span class="built_in">nproc</span>) menuconfig</span><br><span class="line">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(<span class="built_in">nproc</span>) olddefconfig</span><br><span class="line">scripts/config -e BLK_DEV_INITRD</span><br><span class="line">scripts/config -e RD_GZIP</span><br><span class="line">scripts/config -e DEVTMPFS</span><br><span class="line">scripts/config -e DEVTMPFS_MOUNT</span><br><span class="line">scripts/config -e TMPFS</span><br><span class="line">scripts/config -e SYSFS</span><br><span class="line">scripts/config -e PROC_FS</span><br><span class="line">scripts/config -e SERIAL_AMBA_PL011</span><br><span class="line">scripts/config -e SERIAL_AMBA_PL011_CONSOLE</span><br><span class="line">scripts/config -e VIRTIO</span><br><span class="line">scripts/config -e VIRTIO_MMIO</span><br><span class="line">scripts/config -e VIRTIO_MMIO_CMDLINE_DEVICES</span><br><span class="line">scripts/config -e NET</span><br><span class="line">scripts/config -e VIRTIO_NET</span><br><span class="line">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(<span class="built_in">nproc</span>) Image dtbs</span><br><span class="line"></span><br><span class="line"><span class="comment"># ARM</span></span><br><span class="line">make ARCH=arm CROSS_COMPILE=arm-buildroot-linux-gnueabihf- -j$(<span class="built_in">nproc</span>) vexpress_defconfig</span><br><span class="line">scripts/config -e BLK_DEV_INITRD -e DEVTMPFS -e DEVTMPFS_MOUNT -e TMPFS -e SERIAL_AMBA_PL011 -e ARM_APPENDED_DTB -e USE_OF -e ARM_ATAG_DTB_COMPAT -e ARM_ATAG_DTB_COMPAT_CMDLINE_FROM_BOOTLOADER -e SMP -e ARM_GIC -e CACHE_L2X0 -e AMBA -e ARM_TIMER_SP804</span><br><span class="line">make ARCH=arm CROSS_COMPILE=arm-buildroot-linux-gnueabihf- -j$(<span class="built_in">nproc</span>) menuconfig</span><br><span class="line">make ARCH=arm CROSS_COMPILE=arm-buildroot-linux-gnueabihf- -j$(<span class="built_in">nproc</span>) zImage dtbs</span><br><span class="line"></span><br><span class="line"><span class="comment"># MIPS</span></span><br><span class="line">make ARCH=mips CROSS_COMPILE=mips-linux-gnu- menuconfig</span><br><span class="line">make ARCH=mips CROSS_COMPILE=mips-linux-gnu- vmlinux.bin</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="Busybox编译："><a href="#Busybox编译：" class="headerlink" title="Busybox编译："></a><strong>Busybox编译：</strong></h3><p>Busybox下载：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2</span><br><span class="line">tar -jxvf busybox-1.36.1.tar.bz2</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 配置busybox </span></span><br><span class="line">➜  busybox-1.36.1 <span class="built_in">mkdir</span> -p ./build/x86_64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 选择 Settings -&gt; Build Options -&gt; Build static binary</span></span><br><span class="line"><span class="comment"># 然后配置安装目录</span></span><br><span class="line">➜  busybox-1.36.1 make menuconfig  </span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译</span></span><br><span class="line">➜  busybox-1.36.1 make -j$(<span class="built_in">nproc</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装</span></span><br><span class="line">➜  busybox-1.36.1 make install</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-0/image-20250716170229338.png"
+                      alt="image-20250716170229338"
+                ></p>
+<blockquote>
+<p>如果你的内核版本大于6.8.0编译可能会报错：<a class="link"   target="_blank" rel="noopener" href="https://lists.busybox.net/pipermail/busybox-cvs/2024-January/041752.html" >https://lists.busybox.net/pipermail/busybox-cvs/2024-January/041752.html<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p>只需要把tc.c移除或者禁用即可。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">make menuconfig</span><br><span class="line"><span class="comment"># 然后在菜单中：</span></span><br><span class="line"><span class="comment"># Networking Utilities -&gt; tc (traffic control utility) [取消选择]</span></span><br></pre></td></tr></table></figure></div>
+
+<p>或者使用 <a class="link"   target="_blank" rel="noopener" href="https://lists.busybox.net/pipermail/busybox/2024-March/090678.html" >patch<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>。</p>
+</blockquote>
+<p>交叉编译只需要修改<code>Cross complier prefix</code>的值即可，比如<code>aarch64-linux-gnu-</code>。</p>
+<h3 id="Qemu-编译："><a href="#Qemu-编译：" class="headerlink" title="Qemu 编译："></a>Qemu 编译：</h3><p><strong>QEMU编译步骤</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">wget https://download.qemu.org/qemu-10.0.2.tar.xz</span><br><span class="line">tar -xvf qemu-10.0.2.tar.xz</span><br><span class="line"><span class="comment"># 下载QEMU源码后</span></span><br><span class="line"><span class="built_in">cd</span> qemu-10.0.2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置编译选项</span></span><br><span class="line">./configure --enable-kvm --enable-gtk --enable-spice --enable-usb-redir --enable-slirp</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译（使用多核心加速）</span></span><br><span class="line">make -j$(<span class="built_in">nproc</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装</span></span><br><span class="line">sudo make install</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>注意事项</strong></p>
+<ul>
+<li>不同版本的QEMU可能对依赖库的要求略有不同</li>
+<li>可以通过 <code>./configure --help</code> 查看具体的编译选项</li>
+<li>如果只需要特定架构支持，可以使用 <code>--target-list</code> 参数减少编译时间</li>
+<li>某些功能需要相应的内核模块支持（如KVM需要加载kvm模块）</li>
+</ul>
+<p>这些库足以支持QEMU的完整功能编译，包括各种虚拟化特性、图形界面、网络和存储支持等。</p>
+<h3 id="Buildroot-编译："><a href="#Buildroot-编译：" class="headerlink" title="Buildroot 编译："></a>Buildroot 编译：</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://buildroot.org/downloads/buildroot-2025.02.4.tar.gz</span><br><span class="line">tar -xvf buildroot-2025.02.4.tar.gz</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>ARM64 Linux编译</strong></p>
+<ol>
+<li>查看可用的ARM64相关配置</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">➜  buildroot-2025.02.4 make list-defconfigs | grep aarch64</span><br><span class="line">make: Warning: File <span class="string">&#x27;/mnt/d/DM/linux_kernel_research/buildroot-2025.02.4/output/.br2-external.mk&#x27;</span> has modification time 0.47 s <span class="keyword">in</span> the future</span><br><span class="line">  aarch64_efi_defconfig               - Build <span class="keyword">for</span> aarch64_efi</span><br><span class="line">  qemu_aarch64_ebbr_defconfig         - Build <span class="keyword">for</span> qemu_aarch64_ebbr</span><br><span class="line">  qemu_aarch64_sbsa_defconfig         - Build <span class="keyword">for</span> qemu_aarch64_sbsa</span><br><span class="line">  qemu_aarch64_virt_defconfig         - Build <span class="keyword">for</span> qemu_aarch64_virt</span><br><span class="line">make: warning:  Clock skew detected.  Your build may be incomplete.</span><br></pre></td></tr></table></figure></div>
+
+<ol start="2">
+<li>使用QEMU ARM64配置作为基础</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">➜  buildroot-2025.02.4 make qemu_aarch64_virt_defconfig</span><br></pre></td></tr></table></figure></div>
+
+<ol start="3">
+<li>运行配置界面进行定制</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">➜  buildroot-2025.02.4 make menuconfig</span><br><span class="line"><span class="comment"># 根据需要定制即可</span></span><br><span class="line">kernel-&gt;</span><br><span class="line"><span class="comment"># 编译Linux kernel 5.15.185 6.12.33 两个版本。</span></span><br><span class="line">filesystem-&gt;</span><br><span class="line"><span class="comment"># 打开cpio支持</span></span><br></pre></td></tr></table></figure></div>
+
+<ol start="4">
+<li>make 即可，输出目录在<code>output/images/</code></li>
+</ol>
+<blockquote>
+<p>错误处理：</p>
+<p>【1】</p>
+<p>报错：</p>
+<p>➜  buildroot-2025.02.4 make -j$(nproc)<br>ERROR: No hash found for linux-5.15.18.tar.xz<br>make: *** [package&#x2F;pkg-generic.mk:179: &#x2F;mnt&#x2F;d&#x2F;DM&#x2F;linux_kernel_research&#x2F;buildroot-2025.02.4&#x2F;output&#x2F;build&#x2F;linux-headers-5.15.18&#x2F;.stamp_downloaded] Error 1</p>
+<p>成因：</p>
+<p>没有对应sha256值用来校验。</p>
+<p>解决方案：</p>
+<p>第一种方法：添加对应值上去。</p>
+<p>第二种方法：使用官方有的版本。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">➜  buildroot-2025.02.4 <span class="built_in">cat</span> ./linux/linux.hash</span><br><span class="line"><span class="comment"># From https://www.kernel.org/pub/linux/kernel/v6.x/sha256sums.asc</span></span><br><span class="line">sha256  c0a575630f2603a20bb0641f8df8f955e46c9d7ac1fae8b54b21316e6b52a254  linux-6.12.33.tar.xz</span><br><span class="line">sha256  0d79ff359635e9f009f1e330deed5f3aefd8c452b80660bffdc504b877797719  linux-6.6.93.tar.xz</span><br><span class="line">sha256  bc3c45faf6f5f0450666c75fa9dad9bc7c0cf7c7cba0dbd94e5cfdc58229c116  linux-6.1.141.tar.xz</span><br><span class="line"><span class="comment"># From https://www.kernel.org/pub/linux/kernel/v5.x/sha256sums.asc</span></span><br><span class="line">sha256  3d03eb798910f32929f7fda5a56e4bb1a121f10bde320d6f3063639c009313dc  linux-5.15.185.tar.xz</span><br><span class="line">sha256  07c852940dc2dc03fe84f7fcf697648d7cba11c62d20504380492ba07aa46bb6  linux-5.10.238.tar.xz</span><br><span class="line">sha256  c879d0ba817aaa0fde318d58d7e1f141d9c29bd8569a96b73159ebc448077b99  linux-5.4.294.tar.xz</span><br><span class="line"><span class="comment"># Locally computed</span></span><br><span class="line">sha256  fb0edc3c18e47d2b6974cb0880a0afb5c3fa08f50ee87dfdf24349405ea5f8ae  linux-cip-5.10.162-cip24.tar.gz</span><br><span class="line">sha256  b5539243f187e3d478d76d44ae13aab83952c94b885ad889df6fa9997e16a441  linux-cip-5.10.162-cip24-rt10.tar.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># Licenses hashes</span></span><br><span class="line">sha256  fb5a425bd3b3cd6071a3a9aff9909a859e7c1158d54d32e07658398cd67eb6a0  COPYING</span><br><span class="line">sha256  f6b78c087c3ebdf0f3c13415070dd480a3f35d8fc76f3d02180a407c1c812f79  LICENSES/preferred/GPL-2.0</span><br><span class="line">sha256  8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f  LICENSES/exceptions/Linux-syscall-note</span><br></pre></td></tr></table></figure></div>
+</blockquote>
+<h2 id="Qemu-调试-Linux-Kernel"><a href="#Qemu-调试-Linux-Kernel" class="headerlink" title="Qemu 调试 Linux Kernel"></a>Qemu 调试 Linux Kernel</h2><p>我们使用 Linux 上的 Qemu。如果你使用 Windwos 的 Qemu 注意修改启动参数。</p>
+<p><strong>x86_64</strong></p>
+<ol>
+<li>首先在busybox文件夹创建一些系统文件：</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p lib tmp proc sys dev etc/init.d</span><br></pre></td></tr></table></figure></div>
+
+<ol start="2">
+<li><p>（可选）然后编写一个内核模块（感兴趣看内核开发部分，或者可以从<code>Pwn_kernel</code>的内核模块开发部分简单了解），将其放在<code>/lib/</code>目录中。</p>
+</li>
+<li><p>编写一个init脚本，放在根目录即可。</p>
+</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/sh</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;INIT SCRIPT&quot;</span></span><br><span class="line">mount -t proc none /proc</span><br><span class="line">mount -t sysfs none /sys</span><br><span class="line">mount -t devtmpfs none /dev</span><br><span class="line">mount -t debugfs none /sys/kernel/debug</span><br><span class="line">mount -t tmpfs none /tmp</span><br><span class="line">insmod /lib/ko_test.ko <span class="comment"># 可选</span></span><br><span class="line"><span class="built_in">echo</span> -e <span class="string">&quot;Boot took <span class="subst">$(cut -d&#x27; &#x27; -f1 /proc/uptime)</span> seconds&quot;</span></span><br><span class="line">setsid /bin/cttyhack setuidgid 0 /bin/sh <span class="comment"># 0 代表 root权限， 普权限设置为1000</span></span><br><span class="line">poweroff -f</span><br></pre></td></tr></table></figure></div>
+
+<ol start="4">
+<li>打包文件系统：</li>
+</ol>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find . | cpio -o -H newc &gt; ../rootfs.cpio</span><br></pre></td></tr></table></figure></div>
+
+<ol start="5">
+<li>将编译好的<code>/kernel/arch/x86/boot/bzImage</code>复制到rootfs.img 同级目录。之后便可以启动Qemu。</li>
+</ol>
+<p>Linux启动脚本：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/sh</span></span><br><span class="line">qemu-system-x86_64 \</span><br><span class="line">    -m 64M \</span><br><span class="line">    -nographic \</span><br><span class="line">    -kernel ./bzImage \</span><br><span class="line">    -initrd  ./rootfs.cpio \</span><br><span class="line">    -append <span class="string">&quot;init=/init root=/dev/ram rw console=ttyS0 oops=panic panic=1 kaslr&quot;</span> \</span><br><span class="line">    -smp cores=2,threads=2 \</span><br><span class="line">    -cpu kvm64 \</span><br><span class="line">    -s <span class="comment"># 开启gdb调试，默认1234端口，用于调试内核</span></span><br></pre></td></tr></table></figure></div>
+
+<p>windwos pwsh 启动脚本。</p>
+<div class="code-container" data-rel="Powershell"><figure class="iseeu highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">qemu<span class="literal">-system-x86_64</span>.exe `</span><br><span class="line">    <span class="literal">-m</span> <span class="number">64</span>M `</span><br><span class="line">    <span class="literal">-nographic</span> `</span><br><span class="line">    <span class="literal">-kernel</span> .\bzImage `</span><br><span class="line">    <span class="literal">-initrd</span> .\rootfs.cpio `</span><br><span class="line">    <span class="literal">-append</span> <span class="string">&quot;init=/init root=/dev/ram rw console=ttyS0 oops=panic panic=1 kaslr&quot;</span> `</span><br><span class="line">    <span class="literal">-smp</span> cores=<span class="number">2</span>,threads=<span class="number">2</span> `</span><br><span class="line">    <span class="literal">-cpu</span> kvm64 `</span><br><span class="line">    <span class="literal">-s</span> <span class="comment"># 开启gdb调试，默认1234端口，用于调试内核</span></span><br></pre></td></tr></table></figure></div>
+
+<p>可以使用<code>-append &quot;init=/init&quot;</code>参数指定启动脚本，不指定则默认使用根目录下的<code>init</code>。我们这里养成良好习惯显示指定<code>init</code>脚本。</p>
+<p>如果要调试用户态程序可以使用qemu的端口转发功能。假如我们在qemu内使用gdbserver监听了1337端口。</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">qemu-system-x86_64 \</span><br><span class="line">  -netdev user,<span class="built_in">id</span>=net0,hostfwd=tcp::10001-:1337 \</span><br><span class="line">  -device virtio-net-pci,netdev=net0</span><br></pre></td></tr></table></figure></div>
+
+<p>这样我们可以从宿主机10001端口访问qemu内部的1337调试端口。</p>
+<blockquote>
+<p><strong>基本命令格式</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">qemu-system-x86_64 \</span><br><span class="line">-netdev user,<span class="built_in">id</span>=&lt;网络标识&gt;,hostfwd=&lt;协议&gt;:&lt;宿主机IP&gt;:&lt;宿主机端口&gt;-&lt;虚拟机IP&gt;:&lt;虚拟机端口&gt; \</span><br><span class="line">-device &lt;网卡驱动&gt;,netdev=&lt;网络标识&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键参数说明</strong></p>
+<ol>
+<li><p><strong><code>-netdev user</code></strong><br>启用用户模式网络栈（无需 root 权限），支持端口转发。</p>
+</li>
+<li><p><strong><code>id=&lt;网络标识&gt;</code></strong><br>自定义网络设备标识（如 <code>net0</code>），用于关联后续 <code>-device</code>。</p>
+</li>
+<li><p><code>hostfwd=&lt;规则&gt;</code></p>
+<p>端口转发规则，格式：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">协议:宿主机IP:宿主机端口-虚拟机IP:虚拟机端口</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>协议：<code>tcp</code> 或 <code>udp</code></li>
+<li>IP 省略时默认绑定 <code>0.0.0.0</code>（any）</li>
+</ul>
+</li>
+<li><p><strong><code>-device &lt;网卡驱动&gt;</code></strong><br>指定虚拟网卡类型（如 <code>virtio-net-pci</code>）。</p>
+</li>
+</ol>
+<p><strong>调试工具</strong></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/jelasin/multiarch-gdbserver-static?tab=readme-ov-file" >multiarch-gdbserver-static<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>：调试内部程序用的静态编译的<code>gdbserver</code>。</p>
+</blockquote>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-0/image-20250717185418550.png"
+                      alt="image-20250717185418550"
+                ></p>
+<p><strong>ARM64</strong></p>
+<p>Linux 启动脚本：</p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">qemu-system-aarch64 \</span><br><span class="line">    -M virt \</span><br><span class="line">    -cpu cortex-a53 \</span><br><span class="line">    -m 512 \</span><br><span class="line">    -nographic \</span><br><span class="line">    -kernel ./Image \</span><br><span class="line">    -initrd ./rootfs.cpio \</span><br><span class="line">    -append <span class="string">&quot;console=ttyAMA0 rdinit=/init quiet&quot;</span> \</span><br><span class="line">    -s</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>RISC-V64</strong></p>
+<p>Linux 启动脚本</p>
+<div class="code-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">qemu-system-riscv64 \</span><br><span class="line">    -machine virt \</span><br><span class="line">    -cpu rv64 \</span><br><span class="line">    -m 512 \</span><br><span class="line">    -nographic \</span><br><span class="line">    -kernel ./Image \</span><br><span class="line">    -initrd ./rootfs.cpio \</span><br><span class="line">    -append <span class="string">&quot;console=ttyS0 rdinit=/init quiet&quot;</span> \</span><br><span class="line">    -s</span><br></pre></td></tr></table></figure></div>
+
+<h1 id="Linux-内核启动概述"><a href="#Linux-内核启动概述" class="headerlink" title="Linux 内核启动概述"></a>Linux 内核启动概述</h1><blockquote>
+<p>本书基于 Linux 6.12.38 源码，详细讲解 x86_64 和 ARM64 架构的内核启动流程</p>
+</blockquote>
+<hr>
+<h2 id="为什么学习内核启动流程？"><a href="#为什么学习内核启动流程？" class="headerlink" title="为什么学习内核启动流程？"></a>为什么学习内核启动流程？</h2><p>理解内核启动流程是深入掌握 Linux 内核的基础。通过学习启动流程，你将：</p>
+<ol>
+<li><strong>理解系统底层工作原理</strong> - 从硬件加电到用户空间进程的完整过程</li>
+<li><strong>掌握架构特定知识</strong> - x86_64 和 ARM64 的底层差异与共性</li>
+<li><strong>提升调试能力</strong> - 能够诊断早期启动问题</li>
+<li><strong>为内核开发打下基础</strong> - 无论是驱动开发还是内核开发</li>
+</ol>
+<hr>
+<h2 id="本书的组织结构"><a href="#本书的组织结构" class="headerlink" title="本书的组织结构"></a>本书的组织结构</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      内核启动流程全景                           │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第一阶段：固件引导                                              │</span><br><span class="line">│  ├── x86: BIOS POST / UEFI 固件                                │</span><br><span class="line">│  └── ARM64: UEFI / ATF / U-Boot                                │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第二阶段：引导程序                                              │</span><br><span class="line">│  ├── x86: GRUB / systemd-boot                                   │</span><br><span class="line">│  └── ARM64: GRUB / U-Boot                                      │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第三阶段：内核引导代码                                          │</span><br><span class="line">│  ├── x86: header.S → main.c → head_64.S                        │</span><br><span class="line">│  └── ARM64: head.S (primary_entry)                             │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第四阶段：内核解压与初始化                                      │</span><br><span class="line">│  ├── 解压内核 (compressed/)                                    │</span><br><span class="line">│  └── startup_64 / __primary_switch                             │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第五阶段：C语言初始化                                          │</span><br><span class="line">│  ├── head64.c / setup.c (架构特定)                              │</span><br><span class="line">│  └── start_kernel() (通用入口)                                  │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第六阶段：子系统初始化                                          │</span><br><span class="line">│  ├── 内存管理、调度器、中断系统                                  │</span><br><span class="line">│  └── initcall 机制                                              │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  第七阶段：用户空间启动                                          │</span><br><span class="line">│  ├── kernel_init() → do_initcalls()                            │</span><br><span class="line">│  └── 执行 /sbin/init 或用户指定的 init                          │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="内核启动阶段划分"><a href="#内核启动阶段划分" class="headerlink" title="内核启动阶段划分"></a>内核启动阶段划分</h2><h3 id="按执行模式划分"><a href="#按执行模式划分" class="headerlink" title="按执行模式划分"></a>按执行模式划分</h3><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>代码位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>实模式&#x2F;EL3</td>
+<td>BIOS POST</td>
+<td>EL3 (Secure)</td>
+<td>固件</td>
+</tr>
+<tr>
+<td>16位&#x2F;EL2</td>
+<td>Bootloader</td>
+<td>ATF&#x2F;EFI</td>
+<td>arch&#x2F;x86&#x2F;boot&#x2F;</td>
+</tr>
+<tr>
+<td>32位&#x2F;EL1</td>
+<td>Protected Mode</td>
+<td>EL1</td>
+<td>compressed&#x2F;head_64.S</td>
+</tr>
+<tr>
+<td>64位&#x2F;EL1</td>
+<td>Long Mode</td>
+<td>EL1</td>
+<td>kernel&#x2F;head64.c</td>
+</tr>
+</tbody></table>
+<h3 id="按代码类型划分"><a href="#按代码类型划分" class="headerlink" title="按代码类型划分"></a>按代码类型划分</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">┌───────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    代码类型演进                                │</span><br><span class="line">├───────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                               │</span><br><span class="line">│  ┌──────────┐    ┌──────────────┐    ┌──────────────────┐   │</span><br><span class="line">│  │ 汇编代码  │ →  │ 混合代码      │ →  │ 纯 C 代码         │   │</span><br><span class="line">│  │ (早期)    │    │ (解压阶段)    │    │ (主初始化)         │   │</span><br><span class="line">│  └──────────┘    └──────────────┘    └──────────────────┘   │</span><br><span class="line">│                                                               │</span><br><span class="line">│  无库函数支持        有限库函数        完整内核基础设施         │</span><br><span class="line">│                                                               │</span><br><span class="line">└───────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="关键源码位置"><a href="#关键源码位置" class="headerlink" title="关键源码位置"></a>关键源码位置</h2><h3 id="x86-64-启动路径"><a href="#x86-64-启动路径" class="headerlink" title="x86_64 启动路径"></a>x86_64 启动路径</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">arch/x86/</span><br><span class="line">├── boot/</span><br><span class="line">│   ├── header.S          # 引导头部 (0xAA55 签名, PE 头)</span><br><span class="line">│   ├── main.c            # 实模式初始化</span><br><span class="line">│   ├── pm.c              # 保护模式切换</span><br><span class="line">│   ├── video.c           # 视频初始化</span><br><span class="line">│   ├── memory.c          # 内存检测</span><br><span class="line">│   └── compressed/</span><br><span class="line">│       ├── head_64.S     # 32→64位转换, 解压入口</span><br><span class="line">│       ├── misc.c        # 解压核心逻辑</span><br><span class="line">│       ├── efi.c         # EFI Stub 支持</span><br><span class="line">│       └── pgtable_64.c  # 早期页表设置</span><br><span class="line">└── kernel/</span><br><span class="line">    ├── head64.c          # 64位内核入口</span><br><span class="line">    ├── setup.c           # 架构初始化</span><br><span class="line">    ├── e820.c            # 内存映射处理</span><br><span class="line">    └── acpi.c            # ACPI 初始化</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="ARM64-启动路径"><a href="#ARM64-启动路径" class="headerlink" title="ARM64 启动路径"></a>ARM64 启动路径</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">arch/arm64/</span><br><span class="line">├── kernel/</span><br><span class="line">│   ├── head.S            # 内核入口 (primary_entry)</span><br><span class="line">│   ├── setup.c           # 架构初始化</span><br><span class="line">│   ├── cpu_ops.c         # CPU 操作</span><br><span class="line">│   └── smp.c             # SMP 启动</span><br><span class="line">├── mm/</span><br><span class="line">│   ├── mmu.c             # MMU 初始化</span><br><span class="line">│   └── proc.S            # CPU 特定初始化</span><br><span class="line">└── boot/</span><br><span class="line">    └── efi-header.S      # EFI PE 头</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="通用初始化"><a href="#通用初始化" class="headerlink" title="通用初始化"></a>通用初始化</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">init/</span><br><span class="line">├── main.c                # start_kernel(), rest_init()</span><br><span class="line">├── do_mounts.c           # 根文件系统挂载</span><br><span class="line">└── initramfs.c           # initramfs 处理</span><br><span class="line"></span><br><span class="line">kernel/</span><br><span class="line">├── sched/</span><br><span class="line">│   └── core.c            # 调度器初始化</span><br><span class="line">├── irq/</span><br><span class="line">│   └── irqdesc.c         # 中断描述符</span><br><span class="line">└── time/</span><br><span class="line">    └── timekeeping.c     # 时间子系统</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="启动相关的关键数据结构"><a href="#启动相关的关键数据结构" class="headerlink" title="启动相关的关键数据结构"></a>启动相关的关键数据结构</h2><h3 id="x86-boot-params"><a href="#x86-boot-params" class="headerlink" title="x86: boot_params"></a>x86: boot_params</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* arch/x86/include/uapi/asm/bootparam.h */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">boot_params</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">setup_header</span> <span class="title">hdr</span>;</span>            <span class="comment">// 0x000: 启动头部</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">screen_info</span> <span class="title">screen_info</span>;</span>     <span class="comment">// 0x020: 屏幕信息</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">apm_bios_info</span> <span class="title">apm_bios_info</span>;</span> <span class="comment">// 0x040: APM 信息</span></span><br><span class="line">    u8 _pad2[<span class="number">4</span>];                       <span class="comment">// 0x054</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sys_desc_table</span> <span class="title">sys_desc_table</span>;</span> <span class="comment">// 0x058: 系统描述表</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">olpc_ofw_header</span> <span class="title">olpc_ofw_header</span>;</span> <span class="comment">// 0x070: OLPC 信息</span></span><br><span class="line">    u32 ext_ramdisk_image;             <span class="comment">// 0x080: 扩展 ramdisk 指针</span></span><br><span class="line">    u32 ext_ramdisk_size;              <span class="comment">// 0x084: 扩展 ramdisk 大小</span></span><br><span class="line">    u32 ext_cmd_line_ptr;              <span class="comment">// 0x088: 扩展命令行指针</span></span><br><span class="line">    u8 _pad3[<span class="number">116</span>];                     <span class="comment">// 0x08c: 保留</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">e820_entry</span> <span class="title">e820_map</span>[<span class="title">E820_MAX_ENTRIES_ZEROPAGE</span>];</span> <span class="comment">// 0x0d0: E820 内存映射</span></span><br><span class="line">    u8 _pad4[<span class="number">48</span>];                      <span class="comment">// 0x1e0: 保留</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">edd_info</span> <span class="title">eddbuf</span>[<span class="title">EDDMAXNR</span>];</span>  <span class="comment">// 0x1e8: EDD 信息</span></span><br><span class="line">    u8 _pad5[<span class="number">276</span>];                     <span class="comment">// 0x2d0: 保留</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">efi_info</span> <span class="title">efi_info</span>;</span>          <span class="comment">// 0x3c0: EFI 信息</span></span><br><span class="line">    u32 alt_mem_k;                     <span class="comment">// 0x3e0: 备用内存 (KB)</span></span><br><span class="line">    u32 scratch;                       <span class="comment">// 0x3e4: 临时存储</span></span><br><span class="line">    u8 e820_entries;                   <span class="comment">// 0x3e8: e820 条目数</span></span><br><span class="line">    u8 eddbuf_entries;                 <span class="comment">// 0x3e9: EDD 条目数</span></span><br><span class="line">    u8 _pad6[<span class="number">6</span>];                       <span class="comment">// 0x3ea: 保留</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">setup_data</span> <span class="title">hdr_setup_data</span>;</span>  <span class="comment">// 0x3f0: setup_data 链表</span></span><br><span class="line">    <span class="type">char</span> cmdline[COMMAND_LINE_SIZE];   <span class="comment">// 0x400: 命令行参数</span></span><br><span class="line">&#125;; <span class="comment">// 总大小 4096 字节</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="ARM64-设备树-Device-Tree"><a href="#ARM64-设备树-Device-Tree" class="headerlink" title="ARM64: 设备树 (Device Tree)"></a>ARM64: 设备树 (Device Tree)</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* drivers/of/fdt.c */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">fdt_header</span> &#123;</span></span><br><span class="line">    u32 magic;              <span class="comment">// 0xd00dfeed</span></span><br><span class="line">    u32 totalsize;</span><br><span class="line">    u32 off_dt_struct;      <span class="comment">// 设备树结构偏移</span></span><br><span class="line">    u32 off_dt_strings;     <span class="comment">// 字符串块偏移</span></span><br><span class="line">    u32 off_mem_rsvmap;     <span class="comment">// 内存保留映射偏移</span></span><br><span class="line">    u32 version;</span><br><span class="line">    u32 last_comp_version;</span><br><span class="line">    u32 boot_cpuid_phys;</span><br><span class="line">    u32 size_dt_strings;</span><br><span class="line">    u32 size_dt_struct;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="内存布局变化"><a href="#内存布局变化" class="headerlink" title="内存布局变化"></a>内存布局变化</h2><h3 id="x86-64-内存布局演变"><a href="#x86-64-内存布局演变" class="headerlink" title="x86_64 内存布局演变"></a>x86_64 内存布局演变</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">实模式 (16-bit):</span><br><span class="line">┌─────────────────────────────────────┐</span><br><span class="line">│ 0x00000000 - 0x000003FF  IVT        │</span><br><span class="line">│ 0x00000400 - 0x000004FF  BDA        │</span><br><span class="line">│ 0x00007C00 - 0x00007DFF  MBR/Boot   │</span><br><span class="line">│ 0x00090000 - 0x00090FFF  boot_params│</span><br><span class="line">│ 0x000A0000 - 0x000BFFFF  Video RAM  │</span><br><span class="line">│ 0x000C0000 - 0x000C7FFF  Video BIOS │</span><br><span class="line">│ 0x000F0000 - 0x000FFFFF  System BIOS│</span><br><span class="line">└─────────────────────────────────────┘</span><br><span class="line">      总寻址空间: 1MB (20位地址线)</span><br><span class="line"></span><br><span class="line">保护模式 (32-bit):</span><br><span class="line">┌─────────────────────────────────────────────┐</span><br><span class="line">│ 0x00000000 - 0xffffffff (4GB 可寻址空间)   │</span><br><span class="line">│                                               │</span><br><span class="line">│ 分段寻址 + 分页寻址 (可选)                   │</span><br><span class="line">└─────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">长模式 (64-bit):</span><br><span class="line">┌──────────────────────────────────────────────────────────┐</span><br><span class="line">│ 用户空间:                                              │</span><br><span class="line">│   0x0000000000000000 - 0x00007fffffffffff (128 TB)      │</span><br><span class="line">│                                                         │</span><br><span class="line">│ 内核空间:                                              │</span><br><span class="line">│   0xffff800000000000 - 0xffff87ffffffffff (64 TB)      │</span><br><span class="line">│   直接映射区                                            │</span><br><span class="line">│                                                         │</span><br><span class="line">│   0xffff880000000000 - 0xffffc7ffffffffff (64 TB)      │</span><br><span class="line">│   vmalloc/ioremap 空间                                  │</span><br><span class="line">│                                                         │</span><br><span class="line">│   0xffffffff80000000 - 0xffffffffffffffff (2 GB)        │</span><br><span class="line">│   内核代码/数据                                        │</span><br><span class="line">└──────────────────────────────────────────────────────────┘</span><br><span class="line">      48位虚拟地址 (支持到 57位)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="ARM64-内存布局-48位-VA"><a href="#ARM64-内存布局-48位-VA" class="headerlink" title="ARM64 内存布局 (48位 VA)"></a>ARM64 内存布局 (48位 VA)</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">TTBR0_EL1 (用户空间):</span><br><span class="line">┌─────────────────────────────────────────────────┐</span><br><span class="line">│ 0x0000_0000_0000_0000 -                        │</span><br><span class="line">│ 0x0000_ffff_ffff_ffff                          │</span><br><span class="line">│ 用户虚拟地址空间 (256 TB)                       │</span><br><span class="line">└─────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">TTBR1_EL1 (内核空间):</span><br><span class="line">┌─────────────────────────────────────────────────┐</span><br><span class="line">│ 0xffff_0000_0000_0000 -                        │</span><br><span class="line">│ 0xffff_ffff_ffff_ffff                          │</span><br><span class="line">│ 内核虚拟地址空间 (256 TB)                       │</span><br><span class="line">│                                                 │</span><br><span class="line">│ 包括:                                          │</span><br><span class="line">│ - 直接映射物理内存                              │</span><br><span class="line">│ - vmalloc 空间                                  │</span><br><span class="line">│ - vmemmap (struct page 映射)                   │</span><br><span class="line">│ - PCI I/O 空间                                  │</span><br><span class="line">│ - 内核代码/数据                                 │</span><br><span class="line">└─────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="启动时间线"><a href="#启动时间线" class="headerlink" title="启动时间线"></a>启动时间线</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">时间轴 (从加电开始):</span><br><span class="line"></span><br><span class="line">0ms      ┼ 上电, BIOS/UEFI 固件启动</span><br><span class="line">         │   - 硬件自检 (POST)</span><br><span class="line">         │   - 内存检测</span><br><span class="line">         │   - 设备枚举</span><br><span class="line">         │</span><br><span class="line">500ms    ┼ 引导程序加载 (GRUB/U-Boot)</span><br><span class="line">         │   - 加载内核镜像</span><br><span class="line">         │   - 加载 initrd</span><br><span class="line">         │   - 传递启动参数</span><br><span class="line">         │</span><br><span class="line">800ms    ┼ 内核引导代码执行</span><br><span class="line">         │   - header.S / head.S</span><br><span class="line">         │   - 模式切换 (Real → Protected → Long)</span><br><span class="line">         │</span><br><span class="line">1000ms   ┼ 内核解压</span><br><span class="line">         │   - decompress_kernel()</span><br><span class="line">         │</span><br><span class="line">1200ms   ┼ 早期内核初始化</span><br><span class="line">         │   - startup_64() / __primary_switch()</span><br><span class="line">         │   - 页表设置</span><br><span class="line">         │   - BSS 清零</span><br><span class="line">         │</span><br><span class="line">1500ms   ┼ start_kernel() 执行</span><br><span class="line">         │   - setup_arch()</span><br><span class="line">         │   - trap_init()</span><br><span class="line">         │   - mm_init()</span><br><span class="line">         │   - sched_init()</span><br><span class="line">         │   - init_IRQ()</span><br><span class="line">         │   - console_init()</span><br><span class="line">         │</span><br><span class="line">2000ms   ┼ initcall 执行</span><br><span class="line">         │   - core_initcall</span><br><span class="line">         │   - postcore_initcall</span><br><span class="line">         │   - arch_initcall</span><br><span class="line">         │   - subsys_initcall</span><br><span class="line">         │   - fs_initcall</span><br><span class="line">         │   - device_initcall</span><br><span class="line">         │   - late_initcall</span><br><span class="line">         │</span><br><span class="line">3000ms   ┼ 用户空间启动</span><br><span class="line">         │   - kernel_init()</span><br><span class="line">         │   - 执行 /sbin/init</span><br><span class="line">         │   - systemd/SysVinit 启动</span><br><span class="line">         │</span><br><span class="line">5000ms+  ┼ 系统完全可用</span><br></pre></td></tr></table></figure></div>
+
+<p>现在让我们开始详细探索内核启动的各个阶段。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-0</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-08 01:17:49</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:00
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/08/Linux内核分析之基础知识-0/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/08/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-1/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-1</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2025/12/23/Rust%E8%99%9A%E6%8B%9F%E5%8C%96%E5%BC%80%E5%8F%91/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Rust虚拟化开发</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-0</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA"><span class="nav-text">环境搭建</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#windows"><span class="nav-text">windows</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zsh-omz-%E5%AE%89%E8%A3%85"><span class="nav-text">zsh-omz 安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E7%BC%96%E8%AF%91%E6%89%80%E9%9C%80%E7%9A%84%E5%BA%93"><span class="nav-text">Linux内核编译所需的库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Busybox%E7%BC%96%E8%AF%91%E6%89%80%E9%9C%80%E7%9A%84%E5%BA%93"><span class="nav-text">Busybox编译所需的库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Qemu%E7%BC%96%E8%AF%91%E6%89%80%E9%9C%80%E7%9A%84%E5%BA%93"><span class="nav-text">Qemu编译所需的库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Buildroot%E7%BC%96%E8%AF%91%E9%9C%80%E8%A6%81%E7%9A%84%E5%BA%93"><span class="nav-text">Buildroot编译需要的库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E5%B7%A5%E5%85%B7%E9%93%BE%E5%AE%89%E8%A3%85"><span class="nav-text">交叉编译工具链安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E7%9A%84%E4%B8%80%E9%94%AE%E5%AE%89%E8%A3%85%E5%91%BD%E4%BB%A4"><span class="nav-text">完整的一键安装命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E6%AD%A5%E9%AA%A4%E6%8F%90%E7%A4%BA"><span class="nav-text">编译步骤提示</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux%E5%86%85%E6%A0%B8%E7%BC%96%E8%AF%91%EF%BC%9A"><span class="nav-text">Linux内核编译：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Busybox%E7%BC%96%E8%AF%91%EF%BC%9A"><span class="nav-text">Busybox编译：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Qemu-%E7%BC%96%E8%AF%91%EF%BC%9A"><span class="nav-text">Qemu 编译：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Buildroot-%E7%BC%96%E8%AF%91%EF%BC%9A"><span class="nav-text">Buildroot 编译：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Qemu-%E8%B0%83%E8%AF%95-Linux-Kernel"><span class="nav-text">Qemu 调试 Linux Kernel</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%E6%A6%82%E8%BF%B0"><span class="nav-text">Linux 内核启动概述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AD%A6%E4%B9%A0%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%EF%BC%9F"><span class="nav-text">为什么学习内核启动流程？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E4%B9%A6%E7%9A%84%E7%BB%84%E7%BB%87%E7%BB%93%E6%9E%84"><span class="nav-text">本书的组织结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%E9%98%B6%E6%AE%B5%E5%88%92%E5%88%86"><span class="nav-text">内核启动阶段划分</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%89%E6%89%A7%E8%A1%8C%E6%A8%A1%E5%BC%8F%E5%88%92%E5%88%86"><span class="nav-text">按执行模式划分</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%89%E4%BB%A3%E7%A0%81%E7%B1%BB%E5%9E%8B%E5%88%92%E5%88%86"><span class="nav-text">按代码类型划分</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E6%BA%90%E7%A0%81%E4%BD%8D%E7%BD%AE"><span class="nav-text">关键源码位置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#x86-64-%E5%90%AF%E5%8A%A8%E8%B7%AF%E5%BE%84"><span class="nav-text">x86_64 启动路径</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ARM64-%E5%90%AF%E5%8A%A8%E8%B7%AF%E5%BE%84"><span class="nav-text">ARM64 启动路径</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">通用初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E7%9B%B8%E5%85%B3%E7%9A%84%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">启动相关的关键数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#x86-boot-params"><span class="nav-text">x86: boot_params</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ARM64-%E8%AE%BE%E5%A4%87%E6%A0%91-Device-Tree"><span class="nav-text">ARM64: 设备树 (Device Tree)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E5%8F%98%E5%8C%96"><span class="nav-text">内存布局变化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#x86-64-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E6%BC%94%E5%8F%98"><span class="nav-text">x86_64 内存布局演变</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ARM64-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80-48%E4%BD%8D-VA"><span class="nav-text">ARM64 内存布局 (48位 VA)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4%E7%BA%BF"><span class="nav-text">启动时间线</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

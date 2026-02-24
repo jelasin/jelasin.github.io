@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-13/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-13">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-13/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:45.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:04:57.677Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-13 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-13</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:45</span>
+        <span class="mobile">2026-01-20 21:39:45</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:04:57</span>
+            <span class="mobile">2026-02-24 14:04:57</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第13章：内存压缩与迁移"><a href="#第13章：内存压缩与迁移" class="headerlink" title="第13章：内存压缩与迁移"></a>第13章：内存压缩与迁移</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="13-1-内存压缩概述"><a href="#13-1-内存压缩概述" class="headerlink" title="13.1 内存压缩概述"></a>13.1 内存压缩概述</h2><h3 id="13-1-1-为什么需要内存压缩"><a href="#13-1-1-为什么需要内存压缩" class="headerlink" title="13.1.1 为什么需要内存压缩"></a>13.1.1 为什么需要内存压缩</h3><p>内存压缩 (Compaction) 用于解决内存碎片问题：</p>
+<p><strong>碎片类型:</strong></p>
+<ul>
+<li><strong>外部碎片</strong>: 可用页面分散，无法满足大块连续分配</li>
+<li><strong>内部碎片</strong>: 页面部分使用，浪费空间</li>
+</ul>
+<p><strong>压缩目的:</strong></p>
+<ul>
+<li>减少内存碎片</li>
+<li>创建连续的大块内存</li>
+<li>满足高阶分配请求</li>
+<li>支持 THP (透明巨页)</li>
+</ul>
+<h3 id="13-1-2-压缩原理"><a href="#13-1-2-压缩原理" class="headerlink" title="13.1.2 压缩原理"></a>13.1.2 压缩原理</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">压缩前:</span><br><span class="line">┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐</span><br><span class="line">│ A │   │ B │   │   │ C │ D │   │ E │   │ F │   │ G │   │   │ H │</span><br><span class="line">└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘</span><br><span class="line">  使用 空闲 使用 空闲 空闲 使用 使用 空闲 使用 空闲 使用 空闲 空闲 空闲 空闲 使用</span><br><span class="line"></span><br><span class="line">压缩后:</span><br><span class="line">┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐</span><br><span class="line">│ A │ B │ C │ D │ E │ F │ G │ H │   │   │   │   │   │   │   │   │</span><br><span class="line">└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘</span><br><span class="line">  使用 使用 使用 使用 使用 使用 使用 空闲 空闲 空闲 空闲 空闲 空闲 空闲 空闲</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-2-内存压缩实现"><a href="#13-2-内存压缩实现" class="headerlink" title="13.2 内存压缩实现"></a>13.2 内存压缩实现</h2><h3 id="13-2-1-compact-zone"><a href="#13-2-1-compact-zone" class="headerlink" title="13.2.1 compact_zone"></a>13.2.1 compact_zone</h3><p><strong>位置:</strong> <code>mm/compaction.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">compact_zone_order</span><span class="params">(<span class="keyword">struct</span> zone *zone, <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                                        <span class="type">gfp_t</span> gfp_mask,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">enum</span> compact_priority prio)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">compact_control</span> <span class="title">cc</span> =</span> &#123;</span><br><span class="line">        .nr_freepages = <span class="number">0</span>,</span><br><span class="line">        .nr_migratepages = <span class="number">0</span>,</span><br><span class="line">        .order = order,</span><br><span class="line">        .gfp_mask = gfp_mask,</span><br><span class="line">        .zone = zone,</span><br><span class="line">        .mode = (prio == COMPACT_PRIO_SYNC) ? MIGRATE_SYNC : MIGRATE_ASYNC,</span><br><span class="line">        .alloc_flags = alloc_flags,</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 执行压缩 */</span></span><br><span class="line">    compact_zone(&amp;cc);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> cc.nr_freepages;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-2-2-compact-control-结构"><a href="#13-2-2-compact-control-结构" class="headerlink" title="13.2.2 compact_control 结构"></a>13.2.2 compact_control 结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">compact_control</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_freepages;     <span class="comment">/* 空闲页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_migratepages;  <span class="comment">/* 迁移页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> total_migratepages; <span class="comment">/* 总迁移页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> total_freepages;  <span class="comment">/* 总空闲页面数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span>;</span>             <span class="comment">/* 压缩的 zone */</span></span><br><span class="line">    <span class="type">int</span> order;                     <span class="comment">/* 目标 order */</span></span><br><span class="line">    <span class="type">gfp_t</span> gfp_mask;                <span class="comment">/* GFP 标志 */</span></span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">migrate_mode</span> <span class="title">mode</span>;</span>        <span class="comment">/* 迁移模式 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> alloc_flags;       <span class="comment">/* 分配标志 */</span></span><br><span class="line">    <span class="type">int</span> classzone_idx;             <span class="comment">/* 类 zone 索引 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 扫描器位置 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> free_pfn;         <span class="comment">/* 空闲扫描器位置 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> migrate_pfn;      <span class="comment">/* 迁移扫描器位置 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多字段... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-2-3-压缩流程"><a href="#13-2-3-压缩流程" class="headerlink" title="13.2.3 压缩流程"></a>13.2.3 压缩流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">compact_zone_order(zone, order=2)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 初始化 compact_control            │</span><br><span class="line">│    - 设置 order, gfp_mask           │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 检查是否需要压缩                 │</span><br><span class="line">│    - compaction_suitable            │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 空闲扫描 (isolate_freepages)      │</span><br><span class="line">│    - 扫描可移动页面                 │</span><br><span class="line">│    - 隔离到迁移列表                 │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 迁移扫描 (migrate_pages)         │</span><br><span class="line">│    - 扫描空闲页面                   │</span><br><span class="line">│    - 迁移可移动页面到空闲位置        │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 检查是否满足要求                 │</span><br><span class="line">│    - nr_freepages &gt;= 目标            │</span><br><span class="line">│    - 如果满足，返回成功              │</span><br><span class="line">│    - 如果不满足，继续扫描            │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-3-页面迁移"><a href="#13-3-页面迁移" class="headerlink" title="13.3 页面迁移"></a>13.3 页面迁移</h2><h3 id="13-3-1-迁移类型"><a href="#13-3-1-迁移类型" class="headerlink" title="13.3.1 迁移类型"></a>13.3.1 迁移类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 迁移模式 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">migrate_mode</span> &#123;</span></span><br><span class="line">    MIGRATE_ASYNC,         <span class="comment">/* 异步迁移 */</span></span><br><span class="line">    MIGRATE_SYNC,          <span class="comment">/* 同步迁移 */</span></span><br><span class="line">    MIGRATE_SYNC_NO_COPY,   <span class="comment">/* 同步但不复制 */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 迁移原因 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">migrate_reason</span> &#123;</span></span><br><span class="line">    MR_COMPACTION,         <span class="comment">/* 内存压缩 */</span></span><br><span class="line">    MR_MEMORY_FAILURE,     <span class="comment">/* 内存错误 */</span></span><br><span class="line">    MR_SYSCALL,            <span class="comment">/* 系统调用 */</span></span><br><span class="line">    MR_MEMPOLICY_MBIND,    <span class="comment">/* 内存策略 */</span></span><br><span class="line">    MR_NUMA_MISPLACED,     <span class="comment">/* NUMA 错位 */</span></span><br><span class="line">    MR_CONTIG_RANGE,       <span class="comment">/* 连续内存分配 */</span></span><br><span class="line">    MR_CMA,                <span class="comment">/* CMA 分配 */</span></span><br><span class="line">    MR_LONGTERM_PIN,       <span class="comment">/* 长期固定 */</span></span><br><span class="line">    MR_DEMOTION,           <span class="comment">/* 降级 */</span></span><br><span class="line">    MR_TYPES</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-3-2-migrate-pages"><a href="#13-3-2-migrate-pages" class="headerlink" title="13.3.2 migrate_pages"></a>13.3.2 migrate_pages</h3><p><strong>位置:</strong> <code>mm/migrate.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 迁移页面 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">migrate_pages</span><span class="params">(<span class="keyword">struct</span> list_head *from, <span class="type">new_page_t</span> get_new_page,</span></span><br><span class="line"><span class="params">                  <span class="type">free_page_t</span> put_new_page, <span class="type">unsigned</span> <span class="type">long</span> private,</span></span><br><span class="line"><span class="params">                  <span class="keyword">enum</span> migrate_mode mode, <span class="type">int</span> reason)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">newpage</span>;</span></span><br><span class="line">    <span class="type">int</span> rc = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 遍历迁移列表 */</span></span><br><span class="line">    list_for_each_entry_safe(page, from, lru) &#123;</span><br><span class="line">        <span class="comment">/* 获取新页面 */</span></span><br><span class="line">        newpage = get_new_page(page, private);</span><br><span class="line">        <span class="keyword">if</span> (!newpage) &#123;</span><br><span class="line">            rc = -ENOMEM;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 迁移页面 */</span></span><br><span class="line">        rc = unmap_and_move(new_page, page, mode);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (rc == -EAGAIN) &#123;</span><br><span class="line">            <span class="comment">/* 重试 */</span></span><br><span class="line">            putback_lru_page(page);</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (rc) &#123;</span><br><span class="line">            <span class="comment">/* 失败 */</span></span><br><span class="line">            put_newpage(page, private);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 成功 */</span></span><br><span class="line">        put_newpage(page, private);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> rc;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-3-3-迁移流程"><a href="#13-3-3-迁移流程" class="headerlink" title="13.3.3 迁移流程"></a>13.3.3 迁移流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">migrate_pages(from_list, get_new_page, ...)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 遍历迁移列表                     │</span><br><span class="line">│    - list_for_each_entry_safe        │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 获取新页面                        │</span><br><span class="line">│    - get_new_page                    │</span><br><span class="line">│    - alloc_page                      │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 取消旧页面映射                     │</span><br><span class="line">│    - try_to_unmap                    │</span><br><span class="line">│    - 更新页表                        │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 复制页面内容                       │</span><br><span class="line">│    - copy_highpage                   │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 恢复新页面映射                     │</span><br><span class="line">│    - remove_migration_ptes            │</span><br><span class="line">│    - 建立新映射                       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 6. 释放旧页面                        │</span><br><span class="line">│    - put_page                        │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-4-kcompactd"><a href="#13-4-kcompactd" class="headerlink" title="13.4 kcompactd"></a>13.4 kcompactd</h2><h3 id="13-4-1-kcompactd-内核线程"><a href="#13-4-1-kcompactd-内核线程" class="headerlink" title="13.4.1 kcompactd 内核线程"></a>13.4.1 kcompactd 内核线程</h3><p>kcompactd 是每个内存节点的内存压缩内核线程。</p>
+<p><strong>位置:</strong> <code>mm/compaction.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">kcompactd</span><span class="params">(<span class="type">void</span> *p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span> *<span class="title">pgdat</span> =</span> p;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">compact_control</span> <span class="title">cc</span>;</span></span><br><span class="line">    <span class="type">int</span> default_order = <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    set_freezable();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!kthread_should_stop()) &#123;</span><br><span class="line">        <span class="comment">/* 等待压缩请求 */</span></span><br><span class="line">        wait_event_freezable(pgdat-&gt;kcompactd_wait,</span><br><span class="line">                             kcompactd_work_requested(pgdat));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 执行压缩 */</span></span><br><span class="line">        for_each_zone_zonelist(zone, zonelist, zone_idx) &#123;</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> pgdat-&gt;node_zones + zone_idx;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (!compaction_suitable(zone, default_order))</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 压缩 zone */</span></span><br><span class="line">            compact_zone(zone, &amp;cc);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-4-2-触发压缩"><a href="#13-4-2-触发压缩" class="headerlink" title="13.4.2 触发压缩"></a>13.4.2 触发压缩</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 请求压缩 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">wakeup_kcompactd</span><span class="params">(<span class="type">pg_data_t</span> *pgdat, <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                      <span class="keyword">enum</span> zone_type highest_zoneidx)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!pgdat-&gt;kcompactd)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (order == <span class="number">-1</span>)</span><br><span class="line">        order = pgdat-&gt;kcompactd_max_order;</span><br><span class="line"></span><br><span class="line">    pgdat-&gt;kcompactd_max_order = order;</span><br><span class="line">    pgdat-&gt;kcompactd_highest_zoneidx = highest_zoneidx;</span><br><span class="line"></span><br><span class="line">    wake_up_interruptible(&amp;pgdat-&gt;kcompactd_wait);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-5-内存策略"><a href="#13-5-内存策略" class="headerlink" title="13.5 内存策略"></a>13.5 内存策略</h2><h3 id="13-5-1-mempolicy"><a href="#13-5-1-mempolicy" class="headerlink" title="13.5.1 mempolicy"></a>13.5.1 mempolicy</h3><p>NUMA 系统中，内存策略控制进程的内存分配位置。</p>
+<h3 id="13-5-2-mempolicy-结构"><a href="#13-5-2-mempolicy-结构" class="headerlink" title="13.5.2 mempolicy 结构"></a>13.5.2 mempolicy 结构</h3><p><strong>位置:</strong> <code>include/linux/mempolicy.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mempolicy</span> &#123;</span></span><br><span class="line">    <span class="type">atomic_t</span> refcnt;                <span class="comment">/* 引用计数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">short</span> mode;            <span class="comment">/* 策略模式 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">short</span> flags;           <span class="comment">/* 标志 */</span></span><br><span class="line">    <span class="type">nodemask_t</span> nodes;               <span class="comment">/* 节点掩码 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">nodemask_t</span> cpuset_mems;      <span class="comment">/* cpuset 节点 */</span></span><br><span class="line">        <span class="type">nodemask_t</span> vmas;             <span class="comment">/* VMA 策略 */</span></span><br><span class="line">    &#125; v;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多字段... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-5-3-内存策略模式"><a href="#13-5-3-内存策略模式" class="headerlink" title="13.5.3 内存策略模式"></a>13.5.3 内存策略模式</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 内存策略模式 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_DEFAULT     0   <span class="comment">/* 默认策略 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_PREFERRED    1   <span class="comment">/* 首选节点 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_BIND         2   <span class="comment">/* 绑定节点 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_INTERLEAVE  3   <span class="comment">/* 交错分配 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_WEIGHTED_INTERLEAVE 4  <span class="comment">/* 加权交错 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MPOL_HOMOGENEOUS  5   <span class="comment">/* 同构分配 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-5-4-内存策略-API"><a href="#13-5-4-内存策略-API" class="headerlink" title="13.5.4 内存策略 API"></a>13.5.4 内存策略 API</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 设置内存策略 */</span></span><br><span class="line"><span class="type">long</span> <span class="title function_">do_set_mempolicy</span><span class="params">(<span class="type">unsigned</span> <span class="type">short</span> mode, <span class="type">unsigned</span> <span class="type">short</span> flags,</span></span><br><span class="line"><span class="params">                      <span class="type">nodemask_t</span> *nodes, <span class="type">unsigned</span> <span class="type">long</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取内存策略 */</span></span><br><span class="line"><span class="type">long</span> <span class="title function_">do_get_mempolicy</span><span class="params">(<span class="type">unsigned</span> <span class="type">short</span> mode, <span class="type">unsigned</span> <span class="type">short</span> flags,</span></span><br><span class="line"><span class="params">                      <span class="type">unsigned</span> <span class="type">long</span> *addr, <span class="type">unsigned</span> <span class="type">long</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配时应用策略 */</span></span><br><span class="line"><span class="keyword">struct</span> page *<span class="title function_">alloc_pages_mpol</span><span class="params">(<span class="type">gfp_t</span> gfp, <span class="type">unsigned</span> <span class="type">int</span> order,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> mempolicy *pol)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-6-CMA-Contiguous-Memory-Allocator"><a href="#13-6-CMA-Contiguous-Memory-Allocator" class="headerlink" title="13.6 CMA (Contiguous Memory Allocator)"></a>13.6 CMA (Contiguous Memory Allocator)</h2><h3 id="13-6-1-CMA-概述"><a href="#13-6-1-CMA-概述" class="headerlink" title="13.6.1 CMA 概述"></a>13.6.1 CMA 概述</h3><p>CMA 用于分配大块连续内存，主要用于：</p>
+<ul>
+<li>驱动程序</li>
+<li>DMA 缓冲</li>
+<li>巨页分配</li>
+</ul>
+<h3 id="13-6-2-CMA-分配"><a href="#13-6-2-CMA-分配" class="headerlink" title="13.6.2 CMA 分配"></a>13.6.2 CMA 分配</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配连续内存范围 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">alloc_contig_range_noprof</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> start, <span class="type">unsigned</span> <span class="type">long</span> end,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> migratetype, <span class="type">gfp_t</span> gfp_mask)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> outer_start, outer_end;</span><br><span class="line">    <span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 隔离页面 */</span></span><br><span class="line">    ret = isolate_freepages_range(start, end, migratetype);</span><br><span class="line">    <span class="keyword">if</span> (ret)</span><br><span class="line">        <span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 迁移页面 */</span></span><br><span class="line">    ret = migrate_pages(&amp;cc, GFP_KERNEL);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (ret) &#123;</span><br><span class="line">        <span class="comment">/* 取消隔离 */</span></span><br><span class="line">        undo_isolate_page_range(start, end);</span><br><span class="line">        <span class="keyword">return</span> ret;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配连续页面 */</span></span><br><span class="line"><span class="keyword">struct</span> page *<span class="title function_">alloc_contig_pages_noprof</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> nr_pages, <span class="type">gfp_t</span> gfp_mask,</span></span><br><span class="line"><span class="params">                                       <span class="type">int</span> nid, <span class="type">nodemask_t</span> *nodemask)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 查找合适的范围 */</span></span><br><span class="line">    <span class="comment">/* 分配 */</span></span><br><span class="line">    <span class="comment">/* 返回页面 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-7-页面迁移状态"><a href="#13-7-页面迁移状态" class="headerlink" title="13.7 页面迁移状态"></a>13.7 页面迁移状态</h2><h3 id="13-7-1-迁移页面状态"><a href="#13-7-1-迁移页面状态" class="headerlink" title="13.7.1 迁移页面状态"></a>13.7.1 迁移页面状态</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 迁移页状态 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">migration_entry_status</span> &#123;</span></span><br><span class="line">    MIGRATE_SUCCESS,        <span class="comment">/* 迁移成功 */</span></span><br><span class="line">    MIGRATE_AGAIN,         <span class="comment">/* 重试 */</span></span><br><span class="line">    MIGRATE_FAILURE,        <span class="comment">/* 失败 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="13-7-2-迁移页检查"><a href="#13-7-2-迁移页检查" class="headerlink" title="13.7.2 迁移页检查"></a>13.7.2 迁移页检查</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 检查页面是否可迁移 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">migrate_page_address</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 检查页面引用 */</span></span><br><span class="line">    <span class="keyword">if</span> (page_mapcount(page) == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查页面标志 */</span></span><br><span class="line">    <span class="keyword">if</span> (PageCompound(page))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 迁移页检查 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">isolate_movable_page</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 检查是否可移动 */</span></span><br><span class="line">    <span class="keyword">if</span> (!PageLRU(page))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!PageMovable(page))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 隔离页面 */</span></span><br><span class="line">    <span class="keyword">return</span> isolate_lru_page(page);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="13-8-本章小结"><a href="#13-8-本章小结" class="headerlink" title="13.8 本章小结"></a>13.8 本章小结</h2><p>本章介绍了 Linux 6.12 的内存压缩与迁移：</p>
+<ol>
+<li><strong>内存压缩</strong>: 减少碎片，创建连续内存</li>
+<li><strong>压缩实现</strong>: compact_zone_order，compact_control</li>
+<li><strong>页面迁移</strong>: 迁移页面到新位置，整理碎片</li>
+<li><strong>kcompactd</strong>: 内存压缩内核线程</li>
+<li><strong>内存策略</strong>: NUMA 策略，控制分配位置</li>
+<li><strong>CMA</strong>: 连续内存分配器，用于大块内存</li>
+<li><strong>迁移状态</strong>: 迁移页面状态检查</li>
+</ol>
+<p>下一章将介绍内存控制组。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-13</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:45</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:04:57
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-13/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-14/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-14</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-12/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-12</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-13</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC13%E7%AB%A0%EF%BC%9A%E5%86%85%E5%AD%98%E5%8E%8B%E7%BC%A9%E4%B8%8E%E8%BF%81%E7%A7%BB"><span class="nav-text">第13章：内存压缩与迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#13-1-%E5%86%85%E5%AD%98%E5%8E%8B%E7%BC%A9%E6%A6%82%E8%BF%B0"><span class="nav-text">13.1 内存压缩概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-1-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%86%85%E5%AD%98%E5%8E%8B%E7%BC%A9"><span class="nav-text">13.1.1 为什么需要内存压缩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-1-2-%E5%8E%8B%E7%BC%A9%E5%8E%9F%E7%90%86"><span class="nav-text">13.1.2 压缩原理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-2-%E5%86%85%E5%AD%98%E5%8E%8B%E7%BC%A9%E5%AE%9E%E7%8E%B0"><span class="nav-text">13.2 内存压缩实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-2-1-compact-zone"><span class="nav-text">13.2.1 compact_zone</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-2-2-compact-control-%E7%BB%93%E6%9E%84"><span class="nav-text">13.2.2 compact_control 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-2-3-%E5%8E%8B%E7%BC%A9%E6%B5%81%E7%A8%8B"><span class="nav-text">13.2.3 压缩流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-3-%E9%A1%B5%E9%9D%A2%E8%BF%81%E7%A7%BB"><span class="nav-text">13.3 页面迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-3-1-%E8%BF%81%E7%A7%BB%E7%B1%BB%E5%9E%8B"><span class="nav-text">13.3.1 迁移类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-3-2-migrate-pages"><span class="nav-text">13.3.2 migrate_pages</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-3-3-%E8%BF%81%E7%A7%BB%E6%B5%81%E7%A8%8B"><span class="nav-text">13.3.3 迁移流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-4-kcompactd"><span class="nav-text">13.4 kcompactd</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-4-1-kcompactd-%E5%86%85%E6%A0%B8%E7%BA%BF%E7%A8%8B"><span class="nav-text">13.4.1 kcompactd 内核线程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-4-2-%E8%A7%A6%E5%8F%91%E5%8E%8B%E7%BC%A9"><span class="nav-text">13.4.2 触发压缩</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-5-%E5%86%85%E5%AD%98%E7%AD%96%E7%95%A5"><span class="nav-text">13.5 内存策略</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-5-1-mempolicy"><span class="nav-text">13.5.1 mempolicy</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-5-2-mempolicy-%E7%BB%93%E6%9E%84"><span class="nav-text">13.5.2 mempolicy 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-5-3-%E5%86%85%E5%AD%98%E7%AD%96%E7%95%A5%E6%A8%A1%E5%BC%8F"><span class="nav-text">13.5.3 内存策略模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-5-4-%E5%86%85%E5%AD%98%E7%AD%96%E7%95%A5-API"><span class="nav-text">13.5.4 内存策略 API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-6-CMA-Contiguous-Memory-Allocator"><span class="nav-text">13.6 CMA (Contiguous Memory Allocator)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-6-1-CMA-%E6%A6%82%E8%BF%B0"><span class="nav-text">13.6.1 CMA 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-6-2-CMA-%E5%88%86%E9%85%8D"><span class="nav-text">13.6.2 CMA 分配</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-7-%E9%A1%B5%E9%9D%A2%E8%BF%81%E7%A7%BB%E7%8A%B6%E6%80%81"><span class="nav-text">13.7 页面迁移状态</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#13-7-1-%E8%BF%81%E7%A7%BB%E9%A1%B5%E9%9D%A2%E7%8A%B6%E6%80%81"><span class="nav-text">13.7.1 迁移页面状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-7-2-%E8%BF%81%E7%A7%BB%E9%A1%B5%E6%A3%80%E6%9F%A5"><span class="nav-text">13.7.2 迁移页检查</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#13-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">13.8 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

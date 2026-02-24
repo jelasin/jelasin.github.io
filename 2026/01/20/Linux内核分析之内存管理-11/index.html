@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-11/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-11">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-11/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:37.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:12.540Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-11 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-11</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:37</span>
+        <span class="mobile">2026-01-20 21:39:37</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:12</span>
+            <span class="mobile">2026-02-24 14:05:12</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第11章：内存映射"><a href="#第11章：内存映射" class="headerlink" title="第11章：内存映射"></a>第11章：内存映射</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="11-1-内存映射概述"><a href="#11-1-内存映射概述" class="headerlink" title="11.1 内存映射概述"></a>11.1 内存映射概述</h2><h3 id="11-1-1-mmap-系统调用"><a href="#11-1-1-mmap-系统调用" class="headerlink" title="11.1.1 mmap 系统调用"></a>11.1.1 mmap 系统调用</h3><p>mmap (memory map) 是 Linux 提供的一种内存映射机制，可以将文件或设备映射到进程的虚拟地址空间。</p>
+<p><strong>映射类型:</strong></p>
+<ul>
+<li><strong>文件映射</strong>: 将文件映射到内存</li>
+<li><strong>匿名映射</strong>: 不映射文件，用于内存分配</li>
+<li><strong>共享映射</strong>: 多个进程共享映射</li>
+<li><strong>私有映射</strong>: 写时复制 (COW)</li>
+</ul>
+<h3 id="11-1-2-映射示例"><a href="#11-1-2-映射示例" class="headerlink" title="11.1.2 映射示例"></a>11.1.2 映射示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 匿名映射 (malloc 实现) */</span></span><br><span class="line"><span class="type">void</span> *ptr = mmap(<span class="literal">NULL</span>, size, PROT_READ | PROT_WRITE,</span><br><span class="line">                  MAP_PRIVATE | MAP_ANONYMOUS, <span class="number">-1</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 文件映射 */</span></span><br><span class="line"><span class="type">int</span> fd = open(<span class="string">&quot;file.txt&quot;</span>, O_RDWR);</span><br><span class="line"><span class="type">void</span> *ptr = mmap(<span class="literal">NULL</span>, size, PROT_READ | PROT_WRITE,</span><br><span class="line">                  MAP_SHARED, fd, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 解除映射 */</span></span><br><span class="line">munmap(ptr, size);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-2-mmap-系统调用"><a href="#11-2-mmap-系统调用" class="headerlink" title="11.2 mmap 系统调用"></a>11.2 mmap 系统调用</h2><h3 id="11-2-1-sys-mmap-pgoff"><a href="#11-2-1-sys-mmap-pgoff" class="headerlink" title="11.2.1 sys_mmap_pgoff"></a>11.2.1 sys_mmap_pgoff</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE6(mmap, <span class="type">unsigned</span> <span class="type">long</span>, addr, <span class="type">unsigned</span> <span class="type">long</span>, len,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, prot, <span class="type">unsigned</span> <span class="type">long</span>, flags,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, fd, <span class="type">unsigned</span> <span class="type">long</span>, off)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> ksys_mmap_pgoff(addr, len, prot, flags, fd, off &gt;&gt; PAGE_SHIFT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">ksys_mmap_pgoff</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">unsigned</span> <span class="type">long</span> len,</span></span><br><span class="line"><span class="params">                                    <span class="type">unsigned</span> <span class="type">long</span> prot, <span class="type">unsigned</span> <span class="type">long</span> flags,</span></span><br><span class="line"><span class="params">                                    <span class="type">unsigned</span> <span class="type">long</span> fd, <span class="type">unsigned</span> <span class="type">long</span> pgoff)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> retval;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    <span class="keyword">if</span> (!(flags &amp; MAP_FIXED))</span><br><span class="line">        addr = round_hint_to_min(addr);</span><br><span class="line"></span><br><span class="line">    len = PAGE_ALIGN(len);</span><br><span class="line">    <span class="keyword">if</span> (!len)</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找未使用的虚拟地址区域 */</span></span><br><span class="line">    addr = get_unmapped_area(file, addr, len, pgoff, flags);</span><br><span class="line">    <span class="keyword">if</span> (addr &amp; ~PAGE_MASK)</span><br><span class="line">        <span class="keyword">return</span> addr;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 执行映射 */</span></span><br><span class="line">    retval = vm_mmap_pgoff(addr, len, prot, flags, fd, pgoff);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> retval;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-2-2-mmap-标志"><a href="#11-2-2-mmap-标志" class="headerlink" title="11.2.2 mmap 标志"></a>11.2.2 mmap 标志</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* mmap 标志定义 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_SHARED       0x01    <span class="comment">/* 共享映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_PRIVATE      0x02    <span class="comment">/* 私有映射 (COW) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_FIXED        0x10    <span class="comment">/* 固定地址映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_ANONYMOUS    0x20    <span class="comment">/* 匿名映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_GROWSDOWN    0x0100  <span class="comment">/* 向下增长 (栈) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_DENYWRITE    0x0800  <span class="comment">/* 拒绝写入 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_EXECUTABLE   0x1000  <span class="comment">/* 可执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_LOCKED       0x2000  <span class="comment">/* 锁定内存 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_NORESERVE    0x4000  <span class="comment">/* 不保留交换空间 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_POPULATE     0x8000  <span class="comment">/* 预分配页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_NONBLOCK     0x10000 <span class="comment">/* 非阻塞 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_STACK        0x20000 <span class="comment">/* 映射用于栈 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_HUGETLB      0x40000 <span class="comment">/* 使用巨页 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_SYNC         0x80000 <span class="comment">/* 同步写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MAP_FIXED_NOREPLACE 0x100000 <span class="comment">/* 固定地址，不替换 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-2-3-保护标志"><a href="#11-2-3-保护标志" class="headerlink" title="11.2.3 保护标志"></a>11.2.3 保护标志</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* mmap 保护标志 (与 VMA 标志对应) */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_READ       0x1     <span class="comment">/* 可读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_WRITE      0x2     <span class="comment">/* 可写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_EXEC       0x4     <span class="comment">/* 可执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_SEM        0x8     <span class="comment">/* 用于 IPC (已废弃) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_NONE       0x0     <span class="comment">/* 不可访问 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_GROWSDOWN  0x01000000 <span class="comment">/* 向下增长 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PROT_GROWSUP    0x02000000 <span class="comment">/* 向上增长 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-3-do-mmap-实现"><a href="#11-3-do-mmap-实现" class="headerlink" title="11.3 do_mmap 实现"></a>11.3 do_mmap 实现</h2><h3 id="11-3-1-核心映射函数"><a href="#11-3-1-核心映射函数" class="headerlink" title="11.3.1 核心映射函数"></a>11.3.1 核心映射函数</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">do_mmap</span><span class="params">(<span class="keyword">struct</span> file *file, <span class="type">unsigned</span> <span class="type">long</span> addr,</span></span><br><span class="line"><span class="params">                             <span class="type">unsigned</span> <span class="type">long</span> len, <span class="type">unsigned</span> <span class="type">long</span> prot,</span></span><br><span class="line"><span class="params">                             <span class="type">unsigned</span> <span class="type">long</span> flags, <span class="type">unsigned</span> <span class="type">long</span> pgoff,</span></span><br><span class="line"><span class="params">                             <span class="type">unsigned</span> <span class="type">long</span> *populate)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line">    <span class="type">int</span> error;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; MAP_FIXED) &#123;</span><br><span class="line">        <span class="comment">/* 固定地址映射 */</span></span><br><span class="line">        <span class="keyword">if</span> (addr &amp; ~PAGE_MASK)</span><br><span class="line">            <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* 动态选择地址 */</span></span><br><span class="line">        addr = get_unmapped_area(file, addr, len, pgoff, flags);</span><br><span class="line">        <span class="keyword">if</span> (IS_ERR_VALUE(addr))</span><br><span class="line">            <span class="keyword">return</span> addr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    len = PAGE_ALIGN(len);</span><br><span class="line">    <span class="keyword">if</span> (!len)</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 创建 VMA */</span></span><br><span class="line">    vma = vm_area_alloc(mm);</span><br><span class="line">    <span class="keyword">if</span> (!vma)</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    vma-&gt;vm_start = addr;</span><br><span class="line">    vma-&gt;vm_end = addr + len;</span><br><span class="line">    vma-&gt;vm_flags = vm_flags;</span><br><span class="line">    vma-&gt;vm_page_prot = vm_get_page_prot(vm_flags);</span><br><span class="line">    vma-&gt;vm_pgoff = pgoff;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 设置 VMA 操作 */</span></span><br><span class="line">    <span class="keyword">if</span> (file)</span><br><span class="line">        vma-&gt;vm_ops = file-&gt;f_op-&gt;mmap;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 4. 插入 VMA */</span></span><br><span class="line">    error = mmap_region(file, addr, len, vm_flags, pgoff, vma);</span><br><span class="line">    <span class="keyword">if</span> (error)</span><br><span class="line">        <span class="keyword">return</span> error;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 5. 预填充页面 (如果需要) */</span></span><br><span class="line">    <span class="keyword">if</span> (populate &amp;&amp; (vm_flags &amp; MAP_POPULATE)) &#123;</span><br><span class="line">        error = populate_vma_page_range(vma);</span><br><span class="line">        <span class="keyword">if</span> (error)</span><br><span class="line">            <span class="keyword">return</span> error;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> addr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-3-2-mmap-流程"><a href="#11-3-2-mmap-流程" class="headerlink" title="11.3.2 mmap 流程"></a>11.3.2 mmap 流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">mmap(addr, len, prot, flags, fd, offset)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 参数校验                         │</span><br><span class="line">│    - 校验标志                       │</span><br><span class="line">│    - 对齐长度                       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 查找未使用的虚拟地址区域         │</span><br><span class="line">│    - get_unmapped_area              │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 创建 VMA                         │</span><br><span class="line">│    - vm_area_alloc                  │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 设置 VMA 属性                     │</span><br><span class="line">│    - vm_start, vm_end               │</span><br><span class="line">│    - vm_flags, vm_page_prot         │</span><br><span class="line">│    - vm_pgoff                       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 插入 VMA                         │</span><br><span class="line">│    - mmap_region                    │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 6. 预填充页面 (可选)                 │</span><br><span class="line">│    - populate_vma_page_range        │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-4-mprotect-系统调用"><a href="#11-4-mprotect-系统调用" class="headerlink" title="11.4 mprotect 系统调用"></a>11.4 mprotect 系统调用</h2><h3 id="11-4-1-sys-mprotect"><a href="#11-4-1-sys-mprotect" class="headerlink" title="11.4.1 sys_mprotect"></a>11.4.1 sys_mprotect</h3><p><strong>位置:</strong> <code>mm/mprotect.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE3(mprotect, <span class="type">unsigned</span> <span class="type">long</span>, start, <span class="type">size_t</span>, len,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, prot)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> end, nstart, nend;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    end = start + len;</span><br><span class="line">    <span class="keyword">if</span> (end &lt; start)</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找 VMA */</span></span><br><span class="line">    vma = find_vma(mm, start);</span><br><span class="line">    <span class="keyword">if</span> (!vma)</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 修改保护 */</span></span><br><span class="line">    <span class="keyword">while</span> (start &lt; end) &#123;</span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> newflags;</span><br><span class="line"></span><br><span class="line">        nstart = start;</span><br><span class="line">        nend = end;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 分割 VMA */</span></span><br><span class="line">        <span class="keyword">if</span> (start &gt; vma-&gt;vm_start)</span><br><span class="line">            nstart = start;</span><br><span class="line">        <span class="keyword">if</span> (end &lt; vma-&gt;vm_end)</span><br><span class="line">            nend = end;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 计算新标志 */</span></span><br><span class="line">        newflags = calc_vm_prot_bits(prot, <span class="number">0</span>);</span><br><span class="line">        newflags |= (vma-&gt;vm_flags &amp; ~(VM_READ | VM_WRITE | VM_EXEC));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 更新 VMA */</span></span><br><span class="line">        error = mprotect_fixup(vma, &amp;prev, nstart, nend, newflags);</span><br><span class="line">        <span class="keyword">if</span> (error)</span><br><span class="line">            <span class="keyword">return</span> error;</span><br><span class="line"></span><br><span class="line">        start = nend;</span><br><span class="line">        vma = prev-&gt;vm_next;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-4-2-使用示例"><a href="#11-4-2-使用示例" class="headerlink" title="11.4.2 使用示例"></a>11.4.2 使用示例</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配内存 */</span></span><br><span class="line"><span class="type">void</span> *ptr = mmap(<span class="literal">NULL</span>, <span class="number">4096</span>, PROT_READ | PROT_WRITE,</span><br><span class="line">                  MAP_PRIVATE | MAP_ANONYMOUS, <span class="number">-1</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 修改为只读 */</span></span><br><span class="line">mprotect(ptr, <span class="number">4096</span>, PROT_READ);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 修改为可执行 */</span></span><br><span class="line">mprotect(ptr, <span class="number">4096</span>, PROT_READ | PROT_EXEC);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 解除映射 */</span></span><br><span class="line">munmap(ptr, <span class="number">4096</span>);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-5-munmap-系统调用"><a href="#11-5-munmap-系统调用" class="headerlink" title="11.5 munmap 系统调用"></a>11.5 munmap 系统调用</h2><h3 id="11-5-1-sys-munmap"><a href="#11-5-1-sys-munmap" class="headerlink" title="11.5.1 sys_munmap"></a>11.5.1 sys_munmap</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE2(munmap, <span class="type">unsigned</span> <span class="type">long</span>, addr, <span class="type">size_t</span>, len)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> end;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    end = addr + len;</span><br><span class="line">    <span class="keyword">if</span> (end &lt; addr)</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找 VMA */</span></span><br><span class="line">    <span class="keyword">while</span> ((vma = find_vma(mm, addr)) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">/* 删除 VMA */</span></span><br><span class="line">        detach_vmas_to_be_unmapped(mm, vma, prev, end);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 释放资源 */</span></span><br><span class="line">        unmap_region(mm, vma, prev, start, end);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-5-2-解除映射流程"><a href="#11-5-2-解除映射流程" class="headerlink" title="11.5.2 解除映射流程"></a>11.5.2 解除映射流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">munmap(addr, len)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 参数校验                         │</span><br><span class="line">│    - 校验地址范围                   │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 查找 VMA                         │</span><br><span class="line">│    - find_vma                       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 分离 VMA                         │</span><br><span class="line">│    - detach_vmas_to_be_unmapped     │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 解除映射                         │</span><br><span class="line">│    - unmap_region                   │</span><br><span class="line">│    - 释放页表                       │</span><br><span class="line">│    - 释放页面                       │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-6-mremap-系统调用"><a href="#11-6-mremap-系统调用" class="headerlink" title="11.6 mremap 系统调用"></a>11.6 mremap 系统调用</h2><h3 id="11-6-1-sys-mremap"><a href="#11-6-1-sys-mremap" class="headerlink" title="11.6.1 sys_mremap"></a>11.6.1 sys_mremap</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE5(mremap, <span class="type">unsigned</span> <span class="type">long</span>, addr, <span class="type">unsigned</span> <span class="type">long</span>, old_len,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, new_len, <span class="type">unsigned</span> <span class="type">long</span>, flags,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, new_addr)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    old_len = PAGE_ALIGN(old_len);</span><br><span class="line">    new_len = PAGE_ALIGN(new_len);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; MREMAP_FIXED) &#123;</span><br><span class="line">        <span class="comment">/* 固定地址重映射 */</span></span><br><span class="line">        <span class="keyword">if</span> (new_addr &amp; ~PAGE_MASK)</span><br><span class="line">            <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找 VMA */</span></span><br><span class="line">    vma = find_vma(mm, addr);</span><br><span class="line">    <span class="keyword">if</span> (!vma)</span><br><span class="line">        <span class="keyword">return</span> -EFAULT;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 执行重映射 */</span></span><br><span class="line">    <span class="keyword">return</span> do_mremap(addr, old_len, new_len, flags, new_addr);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-6-2-do-mremap-实现"><a href="#11-6-2-do-mremap-实现" class="headerlink" title="11.6.2 do_mremap 实现"></a>11.6.2 do_mremap 实现</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">do_mremap</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> addr,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> old_len, <span class="type">unsigned</span> <span class="type">long</span> new_len,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> flags, <span class="type">unsigned</span> <span class="type">long</span> new_addr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ret = -EINVAL;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; MREMAP_FIXED) &#123;</span><br><span class="line">        <span class="comment">/* 固定地址重映射 */</span></span><br><span class="line">        <span class="keyword">if</span> (new_addr &amp; ~PAGE_MASK)</span><br><span class="line">            <span class="keyword">goto</span> out;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (new_len &gt; TASK_SIZE || new_addr &gt; TASK_SIZE - new_len)</span><br><span class="line">            <span class="keyword">goto</span> out;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 查找 VMA */</span></span><br><span class="line">    vma = find_vma(mm, addr);</span><br><span class="line">    <span class="keyword">if</span> (!vma || vma-&gt;vm_start != addr)</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (old_len != vma-&gt;vm_end - addr)</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 缩小映射 */</span></span><br><span class="line">    <span class="keyword">if</span> (new_len &lt;= old_len) &#123;</span><br><span class="line">        ret = do_munmap(mm, addr + new_len, old_len - new_len);</span><br><span class="line">        <span class="keyword">if</span> (ret &amp;&amp; old_len != new_len)</span><br><span class="line">            ret = addr;</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 扩大映射 */</span></span><br><span class="line">    <span class="keyword">if</span> (new_len &gt; old_len) &#123;</span><br><span class="line">        <span class="comment">/* 扩大映射 */</span></span><br><span class="line">        ret = mremap_to(addr, old_len, new_len, flags, new_addr);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">out:</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-7-msync-系统调用"><a href="#11-7-msync-系统调用" class="headerlink" title="11.7 msync 系统调用"></a>11.7 msync 系统调用</h2><h3 id="11-7-1-sys-msync"><a href="#11-7-1-sys-msync" class="headerlink" title="11.7.1 sys_msync"></a>11.7.1 sys_msync</h3><p><strong>位置:</strong> <code>mm/msync.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE3(msync, <span class="type">unsigned</span> <span class="type">long</span>, addr, <span class="type">size_t</span>, length, <span class="type">int</span>, flags)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> start, end;</span><br><span class="line">    <span class="type">int</span> error = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    start = untagged_addr(addr);</span><br><span class="line">    end = start + length;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (offset_in_page(start))</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    <span class="keyword">if</span> (!access_ok((<span class="type">void</span> __user *)start, length))</span><br><span class="line">        <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找 VMA */</span></span><br><span class="line">    <span class="keyword">while</span> ((vma = find_vma(mm, start)) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">/* 3. 同步页面到文件 */</span></span><br><span class="line">        error = sync_page_range(vma, start, end);</span><br><span class="line"></span><br><span class="line">        start = vma-&gt;vm_end;</span><br><span class="line">        <span class="keyword">if</span> (start &gt;= end)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-7-2-msync-标志"><a href="#11-7-2-msync-标志" class="headerlink" title="11.7.2 msync 标志"></a>11.7.2 msync 标志</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> MS_ASYNC        1   <span class="comment">/* 异步写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MS_INVALIDATE   2   <span class="comment">/* 使缓存无效 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MS_SYNC         4   <span class="comment">/* 同步写 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-8-madvise-系统调用"><a href="#11-8-madvise-系统调用" class="headerlink" title="11.8 madvise 系统调用"></a>11.8 madvise 系统调用</h2><h3 id="11-8-1-sys-madvise"><a href="#11-8-1-sys-madvise" class="headerlink" title="11.8.1 sys_madvise"></a>11.8.1 sys_madvise</h3><p><strong>位置:</strong> <code>mm/madvise.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE3(madvise, <span class="type">unsigned</span> <span class="type">long</span>, start, <span class="type">size_t</span>, len_in, <span class="type">int</span>, behavior)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> end, tmp;</span><br><span class="line">    <span class="type">int</span> error;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 参数校验 */</span></span><br><span class="line">    end = start + len_in;</span><br><span class="line">    <span class="keyword">if</span> (end &lt; start)</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 查找 VMA */</span></span><br><span class="line">    <span class="keyword">while</span> (start &lt; end) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line"></span><br><span class="line">        vma = find_vma(mm, start);</span><br><span class="line">        <span class="keyword">if</span> (!vma)</span><br><span class="line">            <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 3. 处理建议 */</span></span><br><span class="line">        error = madvise_behavior(vma, start, end, behavior);</span><br><span class="line">        <span class="keyword">if</span> (error)</span><br><span class="line">            <span class="keyword">return</span> error;</span><br><span class="line"></span><br><span class="line">        start = vma-&gt;vm_end;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="11-8-2-madvise-建议"><a href="#11-8-2-madvise-建议" class="headerlink" title="11.8.2 madvise 建议"></a>11.8.2 madvise 建议</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_NORMAL     0   <span class="comment">/* 无特殊建议 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_RANDOM     1   <span class="comment">/* 随机访问 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_SEQUENTIAL  2   <span class="comment">/* 顺序访问 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_WILLNEED   3   <span class="comment">/* 很快会访问 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_DONTNEED   4   <span class="comment">/* 不再需要 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_REMOVE     9   <span class="comment">/* 移除页面 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_DONTFORK   10  <span class="comment">/* fork 时不复制 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_DOFORK     11  <span class="comment">/* fork 时复制 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_MERGEABLE   12  <span class="comment">/* 启用 KSM */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_UNMERGEABLE 13  <span class="comment">/* 禁用 KSM */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_HUGEPAGE    14  <span class="comment">/* 使用巨页 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_NOHUGEPAGE  15  <span class="comment">/* 不使用巨页 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_DONTDUMP    16  <span class="comment">/* 不 dump */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_DODUMP      17  <span class="comment">/* dump */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_WIPEONFORK  18  <span class="comment">/* fork 时清零 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MADV_KEEPONFORK  19  <span class="comment">/* fork 时保留 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="11-9-本章小结"><a href="#11-9-本章小结" class="headerlink" title="11.9 本章小结"></a>11.9 本章小结</h2><p>本章介绍了 Linux 6.12 的内存映射：</p>
+<ol>
+<li><strong>mmap 概述</strong>: 文件映射、匿名映射、共享&#x2F;私有映射</li>
+<li><strong>mmap 系统调用</strong>: sys_mmap_pgoff，创建内存映射</li>
+<li><strong>mmap 标志</strong>: MAP_SHARED、MAP_PRIVATE、MAP_ANONYMOUS 等</li>
+<li><strong>do_mmap</strong>: 核心映射实现，创建 VMA</li>
+<li><strong>mprotect</strong>: 修改内存保护权限</li>
+<li><strong>munmap</strong>: 解除内存映射</li>
+<li><strong>mremap</strong>: 重新映射内存</li>
+<li><strong>msync</strong>: 同步内存到文件</li>
+<li><strong>madvise</strong>: 给出内存使用建议</li>
+</ol>
+<p>下一章将介绍匿名内存与页缓存。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-11</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:37</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:12
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-11/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-12/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-12</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-10/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-10</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-11</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC11%E7%AB%A0%EF%BC%9A%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84"><span class="nav-text">第11章：内存映射</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#11-1-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E6%A6%82%E8%BF%B0"><span class="nav-text">11.1 内存映射概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-1-1-mmap-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.1.1 mmap 系统调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-1-2-%E6%98%A0%E5%B0%84%E7%A4%BA%E4%BE%8B"><span class="nav-text">11.1.2 映射示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-2-mmap-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.2 mmap 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-2-1-sys-mmap-pgoff"><span class="nav-text">11.2.1 sys_mmap_pgoff</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-2-2-mmap-%E6%A0%87%E5%BF%97"><span class="nav-text">11.2.2 mmap 标志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-2-3-%E4%BF%9D%E6%8A%A4%E6%A0%87%E5%BF%97"><span class="nav-text">11.2.3 保护标志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-3-do-mmap-%E5%AE%9E%E7%8E%B0"><span class="nav-text">11.3 do_mmap 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-3-1-%E6%A0%B8%E5%BF%83%E6%98%A0%E5%B0%84%E5%87%BD%E6%95%B0"><span class="nav-text">11.3.1 核心映射函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-3-2-mmap-%E6%B5%81%E7%A8%8B"><span class="nav-text">11.3.2 mmap 流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-4-mprotect-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.4 mprotect 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-4-1-sys-mprotect"><span class="nav-text">11.4.1 sys_mprotect</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-4-2-%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">11.4.2 使用示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-5-munmap-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.5 munmap 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-5-1-sys-munmap"><span class="nav-text">11.5.1 sys_munmap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-5-2-%E8%A7%A3%E9%99%A4%E6%98%A0%E5%B0%84%E6%B5%81%E7%A8%8B"><span class="nav-text">11.5.2 解除映射流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-6-mremap-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.6 mremap 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-6-1-sys-mremap"><span class="nav-text">11.6.1 sys_mremap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-6-2-do-mremap-%E5%AE%9E%E7%8E%B0"><span class="nav-text">11.6.2 do_mremap 实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-7-msync-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.7 msync 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-7-1-sys-msync"><span class="nav-text">11.7.1 sys_msync</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-7-2-msync-%E6%A0%87%E5%BF%97"><span class="nav-text">11.7.2 msync 标志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-8-madvise-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">11.8 madvise 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-8-1-sys-madvise"><span class="nav-text">11.8.1 sys_madvise</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-8-2-madvise-%E5%BB%BA%E8%AE%AE"><span class="nav-text">11.8.2 madvise 建议</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-9-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">11.9 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

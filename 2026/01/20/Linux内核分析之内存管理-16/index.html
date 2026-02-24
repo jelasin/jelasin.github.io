@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-16/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-16">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-16/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:59.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:09.441Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-16 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-16</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:59</span>
+        <span class="mobile">2026-01-20 21:39:59</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:09</span>
+            <span class="mobile">2026-02-24 14:05:09</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第16章：IOMMU-输入输出内存管理单元"><a href="#第16章：IOMMU-输入输出内存管理单元" class="headerlink" title="第16章：IOMMU 输入输出内存管理单元"></a>第16章：IOMMU 输入输出内存管理单元</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="16-1-IOMMU-概述"><a href="#16-1-IOMMU-概述" class="headerlink" title="16.1 IOMMU 概述"></a>16.1 IOMMU 概述</h2><h3 id="16-1-1-什么是-IOMMU"><a href="#16-1-1-什么是-IOMMU" class="headerlink" title="16.1.1 什么是 IOMMU"></a>16.1.1 什么是 IOMMU</h3><p>IOMMU (Input&#x2F;Output Memory Management Unit) 是一种硬件组件，用于管理设备对系统内存的访问。它类似于 CPU 的 MMU，但服务于 I&#x2F;O 设备而非 CPU。</p>
+<p><strong>IOMMU 核心功能:</strong></p>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DMA 地址转换</strong></td>
+<td>将设备看到的 IOVA (I&#x2F;O Virtual Address) 转换为物理地址</td>
+</tr>
+<tr>
+<td><strong>内存隔离</strong></td>
+<td>防止恶意设备访问任意内存区域</td>
+</tr>
+<tr>
+<td><strong>scatter-gather 支持</strong></td>
+<td>支持不连续物理内存的 DMA 操作</td>
+</tr>
+<tr>
+<td><strong>中断重映射</strong></td>
+<td>提供 MSI&#x2F;MSI-X 中断重映射功能</td>
+</tr>
+</tbody></table>
+<h3 id="16-1-2-IOMMU-与-CPU-MMU-对比"><a href="#16-1-2-IOMMU-与-CPU-MMU-对比" class="headerlink" title="16.1.2 IOMMU 与 CPU MMU 对比"></a>16.1.2 IOMMU 与 CPU MMU 对比</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        CPU MMU (内存管理单元)                    │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  CPU ──→ 虚拟地址 (VA) ──→ MMU ──→ 物理地址 (PA) ──→ 系统内存    │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  - 进程地址空间隔离                                             │</span><br><span class="line">│  - 页表管理 (PGD → PUD → PMD → PTE)                             │</span><br><span class="line">│  - TLB 缓存                                                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                        IOMMU (IO 内存管理单元)                   │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  设备 ──→ IOVA ──→ IOMMU ──→ 物理地址 (PA) ──→ 系统内存          │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  - 设备 DMA 地址转换                                            │</span><br><span class="line">│  - 设备隔离 (防止恶意 DMA)                                      │</span><br><span class="line">│  - IOTLB 缓存                                                   │</span><br><span class="line">│  - PASID 支持 (多个地址空间)                                    │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-1-3-主要-IOMMU-硬件实现"><a href="#16-1-3-主要-IOMMU-硬件实现" class="headerlink" title="16.1.3 主要 IOMMU 硬件实现"></a>16.1.3 主要 IOMMU 硬件实现</h3><table>
+<thead>
+<tr>
+<th>硬件</th>
+<th>描述</th>
+<th>Linux 驱动位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Intel VT-d</strong></td>
+<td>Intel x86 平台的 IOMMU (VT-x for I&#x2F;O)</td>
+<td><code>drivers/iommu/intel/</code></td>
+</tr>
+<tr>
+<td><strong>AMD-Vi</strong></td>
+<td>AMD x86 平台的 IOMMU</td>
+<td><code>drivers/iommu/amd/</code></td>
+</tr>
+<tr>
+<td><strong>ARM SMMU</strong></td>
+<td>ARM 平台 SMMU v2&#x2F;v3</td>
+<td><code>drivers/iommu/arm/arm-smmu-v3/</code></td>
+</tr>
+<tr>
+<td><strong>virtio-iommu</strong></td>
+<td>虚拟化环境 IOMMU</td>
+<td><code>drivers/iommu/virtio-iommu.c</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="16-2-IOMMU-核心数据结构"><a href="#16-2-IOMMU-核心数据结构" class="headerlink" title="16.2 IOMMU 核心数据结构"></a>16.2 IOMMU 核心数据结构</h2><h3 id="16-2-1-iommu-device-结构"><a href="#16-2-1-iommu-device-结构" class="headerlink" title="16.2.1 iommu_device 结构"></a>16.2.1 iommu_device 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:682</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_device - IOMMU 硬件实例的核心表示</span></span><br><span class="line"><span class="comment"> * @list: 用于 iommu-core 维护已注册 iommu 的链表</span></span><br><span class="line"><span class="comment"> * @ops: 指向此 iommu 的 iommu-ops</span></span><br><span class="line"><span class="comment"> * @fwnode: firmware 节点</span></span><br><span class="line"><span class="comment"> * @dev: 用于 sysfs 处理的 struct device</span></span><br><span class="line"><span class="comment"> * @singleton_group: 用于只有一个组的驱动程序</span></span><br><span class="line"><span class="comment"> * @max_pasids: 支持的 PASID 数量</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_device</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">iommu_ops</span> *<span class="title">ops</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">fwnode_handle</span> *<span class="title">fwnode</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_group</span> *<span class="title">singleton_group</span>;</span></span><br><span class="line">    u32 max_pasids;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-2-2-iommu-domain-结构"><a href="#16-2-2-iommu-domain-结构" class="headerlink" title="16.2.2 iommu_domain 结构"></a>16.2.2 iommu_domain 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:208</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_domain - IOMMU 域表示</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * IOMMU 域表示一个设备地址空间，用于隔离不同设备的 DMA 地址空间</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> type;                          <span class="comment">/* 域类型 */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain_ops</span> *<span class="title">ops</span>;</span>     <span class="comment">/* 域操作 */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">iommu_dirty_ops</span> *<span class="title">dirty_ops</span>;</span><span class="comment">/* 脏页跟踪操作 */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">iommu_ops</span> *<span class="title">owner</span>;</span>          <span class="comment">/* 所属驱动 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> pgsize_bitmap;            <span class="comment">/* 支持的页大小位图 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain_geometry</span> <span class="title">geometry</span>;</span>  <span class="comment">/* 地址空间几何信息 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_dma_cookie</span> *<span class="title">iova_cookie</span>;</span>   <span class="comment">/* DMA API cookie */</span></span><br><span class="line">    <span class="type">int</span> (*iopf_handler)(<span class="keyword">struct</span> iopf_group *); <span class="comment">/* IOPF 处理器 */</span></span><br><span class="line">    <span class="type">void</span> *fault_data;                       <span class="comment">/* fault 数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">iommu_fault_handler_t</span> handler;  <span class="comment">/* 传统 fault 处理器 */</span></span><br><span class="line">            <span class="type">void</span> *handler_token;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span> <span class="comment">/* IOMMU_DOMAIN_SVA 专用 */</span></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span>;</span>            <span class="comment">/* 关联的进程地址空间 */</span></span><br><span class="line">            <span class="type">int</span> users;                       <span class="comment">/* 用户计数 */</span></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">next</span>;</span>           <span class="comment">/* mm-&gt;iommu_mm-&gt;sva_domains */</span></span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-2-3-iommu-domain-geometry"><a href="#16-2-3-iommu-domain-geometry" class="headerlink" title="16.2.3 iommu_domain_geometry"></a>16.2.3 iommu_domain_geometry</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_domain_geometry - 域地址空间几何信息</span></span><br><span class="line"><span class="comment"> * @aperture_start: 可映射的第一个地址</span></span><br><span class="line"><span class="comment"> * @aperture_end: 可映射的最后一个地址</span></span><br><span class="line"><span class="comment"> * @force_aperture: DMA 仅允许在可映射范围内</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain_geometry</span> &#123;</span></span><br><span class="line">    <span class="type">dma_addr_t</span> aperture_start;  <span class="comment">/* 可映射地址范围起始 */</span></span><br><span class="line">    <span class="type">dma_addr_t</span> aperture_end;    <span class="comment">/* 可映射地址范围结束 */</span></span><br><span class="line">    <span class="type">bool</span> force_aperture;        <span class="comment">/* 是否强制限制 DMA 在可映射范围内 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-2-4-iommu-group-结构"><a href="#16-2-4-iommu-group-结构" class="headerlink" title="16.2.4 iommu_group 结构"></a>16.2.4 iommu_group 结构</h3><p><strong>位置:</strong> <code>drivers/iommu/iommu.c:47</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_group - IOMMU 组</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * IOMMU 组是一组设备的集合，这些设备共享相同的 IOMMU 域</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_group</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kobject</span> <span class="title">kobj</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kobject</span> *<span class="title">devices_kobj</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">devices</span>;</span>       <span class="comment">/* 组内的设备列表 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">xarray</span> <span class="title">pasid_array</span>;</span>      <span class="comment">/* PASID 数组 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mutex</span> <span class="title">mutex</span>;</span></span><br><span class="line">    <span class="type">void</span> *iommu_data;</span><br><span class="line">    <span class="type">void</span> (*iommu_data_release)(<span class="type">void</span> *iommu_data);</span><br><span class="line">    <span class="type">char</span> *name;</span><br><span class="line">    <span class="type">int</span> id;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">default_domain</span>;</span>    <span class="comment">/* 默认域 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">blocking_domain</span>;</span>   <span class="comment">/* 阻塞域 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">domain</span>;</span>            <span class="comment">/* 当前域 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">entry</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> owner_cnt;</span><br><span class="line">    <span class="type">void</span> *owner;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-2-5-dev-iommu-结构"><a href="#16-2-5-dev-iommu-结构" class="headerlink" title="16.2.5 dev_iommu 结构"></a>16.2.5 dev_iommu 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:732</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct dev_iommu - 每设备 IOMMU 数据集合</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dev_iommu</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mutex</span> <span class="title">lock</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault_param</span> __<span class="title">rcu</span> *<span class="title">fault_param</span>;</span>   <span class="comment">/* fault 报告数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_fwspec</span> *<span class="title">fwspec</span>;</span>                   <span class="comment">/* firmware 规格数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_device</span> *<span class="title">iommu_dev</span>;</span>                <span class="comment">/* 关联的 IOMMU 设备 */</span></span><br><span class="line">    <span class="type">void</span> *priv;                                    <span class="comment">/* IOMMU 驱动私有数据 */</span></span><br><span class="line">    u32 max_pasids;                                <span class="comment">/* 设备可消耗的 PASID 数量 */</span></span><br><span class="line">    u32 attach_deferred:<span class="number">1</span>;                         <span class="comment">/* 延迟附加 */</span></span><br><span class="line">    u32 pci_32bit_workaround:<span class="number">1</span>;                    <span class="comment">/* 32 位 DMA 限制 */</span></span><br><span class="line">    u32 require_direct:<span class="number">1</span>;                          <span class="comment">/* 需要直接映射区域 */</span></span><br><span class="line">    u32 shadow_on_flush:<span class="number">1</span>;                         <span class="comment">/* 刷新时同步影子表 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-2-6-iommu-mm-data-结构"><a href="#16-2-6-iommu-mm-data-结构" class="headerlink" title="16.2.6 iommu_mm_data 结构"></a>16.2.6 iommu_mm_data 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:1017</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_mm_data - mm_struct 与 IOMMU 的集成数据</span></span><br><span class="line"><span class="comment"> * @pasid: 分配给此 mm 的 PASID</span></span><br><span class="line"><span class="comment"> * @sva_domains: 使用此 mm 的 SVA 域列表</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_mm_data</span> &#123;</span></span><br><span class="line">    u32              pasid;      <span class="comment">/* 分配给此 mm 的 PASID */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">sva_domains</span>;</span> <span class="comment">/* SVA 域列表 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-3-IOMMU-域类型"><a href="#16-3-IOMMU-域类型" class="headerlink" title="16.3 IOMMU 域类型"></a>16.3 IOMMU 域类型</h2><h3 id="16-3-1-域类型定义"><a href="#16-3-1-域类型定义" class="headerlink" title="16.3.1 域类型定义"></a>16.3.1 域类型定义</h3><p><strong>位置:</strong> <code>include/linux/iommu.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 域特性标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_PAGING     (1U &lt;&lt; 0)  <span class="comment">/* 支持 iommu_map/unmap */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_DMA_API    (1U &lt;&lt; 1)  <span class="comment">/* DMA-API 使用的域 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_PT         (1U &lt;&lt; 2)  <span class="comment">/* 恒等映射域 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_DMA_FQ     (1U &lt;&lt; 3)  <span class="comment">/* DMA-API 使用 flush queue */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_SVA        (1U &lt;&lt; 4)  <span class="comment">/* 共享进程地址空间 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_PLATFORM   (1U &lt;&lt; 5)  <span class="comment">/* 平台特定 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __IOMMU_DOMAIN_NESTED     (1U &lt;&lt; 6)  <span class="comment">/* 用户管理地址空间嵌套 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 域类型定义:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_BLOCKED  - 所有 DMA 被阻塞，用于设备隔离</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_IDENTITY - DMA 地址就是系统物理地址 (1:1 映射)</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_UNMANAGED - DMA 映射由 IOMMU-API 用户管理，用于 VM</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_DMA      - DMA-API 实现内部使用</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_DMA_FQ   - 同上，但使用批量 TLB 失效</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_SVA      - DMA 地址是共享的进程地址</span></span><br><span class="line"><span class="comment"> * IOMMU_DOMAIN_PLATFORM - 遗留域，新驱动不应使用</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_BLOCKED   (0U)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_IDENTITY  (__IOMMU_DOMAIN_PT)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_UNMANAGED (__IOMMU_DOMAIN_PAGING)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_DMA       (__IOMMU_DOMAIN_PAGING | __IOMMU_DOMAIN_DMA_API)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_DMA_FQ    (__IOMMU_DOMAIN_PAGING | __IOMMU_DOMAIN_DMA_API | __IOMMU_DOMAIN_DMA_FQ)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_SVA       (__IOMMU_DOMAIN_SVA)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_PLATFORM  (__IOMMU_DOMAIN_PLATFORM)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_DOMAIN_NESTED    (__IOMMU_DOMAIN_NESTED)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-3-2-域类型特性对比"><a href="#16-3-2-域类型特性对比" class="headerlink" title="16.3.2 域类型特性对比"></a>16.3.2 域类型特性对比</h3><table>
+<thead>
+<tr>
+<th>域类型</th>
+<th>描述</th>
+<th>地址转换</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BLOCKED</td>
+<td>所有 DMA 被阻塞</td>
+<td>N&#x2F;A</td>
+<td>设备隔离</td>
+</tr>
+<tr>
+<td>IDENTITY</td>
+<td>1:1 恒等映射</td>
+<td>IOVA &#x3D; PA</td>
+<td>直通模式</td>
+</tr>
+<tr>
+<td>UNMANAGED</td>
+<td>用户管理映射</td>
+<td>IOVA → PA</td>
+<td>虚拟化</td>
+</tr>
+<tr>
+<td>DMA</td>
+<td>内核 DMA API</td>
+<td>IOVA → PA</td>
+<td>通用设备</td>
+</tr>
+<tr>
+<td>DMA_FQ</td>
+<td>DMA + Flush Queue</td>
+<td>IOVA → PA</td>
+<td>高性能设备</td>
+</tr>
+<tr>
+<td>SVA</td>
+<td>共享进程地址</td>
+<td>VA &#x3D; IOVA → PA</td>
+<td>设备直接访问进程内存</td>
+</tr>
+<tr>
+<td>NESTED</td>
+<td>嵌套页表</td>
+<td>GVA → GPA → PA</td>
+<td>虚拟化嵌套</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="16-4-IOMMU-域操作"><a href="#16-4-IOMMU-域操作" class="headerlink" title="16.4 IOMMU 域操作"></a>16.4 IOMMU 域操作</h2><h3 id="16-4-1-iommu-ops-结构"><a href="#16-4-1-iommu-ops-结构" class="headerlink" title="16.4.1 iommu_ops 结构"></a>16.4.1 iommu_ops 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:559</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_ops - iommu 操作和能力</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_ops</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 能力检查 */</span></span><br><span class="line">    <span class="type">bool</span> (*capable)(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_cap);</span><br><span class="line">    <span class="type">void</span> *(*hw_info)(<span class="keyword">struct</span> device *dev, u32 *length, u32 *type);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 域分配 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *(*<span class="title">domain_alloc</span>)(<span class="title">unsigned</span> <span class="title">iommu_domain_type</span>);</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *(*<span class="title">domain_alloc_user</span>)(</span></span><br><span class="line"><span class="class">        <span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>, <span class="title">u32</span> <span class="title">flags</span>, <span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">parent</span>,</span></span><br><span class="line"><span class="class">        <span class="title">const</span> <span class="keyword">struct</span> <span class="title">iommu_user_data</span> *<span class="title">user_data</span>);</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *(*<span class="title">domain_alloc_paging</span>)(<span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>);</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *(*<span class="title">domain_alloc_sva</span>)(<span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>,</span></span><br><span class="line"><span class="class">                                             <span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span>);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设备探测 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_device</span> *(*<span class="title">probe_device</span>)(<span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>);</span></span><br><span class="line">    <span class="type">void</span> (*release_device)(<span class="keyword">struct</span> device *dev);</span><br><span class="line">    <span class="type">void</span> (*probe_finalize)(<span class="keyword">struct</span> device *dev);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_group</span> *(*<span class="title">device_group</span>)(<span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 保留区域 */</span></span><br><span class="line">    <span class="type">void</span> (*get_resv_regions)(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> list_head *<span class="built_in">list</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设备特性 */</span></span><br><span class="line">    <span class="type">int</span> (*dev_enable_feat)(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_dev_features f);</span><br><span class="line">    <span class="type">int</span> (*dev_disable_feat)(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_dev_features f);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面响应 */</span></span><br><span class="line">    <span class="type">void</span> (*page_response)(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> iopf_fault *evt,</span><br><span class="line">                         <span class="keyword">struct</span> iommu_page_response *msg);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 默认域类型 */</span></span><br><span class="line">    <span class="type">int</span> (*def_domain_type)(<span class="keyword">struct</span> device *dev);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* PASID 移除 */</span></span><br><span class="line">    <span class="type">void</span> (*remove_dev_pasid)(<span class="keyword">struct</span> device *dev, <span class="type">ioasid_t</span> pasid,</span><br><span class="line">                            <span class="keyword">struct</span> iommu_domain *domain);</span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain_ops</span> *<span class="title">default_domain_ops</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> pgsize_bitmap;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">module</span> *<span class="title">owner</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">identity_domain</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">blocked_domain</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">release_domain</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">default_domain</span>;</span></span><br><span class="line">    u8 user_pasid_table:<span class="number">1</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-4-2-iommu-domain-ops-结构"><a href="#16-4-2-iommu-domain-ops-结构" class="headerlink" title="16.4.2 iommu_domain_ops 结构"></a>16.4.2 iommu_domain_ops 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:642</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_domain_ops - 域特定操作</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain_ops</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 附加/分离设备 */</span></span><br><span class="line">    <span class="type">int</span> (*attach_dev)(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> device *dev);</span><br><span class="line">    <span class="type">int</span> (*set_dev_pasid)(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> device *dev,</span><br><span class="line">                        <span class="type">ioasid_t</span> pasid);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面映射/解除映射 */</span></span><br><span class="line">    <span class="type">int</span> (*map_pages)(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span><br><span class="line">                    <span class="type">phys_addr_t</span> paddr, <span class="type">size_t</span> pgsize, <span class="type">size_t</span> pgcount,</span><br><span class="line">                    <span class="type">int</span> prot, <span class="type">gfp_t</span> gfp, <span class="type">size_t</span> *mapped);</span><br><span class="line">    <span class="type">size_t</span> (*unmap_pages)(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span><br><span class="line">                         <span class="type">size_t</span> pgsize, <span class="type">size_t</span> pgcount,</span><br><span class="line">                         <span class="keyword">struct</span> iommu_iotlb_gather *iotlb_gather);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* TLB 刷新 */</span></span><br><span class="line">    <span class="type">void</span> (*flush_iotlb_all)(<span class="keyword">struct</span> iommu_domain *domain);</span><br><span class="line">    <span class="type">int</span> (*iotlb_sync_map)(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span><br><span class="line">                         <span class="type">size_t</span> size);</span><br><span class="line">    <span class="type">void</span> (*iotlb_sync)(<span class="keyword">struct</span> iommu_domain *domain,</span><br><span class="line">                      <span class="keyword">struct</span> iommu_iotlb_gather *iotlb_gather);</span><br><span class="line">    <span class="type">int</span> (*cache_invalidate_user)(<span class="keyword">struct</span> iommu_domain *domain,</span><br><span class="line">                                <span class="keyword">struct</span> iommu_user_data_array *<span class="built_in">array</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 地址转换 */</span></span><br><span class="line">    <span class="type">phys_addr_t</span> (*iova_to_phys)(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">dma_addr_t</span> iova);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 域特性 */</span></span><br><span class="line">    <span class="type">bool</span> (*enforce_cache_coherency)(<span class="keyword">struct</span> iommu_domain *domain);</span><br><span class="line">    <span class="type">int</span> (*enable_nesting)(<span class="keyword">struct</span> iommu_domain *domain);</span><br><span class="line">    <span class="type">int</span> (*set_pgtable_quirks)(<span class="keyword">struct</span> iommu_domain *domain,</span><br><span class="line">                             <span class="type">unsigned</span> <span class="type">long</span> quirks);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 释放域 */</span></span><br><span class="line">    <span class="type">void</span> (*<span class="built_in">free</span>)(<span class="keyword">struct</span> iommu_domain *domain);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-4-3-IOMMU-核心操作函数"><a href="#16-4-3-IOMMU-核心操作函数" class="headerlink" title="16.4.3 IOMMU 核心操作函数"></a>16.4.3 IOMMU 核心操作函数</h3><p><strong>位置:</strong> <code>include/linux/iommu.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 域分配和释放 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_domain *<span class="title function_">iommu_domain_alloc</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> bus_type *bus)</span>;</span><br><span class="line"><span class="keyword">struct</span> iommu_domain *<span class="title function_">iommu_paging_domain_alloc</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_domain_free</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 设备附加/分离 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">iommu_attach_device</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_detach_device</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_domain *<span class="title function_">iommu_get_domain_for_dev</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_domain *<span class="title function_">iommu_get_dma_domain</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 页面映射/解除映射 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">iommu_map</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span></span><br><span class="line"><span class="params">                    <span class="type">phys_addr_t</span> paddr, <span class="type">size_t</span> size, <span class="type">int</span> prot, <span class="type">gfp_t</span> gfp)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">size_t</span> <span class="title function_">iommu_unmap</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span></span><br><span class="line"><span class="params">                         <span class="type">size_t</span> size)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">size_t</span> <span class="title function_">iommu_unmap_fast</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">size_t</span> size,</span></span><br><span class="line"><span class="params">                              <span class="keyword">struct</span> iommu_iotlb_gather *iotlb_gather)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">ssize_t</span> <span class="title function_">iommu_map_sg</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">unsigned</span> <span class="type">long</span> iova,</span></span><br><span class="line"><span class="params">                           <span class="keyword">struct</span> scatterlist *sg, <span class="type">unsigned</span> <span class="type">int</span> nents,</span></span><br><span class="line"><span class="params">                           <span class="type">int</span> prot, <span class="type">gfp_t</span> gfp)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 地址转换 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">phys_addr_t</span> <span class="title function_">iommu_iova_to_phys</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">dma_addr_t</span> iova)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* fault 处理 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_set_fault_handler</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain,</span></span><br><span class="line"><span class="params">                                   <span class="type">iommu_fault_handler_t</span> handler, <span class="type">void</span> *token)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">report_iommu_fault</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> device *dev,</span></span><br><span class="line"><span class="params">                             <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">int</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 组操作 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">iommu_attach_group</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> iommu_group *group)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_detach_group</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> iommu_group *group)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_group *<span class="title function_">iommu_group_alloc</span><span class="params">(<span class="type">void</span>)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_group *<span class="title function_">iommu_group_get</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_group_put</span><span class="params">(<span class="keyword">struct</span> iommu_group *group)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">iommu_group_id</span><span class="params">(<span class="keyword">struct</span> iommu_group *group)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 保留区域 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_get_resv_regions</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> list_head *<span class="built_in">list</span>)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_put_resv_regions</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> list_head *<span class="built_in">list</span>)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-4-4-IOMMU-保护标志"><a href="#16-4-4-IOMMU-保护标志" class="headerlink" title="16.4.4 IOMMU 保护标志"></a>16.4.4 IOMMU 保护标志</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* IOMMU 保护标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_READ   (1 &lt;&lt; 0)   <span class="comment">/* 可读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_WRITE  (1 &lt;&lt; 1)   <span class="comment">/* 可写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_CACHE  (1 &lt;&lt; 2)   <span class="comment">/* DMA 缓存一致性 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_NOEXEC (1 &lt;&lt; 3)   <span class="comment">/* 不可执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_MMIO   (1 &lt;&lt; 4)   <span class="comment">/* MMIO 访问 (如 MSI doorbells) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_PRIV   (1 &lt;&lt; 5)   <span class="comment">/* 特权级访问 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * IOMMU_PRIV 标志说明:</span></span><br><span class="line"><span class="comment"> * 当总线硬件包含特权级作为其访问类型标记的一部分，</span></span><br><span class="line"><span class="comment"> * 并且某些设备能够发出标记为 &quot;supervisor&quot; 或 &quot;user&quot; 的事务时，</span></span><br><span class="line"><span class="comment"> * IOMMU_PRIV 标志请求其他给定的权限标志仅应用于较高级别的访问，</span></span><br><span class="line"><span class="comment"> * 并且非特权事务应具有尽可能少的访问权限。</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-5-IOMMU-IOTLB-管理"><a href="#16-5-IOMMU-IOTLB-管理" class="headerlink" title="16.5 IOMMU IOTLB 管理"></a>16.5 IOMMU IOTLB 管理</h2><h3 id="16-5-1-iommu-iotlb-gather-结构"><a href="#16-5-1-iommu-iotlb-gather-结构" class="headerlink" title="16.5.1 iommu_iotlb_gather 结构"></a>16.5.1 iommu_iotlb_gather 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:345</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_iotlb_gather - 待刷新 IOTLB 范围信息</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * @start: 要刷新范围的 IOVA 起始地址</span></span><br><span class="line"><span class="comment"> * @end: 要刷新范围的 IOVA 结束地址 (包含)</span></span><br><span class="line"><span class="comment"> * @pgsize: 执行刷新的间隔</span></span><br><span class="line"><span class="comment"> * @freelist: 在 sync 后要释放的已移除页面</span></span><br><span class="line"><span class="comment"> * @queued: 指示刷新将被排队</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 此结构旨在通过多次调用 -&gt;unmap() 函数更新，</span></span><br><span class="line"><span class="comment"> * 最终在 -&gt;iotlb_sync() 或 -&gt;iotlb_flush_all() 中传递</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_iotlb_gather</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>      start;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>      end;</span><br><span class="line">    <span class="type">size_t</span>             pgsize;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">freelist</span>;</span></span><br><span class="line">    <span class="type">bool</span>               queued;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-5-2-IOTLB-刷新辅助函数"><a href="#16-5-2-IOTLB-刷新辅助函数" class="headerlink" title="16.5.2 IOTLB 刷新辅助函数"></a>16.5.2 IOTLB 刷新辅助函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化 gather 结构 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_iotlb_gather_init</span><span class="params">(<span class="keyword">struct</span> iommu_iotlb_gather *gather)</span></span><br><span class="line">&#123;</span><br><span class="line">    *gather = (<span class="keyword">struct</span> iommu_iotlb_gather) &#123;</span><br><span class="line">        .start   = ULONG_MAX,</span><br><span class="line">        .freelist = LIST_HEAD_INIT(gather-&gt;freelist),</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查范围是否不相交 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">iommu_iotlb_gather_is_disjoint</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> iommu_iotlb_gather *gather, <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">size_t</span> size)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> start = iova, end = start + size - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">return</span> gather-&gt;end != <span class="number">0</span> &amp;&amp;</span><br><span class="line">        (end + <span class="number">1</span> &lt; gather-&gt;start || start &gt; gather-&gt;end + <span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 基于地址的 TLB 失效收集 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_iotlb_gather_add_range</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> iommu_iotlb_gather *gather, <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">size_t</span> size)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> end = iova + size - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (gather-&gt;start &gt; iova)</span><br><span class="line">        gather-&gt;start = iova;</span><br><span class="line">    <span class="keyword">if</span> (gather-&gt;end &lt; end)</span><br><span class="line">        gather-&gt;end = end;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 基于页的 TLB 失效收集 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_iotlb_gather_add_page</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> iommu_domain *domain, <span class="keyword">struct</span> iommu_iotlb_gather *gather,</span></span><br><span class="line"><span class="params">    <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">size_t</span> size)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> ((gather-&gt;pgsize &amp;&amp; gather-&gt;pgsize != size) ||</span><br><span class="line">        iommu_iotlb_gather_is_disjoint(gather, iova, size))</span><br><span class="line">        iommu_iotlb_sync(domain, gather);</span><br><span class="line">    gather-&gt;pgsize = size;</span><br><span class="line">    iommu_iotlb_gather_add_range(gather, iova, size);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查是否排队 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">iommu_iotlb_gather_queued</span><span class="params">(<span class="keyword">struct</span> iommu_iotlb_gather *gather)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> gather &amp;&amp; gather-&gt;queued;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-5-3-TLB-刷新函数"><a href="#16-5-3-TLB-刷新函数" class="headerlink" title="16.5.3 TLB 刷新函数"></a>16.5.3 TLB 刷新函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 刷新整个域的 TLB */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_flush_iotlb_all</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (domain-&gt;ops-&gt;flush_iotlb_all)</span><br><span class="line">        domain-&gt;ops-&gt;flush_iotlb_all(domain);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 同步 TLB 刷新 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_iotlb_sync</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain,</span></span><br><span class="line"><span class="params">                                   <span class="keyword">struct</span> iommu_iotlb_gather *iotlb_gather)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (domain-&gt;ops-&gt;iotlb_sync)</span><br><span class="line">        domain-&gt;ops-&gt;iotlb_sync(domain, iotlb_gather);</span><br><span class="line">    iommu_iotlb_gather_init(iotlb_gather);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-6-SVA-共享虚拟地址"><a href="#16-6-SVA-共享虚拟地址" class="headerlink" title="16.6 SVA (共享虚拟地址)"></a>16.6 SVA (共享虚拟地址)</h2><h3 id="16-6-1-SVA-概述"><a href="#16-6-1-SVA-概述" class="headerlink" title="16.6.1 SVA 概述"></a>16.6.1 SVA 概述</h3><p>SVA (Shared Virtual Addressing) 允许设备使用与 CPU 相同的虚拟地址空间。</p>
+<p><strong>SVA 核心概念:</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        传统 DMA 模型                            │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  进程 VA ──→ CPU MMU ──→ PA                                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  设备 ──→ IOVA ──→ IOMMU ──→ PA ──→ (可能通过 DMA 映射)        │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  问题: 需要维护两套地址空间，需要显式 DMA 映射                   │</span><br><span class="line">│                                                                 │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                        SVA 模式                                 │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  进程 VA ──→ CPU MMU ──→ PA                                     │</span><br><span class="line">│      │                                                          │</span><br><span class="line">│      └── 设备 ──→ IOVA (=VA) ──→ IOMMU ──→ PA                    │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  优势: 设备直接使用进程虚拟地址，无需额外映射                    │</span><br><span class="line">│        通过 PASID 区分不同进程的地址空间                         │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-6-2-PASID-Process-Address-Space-ID"><a href="#16-6-2-PASID-Process-Address-Space-ID" class="headerlink" title="16.6.2 PASID (Process Address Space ID)"></a>16.6.2 PASID (Process Address Space ID)</h3><p><strong>PASID 定义:</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_NO_PASID            (0U)   <span class="comment">/* 无 PASID (传统 DMA) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FIRST_GLOBAL_PASID  (1U)   <span class="comment">/* 全局 PASID 起始范围 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_PASID_INVALID       (-1U)  <span class="comment">/* 无效 PASID */</span></span></span><br><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">int</span> <span class="type">ioasid_t</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>PASID 作用:</strong></p>
+<ol>
+<li><strong>地址空间隔离</strong>: 允许单个设备同时访问多个进程的地址空间</li>
+<li><strong>并发访问</strong>: 设备可以同时为多个进程执行 DMA 操作</li>
+<li><strong>PASID 表</strong>: IOMMU 维护 PASID 表，每个 PASID 指向不同的页表</li>
+</ol>
+<h3 id="16-6-3-iommu-sva-结构"><a href="#16-6-3-iommu-sva-结构" class="headerlink" title="16.6.3 iommu_sva 结构"></a>16.6.3 iommu_sva 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:1009</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_sva - 设备-mm 绑定句柄</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_sva</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_attach_handle</span> <span class="title">handle</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>;</span></span><br><span class="line">    <span class="type">refcount_t</span> users;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-6-4-SVA-操作函数"><a href="#16-6-4-SVA-操作函数" class="headerlink" title="16.6.4 SVA 操作函数"></a>16.6.4 SVA 操作函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 绑定设备到进程地址空间 */</span></span><br><span class="line"><span class="keyword">struct</span> iommu_sva *<span class="title function_">iommu_sva_bind_device</span><span class="params">(<span class="keyword">struct</span> device *dev,</span></span><br><span class="line"><span class="params">                                       <span class="keyword">struct</span> mm_struct *mm)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_sva_unbind_device</span><span class="params">(<span class="keyword">struct</span> iommu_sva *handle)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取 PASID */</span></span><br><span class="line">u32 <span class="title function_">iommu_sva_get_pasid</span><span class="params">(<span class="keyword">struct</span> iommu_sva *handle)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* PASID 附加/分离 (扩展) */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_attach_device_pasid</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain,</span></span><br><span class="line"><span class="params">                              <span class="keyword">struct</span> device *dev, <span class="type">ioasid_t</span> pasid,</span></span><br><span class="line"><span class="params">                              <span class="keyword">struct</span> iommu_attach_handle *handle)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_detach_device_pasid</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> device *dev, <span class="type">ioasid_t</span> pasid)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 全局 PASID 分配 */</span></span><br><span class="line"><span class="type">ioasid_t</span> <span class="title function_">iommu_alloc_global_pasid</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_free_global_pasid</span><span class="params">(<span class="type">ioasid_t</span> pasid)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-6-5-mm-struct-PASID-操作"><a href="#16-6-5-mm-struct-PASID-操作" class="headerlink" title="16.6.5 mm_struct PASID 操作"></a>16.6.5 mm_struct PASID 操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化 PASID */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">mm_pasid_init</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 在 dup_mm() 期间，新的 mm 会从旧 mm memcpy，这会导致新的 mm</span></span><br><span class="line"><span class="comment">     * 和旧 mm 指向同一个 iommu_mm 实例。当其中一个释放时，</span></span><br><span class="line"><span class="comment">     * iommu_mm 实例被释放，导致另一个 mm 出现 use-after-free/double-free。</span></span><br><span class="line"><span class="comment">     * 因此需要将新 mm 的 iommu_mm 指针清零。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    mm-&gt;iommu_mm = <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查 PASID 是否有效 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">mm_valid_pasid</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> READ_ONCE(mm-&gt;iommu_mm);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取 ENQCMD PASID */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> u32 <span class="title function_">mm_get_enqcmd_pasid</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_mm_data</span> *<span class="title">iommu_mm</span> =</span> READ_ONCE(mm-&gt;iommu_mm);</span><br><span class="line">    <span class="keyword">if</span> (!iommu_mm)</span><br><span class="line">        <span class="keyword">return</span> IOMMU_PASID_INVALID;</span><br><span class="line">    <span class="keyword">return</span> iommu_mm-&gt;pasid;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放 PASID */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">mm_pasid_drop</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-7-IOMMU-Fault-处理"><a href="#16-7-IOMMU-Fault-处理" class="headerlink" title="16.7 IOMMU Fault 处理"></a>16.7 IOMMU Fault 处理</h2><h3 id="16-7-1-IOMMU-Fault-类型"><a href="#16-7-1-IOMMU-Fault-类型" class="headerlink" title="16.7.1 IOMMU Fault 类型"></a>16.7.1 IOMMU Fault 类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 通用 fault 类型，可扩展为 IRQ 重映射 fault */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">iommu_fault_type</span> &#123;</span></span><br><span class="line">    IOMMU_FAULT_PAGE_REQ = <span class="number">1</span>,    <span class="comment">/* 页请求 fault */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Fault 权限 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PERM_READ   (1 &lt;&lt; 0)  <span class="comment">/* 读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PERM_WRITE  (1 &lt;&lt; 1)  <span class="comment">/* 写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PERM_EXEC   (1 &lt;&lt; 2)  <span class="comment">/* 执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PERM_PRIV   (1 &lt;&lt; 3)  <span class="comment">/* 特权 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-7-2-IOMMU-Fault-结构"><a href="#16-7-2-IOMMU-Fault-结构" class="headerlink" title="16.7.2 IOMMU Fault 结构"></a>16.7.2 IOMMU Fault 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_fault_page_request - 页请求数据</span></span><br><span class="line"><span class="comment"> * @flags: 编码字段有效性和是否为组中最后一页</span></span><br><span class="line"><span class="comment"> * @pasid: 进程地址空间 ID</span></span><br><span class="line"><span class="comment"> * @grpid: 页请求组索引</span></span><br><span class="line"><span class="comment"> * @perm: 请求的页权限 (IOMMU_FAULT_PERM_*)</span></span><br><span class="line"><span class="comment"> * @addr: 页地址</span></span><br><span class="line"><span class="comment"> * @private_data: 设备特定私有信息</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault_page_request</span> &#123;</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PAGE_REQUEST_PASID_VALID  (1 &lt;&lt; 0)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PAGE_REQUEST_LAST_PAGE    (1 &lt;&lt; 1)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IOMMU_FAULT_PAGE_RESPONSE_NEEDS_PASID (1 &lt;&lt; 2)</span></span><br><span class="line">    u32 flags;</span><br><span class="line">    u32 pasid;</span><br><span class="line">    u32 grpid;</span><br><span class="line">    u32 perm;</span><br><span class="line">    u64 addr;</span><br><span class="line">    u64 private_data[<span class="number">2</span>];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_fault - 通用 fault 数据</span></span><br><span class="line"><span class="comment"> * @type: fault 类型</span></span><br><span class="line"><span class="comment"> * @prm: 当 @type 为 %IOMMU_FAULT_PAGE_REQ 时的页请求消息</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault</span> &#123;</span></span><br><span class="line">    u32 type;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault_page_request</span> <span class="title">prm</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-7-3-页响应代码"><a href="#16-7-3-页响应代码" class="headerlink" title="16.7.3 页响应代码"></a>16.7.3 页响应代码</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * enum iommu_page_response_code - fault 处理器返回状态</span></span><br><span class="line"><span class="comment"> * @IOMMU_PAGE_RESP_SUCCESS: fault 已处理，页表已填充，重试访问</span></span><br><span class="line"><span class="comment"> * @IOMMU_PAGE_RESP_FAILURE: 一般错误，删除后续 fault</span></span><br><span class="line"><span class="comment"> * @IOMMU_PAGE_RESP_INVALID: 无法处理此 fault，不重试访问</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">iommu_page_response_code</span> &#123;</span></span><br><span class="line">    IOMMU_PAGE_RESP_SUCCESS = <span class="number">0</span>,</span><br><span class="line">    IOMMU_PAGE_RESP_INVALID,</span><br><span class="line">    IOMMU_PAGE_RESP_FAILURE,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_page_response - 通用页响应信息</span></span><br><span class="line"><span class="comment"> * @pasid: 进程地址空间 ID</span></span><br><span class="line"><span class="comment"> * @grpid: 页请求组索引</span></span><br><span class="line"><span class="comment"> * @code: 响应代码</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_page_response</span> &#123;</span></span><br><span class="line">    u32 pasid;</span><br><span class="line">    u32 grpid;</span><br><span class="line">    u32 code;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-7-4-IOPF-I-O-Page-Fault-队列"><a href="#16-7-4-IOPF-I-O-Page-Fault-队列" class="headerlink" title="16.7.4 IOPF (I&#x2F;O Page Fault) 队列"></a>16.7.4 IOPF (I&#x2F;O Page Fault) 队列</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:139</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iopf_group - I/O Page Fault 组</span></span><br><span class="line"><span class="comment"> * @last_fault: 组中最后一个 fault</span></span><br><span class="line"><span class="comment"> * @faults: 此组的 fault 列表</span></span><br><span class="line"><span class="comment"> * @fault_count: fault 数量</span></span><br><span class="line"><span class="comment"> * @pending_node: iommu_fault_param::faults 的链表节点</span></span><br><span class="line"><span class="comment"> * @work: fault 处理工作</span></span><br><span class="line"><span class="comment"> * @attach_handle: 附加句柄</span></span><br><span class="line"><span class="comment"> * @fault_param: 设备的 fault 数据参数</span></span><br><span class="line"><span class="comment"> * @node: 提供者用于在自己的列表上挂钩组的节点</span></span><br><span class="line"><span class="comment"> * @cookie: 组标识符</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iopf_group</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iopf_fault</span> <span class="title">last_fault</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">faults</span>;</span></span><br><span class="line">    <span class="type">size_t</span> fault_count;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">pending_node</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">work_struct</span> <span class="title">work</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_attach_handle</span> *<span class="title">attach_handle</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault_param</span> *<span class="title">fault_param</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">node</span>;</span></span><br><span class="line">    u32 cookie;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iopf_fault - IO Page Fault</span></span><br><span class="line"><span class="comment"> * @fault: IOMMU fault 数据</span></span><br><span class="line"><span class="comment"> * @list: 待处理列表的节点</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iopf_fault</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_fault</span> <span class="title">fault</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iopf_queue - IO Page Fault 队列</span></span><br><span class="line"><span class="comment"> * @wq: fault 工作队列</span></span><br><span class="line"><span class="comment"> * @devices: 附加到此队列的设备</span></span><br><span class="line"><span class="comment"> * @lock: 保护设备列表</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iopf_queue</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">workqueue_struct</span> *<span class="title">wq</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">devices</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mutex</span> <span class="title">lock</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-7-5-IOPF-队列操作"><a href="#16-7-5-IOPF-队列操作" class="headerlink" title="16.7.5 IOPF 队列操作"></a>16.7.5 IOPF 队列操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配/释放队列 */</span></span><br><span class="line"><span class="keyword">struct</span> iopf_queue *<span class="title function_">iopf_queue_alloc</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *name)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iopf_queue_free</span><span class="params">(<span class="keyword">struct</span> iopf_queue *<span class="built_in">queue</span>)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 设备管理 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iopf_queue_add_device</span><span class="params">(<span class="keyword">struct</span> iopf_queue *<span class="built_in">queue</span>, <span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iopf_queue_remove_device</span><span class="params">(<span class="keyword">struct</span> iopf_queue *<span class="built_in">queue</span>, <span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">iopf_queue_flush_dev</span><span class="params">(<span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* fault 处理 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_report_device_fault</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> iopf_fault *evt)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iopf_group_response</span><span class="params">(<span class="keyword">struct</span> iopf_group *group,</span></span><br><span class="line"><span class="params">                        <span class="keyword">enum</span> iommu_page_response_code status)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iopf_free_group</span><span class="params">(<span class="keyword">struct</span> iopf_group *group)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 部分 fault 处理 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iopf_queue_discard_partial</span><span class="params">(<span class="keyword">struct</span> iopf_queue *<span class="built_in">queue</span>)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-8-DMA-IOMMU-实现"><a href="#16-8-DMA-IOMMU-实现" class="headerlink" title="16.8 DMA-IOMMU 实现"></a>16.8 DMA-IOMMU 实现</h2><h3 id="16-8-1-DMA-IOMMU-概述"><a href="#16-8-1-DMA-IOMMU-概述" class="headerlink" title="16.8.1 DMA-IOMMU 概述"></a>16.8.1 DMA-IOMMU 概述</h3><p>DMA-IOMMU 层为通用 DMA API 提供后端支持，自动管理设备的 IOMMU 域和 IOVA 地址空间。</p>
+<p><strong>位置:</strong> <code>drivers/iommu/dma-iommu.c</code></p>
+<p><strong>架构:</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      设备驱动                                  │</span><br><span class="line">│  dma_map_single() / dma_map_sg() / dma_alloc_coherent()        │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      DMA 映射层                                 │</span><br><span class="line">│           (drivers/iommu/dma-iommu.c)                          │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      IOMMU 核心                                 │</span><br><span class="line">│           (drivers/iommu/iommu.c)                              │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      IOMMU 硬件驱动                             │</span><br><span class="line">│    Intel VT-d / AMD-Vi / ARM SMMU / virtio-iommu               │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-8-2-DMA-IOMMU-核心函数"><a href="#16-8-2-DMA-IOMMU-核心函数" class="headerlink" title="16.8.2 DMA-IOMMU 核心函数"></a>16.8.2 DMA-IOMMU 核心函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* DMA 域分配 */</span></span><br><span class="line"><span class="keyword">struct</span> iommu_domain *<span class="title function_">iommu_dma_domain_alloc</span><span class="params">(<span class="keyword">struct</span> bus_type *bus)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_dma_init_domain</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">dma_addr_t</span> base,</span></span><br><span class="line"><span class="params">                         u64 size, <span class="keyword">struct</span> device *dev)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* MSI cookie */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_get_msi_cookie</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">dma_addr_t</span> base)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* scatter-gather 映射 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_dma_map_sg</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> scatterlist *sg,</span></span><br><span class="line"><span class="params">                    <span class="type">int</span> nents, <span class="keyword">enum</span> dma_data_direction dir,</span></span><br><span class="line"><span class="params">                    <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_dma_unmap_sg</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> scatterlist *sg,</span></span><br><span class="line"><span class="params">                       <span class="type">int</span> nents, <span class="keyword">enum</span> dma_data_direction dir,</span></span><br><span class="line"><span class="params">                       <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 单页映射 */</span></span><br><span class="line"><span class="type">dma_addr_t</span> <span class="title function_">iommu_dma_map_page</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> page *page,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> offset, <span class="type">size_t</span> size,</span></span><br><span class="line"><span class="params">                              <span class="keyword">enum</span> dma_data_direction dir,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_dma_unmap_page</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="type">dma_addr_t</span> dma_handle,</span></span><br><span class="line"><span class="params">                         <span class="type">size_t</span> size, <span class="keyword">enum</span> dma_data_direction dir,</span></span><br><span class="line"><span class="params">                         <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 一致性内存 */</span></span><br><span class="line"><span class="type">void</span> *<span class="title function_">iommu_dma_alloc_coherent</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="type">size_t</span> size,</span></span><br><span class="line"><span class="params">                              <span class="type">dma_addr_t</span> *dma_handle, <span class="type">gfp_t</span> gfp,</span></span><br><span class="line"><span class="params">                              <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_dma_free_coherent</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="type">size_t</span> size,</span></span><br><span class="line"><span class="params">                            <span class="type">void</span> *cpu_addr, <span class="type">dma_addr_t</span> dma_handle,</span></span><br><span class="line"><span class="params">                            <span class="type">unsigned</span> <span class="type">long</span> attrs)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-8-3-IOVA-管理"><a href="#16-8-3-IOVA-管理" class="headerlink" title="16.8.3 IOVA 管理"></a>16.8.3 IOVA 管理</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* IOVA 域 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iova_domain</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rbroot</span> <span class="title">rbroot</span>;</span>         <span class="comment">/* IOVA 红黑树 */</span></span><br><span class="line">    <span class="type">spinlock_t</span> iova_rbtree_lock;  <span class="comment">/* 树锁 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> granule;        <span class="comment">/* IOVA 粒度 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> start_pfn;      <span class="comment">/* 起始 PFN */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> dma_32bit_pfn;  <span class="comment">/* 32 位 DMA 限制 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iova_rcache</span> *<span class="title">rcaches</span>;</span>  <span class="comment">/* 缓存 */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* IOVA 分配 */</span></span><br><span class="line"><span class="keyword">struct</span> iova *<span class="title function_">alloc_iova</span><span class="params">(<span class="keyword">struct</span> iova_domain *iovad, <span class="type">unsigned</span> <span class="type">long</span> size,</span></span><br><span class="line"><span class="params">                      <span class="type">unsigned</span> <span class="type">long</span> limit_pfn,</span></span><br><span class="line"><span class="params">                      <span class="type">bool</span> size_aligned)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">free_iova</span><span class="params">(<span class="keyword">struct</span> iova_domain *iovad, <span class="keyword">struct</span> iova *iova)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* IOVA 缓存 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">init_iova_rcaches</span><span class="params">(<span class="keyword">struct</span> iova_domain *iovad)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">free_iova_rcaches</span><span class="params">(<span class="keyword">struct</span> iova_domain *iovad)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">put_iova_domain</span><span class="params">(<span class="keyword">struct</span> iova_domain *iovad)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-9-IOMMU-保留区域"><a href="#16-9-IOMMU-保留区域" class="headerlink" title="16.9 IOMMU 保留区域"></a>16.9 IOMMU 保留区域</h2><h3 id="16-9-1-保留区域类型"><a href="#16-9-1-保留区域类型" class="headerlink" title="16.9.1 保留区域类型"></a>16.9.1 保留区域类型</h3><p><strong>位置:</strong> <code>include/linux/iommu.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 保留区域类型 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">iommu_resv_type</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 必须始终 1:1 映射的内存区域 */</span></span><br><span class="line">    IOMMU_RESV_DIRECT,</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 广告为 1:1 但在某些条件下通常被认为是可放宽的内存区域，</span></span><br><span class="line"><span class="comment">     * 例如在设备分配用例中 (USB, Graphics)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    IOMMU_RESV_DIRECT_RELAXABLE,</span><br><span class="line">    <span class="comment">/* 任意的 &quot;永不映射或给设备&quot; 的地址范围 */</span></span><br><span class="line">    IOMMU_RESV_RESERVED,</span><br><span class="line">    <span class="comment">/* 硬件 MSI 区域 (未翻译) */</span></span><br><span class="line">    IOMMU_RESV_MSI,</span><br><span class="line">    <span class="comment">/* 软件管理的 MSI 翻译窗口 */</span></span><br><span class="line">    IOMMU_RESV_SW_MSI,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-9-2-iommu-resv-region-结构"><a href="#16-9-2-iommu-resv-region-结构" class="headerlink" title="16.9.2 iommu_resv_region 结构"></a>16.9.2 iommu_resv_region 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:285</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_resv_region - 保留内存区域描述符</span></span><br><span class="line"><span class="comment"> * @list: 链表指针</span></span><br><span class="line"><span class="comment"> * @start: 区域的系统物理起始地址</span></span><br><span class="line"><span class="comment"> * @length: 区域长度 (字节)</span></span><br><span class="line"><span class="comment"> * @prot: IOMMU 保护标志 (READ/WRITE/...)</span></span><br><span class="line"><span class="comment"> * @type: 保留区域的类型</span></span><br><span class="line"><span class="comment"> * @free: 释放关联内存分配的回调</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_resv_region</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>  <span class="title">list</span>;</span></span><br><span class="line">    <span class="type">phys_addr_t</span>       start;</span><br><span class="line">    <span class="type">size_t</span>            length;</span><br><span class="line">    <span class="type">int</span>               prot;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">iommu_resv_type</span> <span class="title">type</span>;</span></span><br><span class="line">    <span class="type">void</span> (*<span class="built_in">free</span>)(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> iommu_resv_region *region);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-9-3-保留区域操作"><a href="#16-9-3-保留区域操作" class="headerlink" title="16.9.3 保留区域操作"></a>16.9.3 保留区域操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 获取/释放保留区域 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_get_resv_regions</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> list_head *<span class="built_in">list</span>)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">iommu_put_resv_regions</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">struct</span> list_head *<span class="built_in">list</span>)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">int</span> <span class="title function_">iommu_get_group_resv_regions</span><span class="params">(<span class="keyword">struct</span> iommu_group *group,</span></span><br><span class="line"><span class="params">                                       <span class="keyword">struct</span> list_head *head)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 分配保留区域 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">struct</span> iommu_resv_region *</span><br><span class="line"><span class="title function_">iommu_alloc_resv_region</span><span class="params">(<span class="type">phys_addr_t</span> start, <span class="type">size_t</span> length, <span class="type">int</span> prot,</span></span><br><span class="line"><span class="params">                       <span class="keyword">enum</span> iommu_resv_type type, <span class="type">gfp_t</span> gfp)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-10-IOMMU-设备特性"><a href="#16-10-IOMMU-设备特性" class="headerlink" title="16.10 IOMMU 设备特性"></a>16.10 IOMMU 设备特性</h2><h3 id="16-10-1-设备特性枚举"><a href="#16-10-1-设备特性枚举" class="headerlink" title="16.10.1 设备特性枚举"></a>16.10.1 设备特性枚举</h3><p><strong>位置:</strong> <code>include/linux/iommu.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * enum iommu_dev_features - 每设备 IOMMU 特性</span></span><br><span class="line"><span class="comment"> * @IOMMU_DEV_FEAT_SVA: 共享虚拟地址</span></span><br><span class="line"><span class="comment"> * @IOMMU_DEV_FEAT_IOPF: I/O Page Fault，如 PRI 或 Stall</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 设备驱动使用 iommu_dev_enable_feature() 启用特性</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">iommu_dev_features</span> &#123;</span></span><br><span class="line">    IOMMU_DEV_FEAT_SVA,</span><br><span class="line">    IOMMU_DEV_FEAT_IOPF,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-10-2-设备特性操作"><a href="#16-10-2-设备特性操作" class="headerlink" title="16.10.2 设备特性操作"></a>16.10.2 设备特性操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 启用/禁用设备特性 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_dev_enable_feature</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_dev_features f)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_dev_disable_feature</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_dev_features f)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* IOMMU 能力查询 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">device_iommu_capable</span><span class="params">(<span class="keyword">struct</span> device *dev, <span class="keyword">enum</span> iommu_cap cap)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-10-3-IOMMU-能力"><a href="#16-10-3-IOMMU-能力" class="headerlink" title="16.10.3 IOMMU 能力"></a>16.10.3 IOMMU 能力</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">iommu_cap</span> &#123;</span></span><br><span class="line">    IOMMU_CAP_CACHE_COHERENCY,      <span class="comment">/* 支持 IOMMU_CACHE */</span></span><br><span class="line">    IOMMU_CAP_NOEXEC,               <span class="comment">/* 支持 IOMMU_NOEXEC */</span></span><br><span class="line">    IOMMU_CAP_PRE_BOOT_PROTECTION,  <span class="comment">/* 固件使用的保护 */</span></span><br><span class="line">    IOMMU_CAP_ENFORCE_CACHE_COHERENCY,  <span class="comment">/* enforce_cache_coherency() 有效 */</span></span><br><span class="line">    IOMMU_CAP_DEFERRED_FLUSH,       <span class="comment">/* 支持延迟 flush */</span></span><br><span class="line">    IOMMU_CAP_DIRTY_TRACKING,       <span class="comment">/* 支持脏页跟踪 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-11-IOMMU-脏页跟踪"><a href="#16-11-IOMMU-脏页跟踪" class="headerlink" title="16.11 IOMMU 脏页跟踪"></a>16.11 IOMMU 脏页跟踪</h2><h3 id="16-11-1-脏页跟踪概述"><a href="#16-11-1-脏页跟踪概述" class="headerlink" title="16.11.1 脏页跟踪概述"></a>16.11.1 脏页跟踪概述</h3><p>IOMMU 脏页跟踪用于虚拟化场景，记录设备通过 IOMMU 修改的页面，用于迁移或增量备份。</p>
+<h3 id="16-11-2-iommu-dirty-ops"><a href="#16-11-2-iommu-dirty-ops" class="headerlink" title="16.11.2 iommu_dirty_ops"></a>16.11.2 iommu_dirty_ops</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:371</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_dirty_ops - 域特定脏页跟踪操作</span></span><br><span class="line"><span class="comment"> * @set_dirty_tracking: 启用/禁用 iommu 域上的脏页跟踪</span></span><br><span class="line"><span class="comment"> * @read_and_clear_dirty: 遍历 IOMMU 页表查找脏 PTE，</span></span><br><span class="line"><span class="comment"> *                      将其编组到位图中，位表示一个页。</span></span><br><span class="line"><span class="comment"> *                      读取脏 PTE 位并从 IO 页表中清除。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_dirty_ops</span> &#123;</span></span><br><span class="line">    <span class="type">int</span> (*set_dirty_tracking)(<span class="keyword">struct</span> iommu_domain *domain, <span class="type">bool</span> enabled);</span><br><span class="line">    <span class="type">int</span> (*read_and_clear_dirty)(<span class="keyword">struct</span> iommu_domain *domain,</span><br><span class="line">                               <span class="type">unsigned</span> <span class="type">long</span> iova, <span class="type">size_t</span> size,</span><br><span class="line">                               <span class="type">unsigned</span> <span class="type">long</span> flags,</span><br><span class="line">                               <span class="keyword">struct</span> iommu_dirty_bitmap *dirty);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-11-3-iommu-dirty-bitmap-结构"><a href="#16-11-3-iommu-dirty-bitmap-结构" class="headerlink" title="16.11.3 iommu_dirty_bitmap 结构"></a>16.11.3 iommu_dirty_bitmap 结构</h3><p><strong>位置:</strong> <code>include/linux/iommu.h:358</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct iommu_dirty_bitmap - 脏 IOVA 位图状态</span></span><br><span class="line"><span class="comment"> * @bitmap: IOVA 位图</span></span><br><span class="line"><span class="comment"> * @gather: 待刷新 IOTLB 范围信息</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_dirty_bitmap</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iova_bitmap</span> *<span class="title">bitmap</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iommu_iotlb_gather</span> *<span class="title">gather</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-11-4-脏页跟踪操作"><a href="#16-11-4-脏页跟踪操作" class="headerlink" title="16.11.4 脏页跟踪操作"></a>16.11.4 脏页跟踪操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化脏页位图 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_dirty_bitmap_init</span><span class="params">(<span class="keyword">struct</span> iommu_dirty_bitmap *dirty,</span></span><br><span class="line"><span class="params">                                          <span class="keyword">struct</span> iova_bitmap *bitmap,</span></span><br><span class="line"><span class="params">                                          <span class="keyword">struct</span> iommu_iotlb_gather *gather)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (gather)</span><br><span class="line">        iommu_iotlb_gather_init(gather);</span><br><span class="line">    dirty-&gt;bitmap = bitmap;</span><br><span class="line">    dirty-&gt;gather = gather;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 记录脏页 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">iommu_dirty_bitmap_record</span><span class="params">(<span class="keyword">struct</span> iommu_dirty_bitmap *dirty,</span></span><br><span class="line"><span class="params">                                            <span class="type">unsigned</span> <span class="type">long</span> iova,</span></span><br><span class="line"><span class="params">                                            <span class="type">unsigned</span> <span class="type">long</span> length)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (dirty-&gt;bitmap)</span><br><span class="line">        iova_bitmap_set(dirty-&gt;bitmap, iova, length);</span><br><span class="line">    <span class="keyword">if</span> (dirty-&gt;gather)</span><br><span class="line">        iommu_iotlb_gather_add_range(dirty-&gt;gather, iova, length);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-12-嵌套-IOMMU-虚拟化"><a href="#16-12-嵌套-IOMMU-虚拟化" class="headerlink" title="16.12 嵌套 IOMMU (虚拟化)"></a>16.12 嵌套 IOMMU (虚拟化)</h2><h3 id="16-12-1-嵌套-IOMMU-概述"><a href="#16-12-1-嵌套-IOMMU-概述" class="headerlink" title="16.12.1 嵌套 IOMMU 概述"></a>16.12.1 嵌套 IOMMU 概述</h3><p>嵌套 IOMMU 用于虚拟化场景，允许客户机 (Guest) 管理自己的 IOMMU 页表，形成两级地址转换:</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">GVA (Guest Virtual Address)</span><br><span class="line">    ↓ (Guest Page Table)</span><br><span class="line">GPA (Guest Physical Address)</span><br><span class="line">    ↓ (Nested IOMMU + Host Stage-2)</span><br><span class="line">HPA (Host Physical Address)</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-12-2-嵌套域操作"><a href="#16-12-2-嵌套域操作" class="headerlink" title="16.12.2 嵌套域操作"></a>16.12.2 嵌套域操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 启用嵌套 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">iommu_enable_nesting</span><span class="params">(<span class="keyword">struct</span> iommu_domain *domain)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 用户分配域 (支持嵌套) */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">iommu_domain</span> *(*<span class="title">domain_alloc_user</span>)(</span></span><br><span class="line"><span class="class">    <span class="keyword">struct</span> <span class="title">device</span> *<span class="title">dev</span>, <span class="title">u32</span> <span class="title">flags</span>, <span class="keyword">struct</span> <span class="title">iommu_domain</span> *<span class="title">parent</span>,</span></span><br><span class="line"><span class="class">    <span class="title">const</span> <span class="keyword">struct</span> <span class="title">iommu_user_data</span> *<span class="title">user_data</span>);</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 用户缓存失效 */</span></span><br><span class="line"><span class="type">int</span> (*cache_invalidate_user)(<span class="keyword">struct</span> iommu_domain *domain,</span><br><span class="line">                            <span class="keyword">struct</span> iommu_user_data_array *<span class="built_in">array</span>);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-13-IOMMU-调试和监控"><a href="#16-13-IOMMU-调试和监控" class="headerlink" title="16.13 IOMMU 调试和监控"></a>16.13 IOMMU 调试和监控</h2><h3 id="16-13-1-IOMMU-DebugFS"><a href="#16-13-1-IOMMU-DebugFS" class="headerlink" title="16.13.1 IOMMU DebugFS"></a>16.13.1 IOMMU DebugFS</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_IOMMU_DEBUGFS</span></span><br><span class="line"><span class="keyword">extern</span> <span class="class"><span class="keyword">struct</span> <span class="title">dentry</span> *<span class="title">iommu_debugfs_dir</span>;</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">iommu_debugfs_setup</span><span class="params">(<span class="type">void</span>)</span>;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="16-13-2-IOMMU-跟踪事件"><a href="#16-13-2-IOMMU-跟踪事件" class="headerlink" title="16.13.2 IOMMU 跟踪事件"></a>16.13.2 IOMMU 跟踪事件</h3><p>IOMMU 提供了多个跟踪点用于调试:</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 IOMMU 跟踪事件</span></span><br><span class="line">trace-cmd list | grep iommu</span><br><span class="line"></span><br><span class="line"><span class="comment"># 常见跟踪点:</span></span><br><span class="line"><span class="comment"># iommu_map          - IOVA 映射</span></span><br><span class="line"><span class="comment"># iommu_unmap        - IOVA 解除映射</span></span><br><span class="line"><span class="comment"># iommu_attach_device   - 设备附加</span></span><br><span class="line"><span class="comment"># iommu_detach_device   - 设备分离</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="16-14-架构特定实现"><a href="#16-14-架构特定实现" class="headerlink" title="16.14 架构特定实现"></a>16.14 架构特定实现</h2><h3 id="16-14-1-Intel-VT-d"><a href="#16-14-1-Intel-VT-d" class="headerlink" title="16.14.1 Intel VT-d"></a>16.14.1 Intel VT-d</h3><p><strong>驱动位置:</strong> <code>drivers/iommu/intel/</code></p>
+<p><strong>核心文件:</strong></p>
+<ul>
+<li><code>iommu.c</code> - 核心 IOMMU 实现</li>
+<li><code>dmar.c</code> - DMAR (DMA Remapping) 表解析</li>
+<li><code>pasid.c</code> - PASID 管理</li>
+<li><code>svm.c</code> - Shared Virtual Memory (SVM) 支持</li>
+</ul>
+<p><strong>关键特性:</strong></p>
+<ul>
+<li>支持 5 级页表</li>
+<li>Scalable Mode (Scalable Mode Translation)</li>
+<li>PASID 支持 (最多 2^20 - 1 个 PASID)</li>
+<li>PRS (Page Request Services) for IOPF</li>
+</ul>
+<h3 id="16-14-2-AMD-Vi"><a href="#16-14-2-AMD-Vi" class="headerlink" title="16.14.2 AMD-Vi"></a>16.14.2 AMD-Vi</h3><p><strong>驱动位置:</strong> <code>drivers/iommu/amd/</code></p>
+<p><strong>核心文件:</strong></p>
+<ul>
+<li><code>iommu.c</code> - 核心 IOMMU 实现</li>
+<li><code>init.c</code> - 初始化</li>
+<li><code>pasid.c</code> - PASID 管理</li>
+<li><code>io_pgtable.c</code> - IO 页表实现</li>
+</ul>
+<p><strong>关键特性:</strong></p>
+<ul>
+<li>支持 IOMMU v1 和 v2</li>
+<li>GDTR (Guest DTE Root) for nested</li>
+<li>PPR (Peripheral Page Request) for IOPF</li>
+</ul>
+<h3 id="16-14-3-ARM-SMMU-v3"><a href="#16-14-3-ARM-SMMU-v3" class="headerlink" title="16.14.3 ARM SMMU v3"></a>16.14.3 ARM SMMU v3</h3><p><strong>驱动位置:</strong> <code>drivers/iommu/arm/arm-smmu-v3/</code></p>
+<p><strong>核心文件:</strong></p>
+<ul>
+<li><code>arm-smmu-v3.c</code> - SMMUv3 驱动</li>
+<li><code>arm-smmu-v3-sva.c</code> - SVA 实现</li>
+</ul>
+<p><strong>关键特性:</strong></p>
+<ul>
+<li>支持两阶段转换 (Stage-1 + Stage-2)</li>
+<li>SVA (SMMUv3.1+)</li>
+<li>支持 PCIe 和平台设备</li>
+<li>最多 2^20 - 1 PASID</li>
+</ul>
+<hr>
+<h2 id="16-15-本章小结"><a href="#16-15-本章小结" class="headerlink" title="16.15 本章小结"></a>16.15 本章小结</h2><p>本章介绍了 Linux 6.12 的 IOMMU 子系统:</p>
+<h3 id="核心概念"><a href="#核心概念" class="headerlink" title="核心概念"></a>核心概念</h3><ol>
+<li><strong>IOMMU 基础</strong>: DMA 地址转换、内存隔离、scatter-gather 支持</li>
+<li><strong>核心结构</strong>: iommu_device、iommu_domain、iommu_group、dev_iommu</li>
+<li><strong>域类型</strong>: BLOCKED、IDENTITY、UNMANAGED、DMA、DMA_FQ、SVA、NESTED</li>
+</ol>
+<h3 id="主要功能"><a href="#主要功能" class="headerlink" title="主要功能"></a>主要功能</h3><ol start="4">
+<li><strong>域操作</strong>: 分配&#x2F;释放域、设备附加&#x2F;分离、映射&#x2F;解除映射</li>
+<li><strong>IOTLB 管理</strong>: TLB 刷新、批量失效</li>
+<li><strong>SVA</strong>: 共享虚拟地址、PASID 支持、设备-mm 绑定</li>
+<li><strong>Fault 处理</strong>: IOPF 队列、fault 响应</li>
+</ol>
+<h3 id="高级特性"><a href="#高级特性" class="headerlink" title="高级特性"></a>高级特性</h3><ol start="8">
+<li><strong>DMA-IOMMU</strong>: DMA API 的 IOMMU 后端实现、IOVA 管理</li>
+<li><strong>脏页跟踪</strong>: 虚拟化场景的页面修改跟踪</li>
+<li><strong>嵌套 IOMMU</strong>: 虚拟化两级地址转换</li>
+</ol>
+<h3 id="架构支持"><a href="#架构支持" class="headerlink" title="架构支持"></a>架构支持</h3><ol start="11">
+<li><strong>Intel VT-d</strong>: DMAR、PASID、SVM</li>
+<li><strong>AMD-Vi</strong>: IOMMU v1&#x2F;v2、PPR</li>
+<li><strong>ARM SMMU v3</strong>: 两阶段转换、SVA</li>
+</ol>
+<hr>
+<p><strong>相关章节:</strong></p>
+<ul>
+<li>第4章: 虚拟地址空间 - mm_struct 结构</li>
+<li>第5章: 页表管理 - CPU MMU 页表</li>
+<li>第6章: 虚拟内存区域 (VMA) - VMA 管理</li>
+<li>第9章: 缺页异常处理 - CPU 页面 fault</li>
+</ul>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-16</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:59</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:09
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-16/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/22/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9D%97/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之安全模块</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-15/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-15</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-16</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC16%E7%AB%A0%EF%BC%9AIOMMU-%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%8D%95%E5%85%83"><span class="nav-text">第16章：IOMMU 输入输出内存管理单元</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#16-1-IOMMU-%E6%A6%82%E8%BF%B0"><span class="nav-text">16.1 IOMMU 概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-1-1-%E4%BB%80%E4%B9%88%E6%98%AF-IOMMU"><span class="nav-text">16.1.1 什么是 IOMMU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-1-2-IOMMU-%E4%B8%8E-CPU-MMU-%E5%AF%B9%E6%AF%94"><span class="nav-text">16.1.2 IOMMU 与 CPU MMU 对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-1-3-%E4%B8%BB%E8%A6%81-IOMMU-%E7%A1%AC%E4%BB%B6%E5%AE%9E%E7%8E%B0"><span class="nav-text">16.1.3 主要 IOMMU 硬件实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-2-IOMMU-%E6%A0%B8%E5%BF%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">16.2 IOMMU 核心数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-1-iommu-device-%E7%BB%93%E6%9E%84"><span class="nav-text">16.2.1 iommu_device 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-2-iommu-domain-%E7%BB%93%E6%9E%84"><span class="nav-text">16.2.2 iommu_domain 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-3-iommu-domain-geometry"><span class="nav-text">16.2.3 iommu_domain_geometry</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-4-iommu-group-%E7%BB%93%E6%9E%84"><span class="nav-text">16.2.4 iommu_group 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-5-dev-iommu-%E7%BB%93%E6%9E%84"><span class="nav-text">16.2.5 dev_iommu 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-2-6-iommu-mm-data-%E7%BB%93%E6%9E%84"><span class="nav-text">16.2.6 iommu_mm_data 结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-3-IOMMU-%E5%9F%9F%E7%B1%BB%E5%9E%8B"><span class="nav-text">16.3 IOMMU 域类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-3-1-%E5%9F%9F%E7%B1%BB%E5%9E%8B%E5%AE%9A%E4%B9%89"><span class="nav-text">16.3.1 域类型定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-3-2-%E5%9F%9F%E7%B1%BB%E5%9E%8B%E7%89%B9%E6%80%A7%E5%AF%B9%E6%AF%94"><span class="nav-text">16.3.2 域类型特性对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-4-IOMMU-%E5%9F%9F%E6%93%8D%E4%BD%9C"><span class="nav-text">16.4 IOMMU 域操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-4-1-iommu-ops-%E7%BB%93%E6%9E%84"><span class="nav-text">16.4.1 iommu_ops 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-4-2-iommu-domain-ops-%E7%BB%93%E6%9E%84"><span class="nav-text">16.4.2 iommu_domain_ops 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-4-3-IOMMU-%E6%A0%B8%E5%BF%83%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-text">16.4.3 IOMMU 核心操作函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-4-4-IOMMU-%E4%BF%9D%E6%8A%A4%E6%A0%87%E5%BF%97"><span class="nav-text">16.4.4 IOMMU 保护标志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-5-IOMMU-IOTLB-%E7%AE%A1%E7%90%86"><span class="nav-text">16.5 IOMMU IOTLB 管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-5-1-iommu-iotlb-gather-%E7%BB%93%E6%9E%84"><span class="nav-text">16.5.1 iommu_iotlb_gather 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-5-2-IOTLB-%E5%88%B7%E6%96%B0%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0"><span class="nav-text">16.5.2 IOTLB 刷新辅助函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-5-3-TLB-%E5%88%B7%E6%96%B0%E5%87%BD%E6%95%B0"><span class="nav-text">16.5.3 TLB 刷新函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-6-SVA-%E5%85%B1%E4%BA%AB%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80"><span class="nav-text">16.6 SVA (共享虚拟地址)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-6-1-SVA-%E6%A6%82%E8%BF%B0"><span class="nav-text">16.6.1 SVA 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-6-2-PASID-Process-Address-Space-ID"><span class="nav-text">16.6.2 PASID (Process Address Space ID)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-6-3-iommu-sva-%E7%BB%93%E6%9E%84"><span class="nav-text">16.6.3 iommu_sva 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-6-4-SVA-%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-text">16.6.4 SVA 操作函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-6-5-mm-struct-PASID-%E6%93%8D%E4%BD%9C"><span class="nav-text">16.6.5 mm_struct PASID 操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-7-IOMMU-Fault-%E5%A4%84%E7%90%86"><span class="nav-text">16.7 IOMMU Fault 处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-7-1-IOMMU-Fault-%E7%B1%BB%E5%9E%8B"><span class="nav-text">16.7.1 IOMMU Fault 类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-7-2-IOMMU-Fault-%E7%BB%93%E6%9E%84"><span class="nav-text">16.7.2 IOMMU Fault 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-7-3-%E9%A1%B5%E5%93%8D%E5%BA%94%E4%BB%A3%E7%A0%81"><span class="nav-text">16.7.3 页响应代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-7-4-IOPF-I-O-Page-Fault-%E9%98%9F%E5%88%97"><span class="nav-text">16.7.4 IOPF (I&#x2F;O Page Fault) 队列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-7-5-IOPF-%E9%98%9F%E5%88%97%E6%93%8D%E4%BD%9C"><span class="nav-text">16.7.5 IOPF 队列操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-8-DMA-IOMMU-%E5%AE%9E%E7%8E%B0"><span class="nav-text">16.8 DMA-IOMMU 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-8-1-DMA-IOMMU-%E6%A6%82%E8%BF%B0"><span class="nav-text">16.8.1 DMA-IOMMU 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-8-2-DMA-IOMMU-%E6%A0%B8%E5%BF%83%E5%87%BD%E6%95%B0"><span class="nav-text">16.8.2 DMA-IOMMU 核心函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-8-3-IOVA-%E7%AE%A1%E7%90%86"><span class="nav-text">16.8.3 IOVA 管理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-9-IOMMU-%E4%BF%9D%E7%95%99%E5%8C%BA%E5%9F%9F"><span class="nav-text">16.9 IOMMU 保留区域</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-9-1-%E4%BF%9D%E7%95%99%E5%8C%BA%E5%9F%9F%E7%B1%BB%E5%9E%8B"><span class="nav-text">16.9.1 保留区域类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-9-2-iommu-resv-region-%E7%BB%93%E6%9E%84"><span class="nav-text">16.9.2 iommu_resv_region 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-9-3-%E4%BF%9D%E7%95%99%E5%8C%BA%E5%9F%9F%E6%93%8D%E4%BD%9C"><span class="nav-text">16.9.3 保留区域操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-10-IOMMU-%E8%AE%BE%E5%A4%87%E7%89%B9%E6%80%A7"><span class="nav-text">16.10 IOMMU 设备特性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-10-1-%E8%AE%BE%E5%A4%87%E7%89%B9%E6%80%A7%E6%9E%9A%E4%B8%BE"><span class="nav-text">16.10.1 设备特性枚举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-10-2-%E8%AE%BE%E5%A4%87%E7%89%B9%E6%80%A7%E6%93%8D%E4%BD%9C"><span class="nav-text">16.10.2 设备特性操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-10-3-IOMMU-%E8%83%BD%E5%8A%9B"><span class="nav-text">16.10.3 IOMMU 能力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-11-IOMMU-%E8%84%8F%E9%A1%B5%E8%B7%9F%E8%B8%AA"><span class="nav-text">16.11 IOMMU 脏页跟踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-11-1-%E8%84%8F%E9%A1%B5%E8%B7%9F%E8%B8%AA%E6%A6%82%E8%BF%B0"><span class="nav-text">16.11.1 脏页跟踪概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-11-2-iommu-dirty-ops"><span class="nav-text">16.11.2 iommu_dirty_ops</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-11-3-iommu-dirty-bitmap-%E7%BB%93%E6%9E%84"><span class="nav-text">16.11.3 iommu_dirty_bitmap 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-11-4-%E8%84%8F%E9%A1%B5%E8%B7%9F%E8%B8%AA%E6%93%8D%E4%BD%9C"><span class="nav-text">16.11.4 脏页跟踪操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-12-%E5%B5%8C%E5%A5%97-IOMMU-%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="nav-text">16.12 嵌套 IOMMU (虚拟化)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-12-1-%E5%B5%8C%E5%A5%97-IOMMU-%E6%A6%82%E8%BF%B0"><span class="nav-text">16.12.1 嵌套 IOMMU 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-12-2-%E5%B5%8C%E5%A5%97%E5%9F%9F%E6%93%8D%E4%BD%9C"><span class="nav-text">16.12.2 嵌套域操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-13-IOMMU-%E8%B0%83%E8%AF%95%E5%92%8C%E7%9B%91%E6%8E%A7"><span class="nav-text">16.13 IOMMU 调试和监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-13-1-IOMMU-DebugFS"><span class="nav-text">16.13.1 IOMMU DebugFS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-13-2-IOMMU-%E8%B7%9F%E8%B8%AA%E4%BA%8B%E4%BB%B6"><span class="nav-text">16.13.2 IOMMU 跟踪事件</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-14-%E6%9E%B6%E6%9E%84%E7%89%B9%E5%AE%9A%E5%AE%9E%E7%8E%B0"><span class="nav-text">16.14 架构特定实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#16-14-1-Intel-VT-d"><span class="nav-text">16.14.1 Intel VT-d</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-14-2-AMD-Vi"><span class="nav-text">16.14.2 AMD-Vi</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-14-3-ARM-SMMU-v3"><span class="nav-text">16.14.3 ARM SMMU v3</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#16-15-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">16.15 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="nav-text">核心概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD"><span class="nav-text">主要功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AB%98%E7%BA%A7%E7%89%B9%E6%80%A7"><span class="nav-text">高级特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84%E6%94%AF%E6%8C%81"><span class="nav-text">架构支持</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-01/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-01">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-01/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:37:24.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:10.216Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-01 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-01</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:37:24</span>
+        <span class="mobile">2026-01-20 21:37:24</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:10</span>
+            <span class="mobile">2026-02-24 14:05:10</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第1章：概述"><a href="#第1章：概述" class="headerlink" title="第1章：概述"></a>第1章：概述</h1><blockquote>
+<p>基于 Linux 6.12.38 源码，涵盖物理内存与虚拟内存管理的核心机制</p>
+<p><strong>学习目标</strong>: 理解 Linux 内存管理的核心概念、架构和数据流</p>
+</blockquote>
+<hr>
+<h2 id="1-1-基础概念"><a href="#1-1-基础概念" class="headerlink" title="1.1 基础概念"></a>1.1 基础概念</h2><h3 id="1-1-1-物理地址-vs-虚拟地址"><a href="#1-1-1-物理地址-vs-虚拟地址" class="headerlink" title="1.1.1 物理地址 vs 虚拟地址"></a>1.1.1 物理地址 vs 虚拟地址</h3><p><strong>物理地址 (Physical Address):</strong></p>
+<ul>
+<li>内存硬件上的实际地址</li>
+<li>CPU 通过地址总线直接访问</li>
+<li>受物理内存大小限制</li>
+</ul>
+<p><strong>虚拟地址 (Virtual Address):</strong></p>
+<ul>
+<li>程序看到的地址空间</li>
+<li>由 MMU 转换为物理地址</li>
+<li>可以远大于物理内存</li>
+</ul>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                  地址转换过程示意                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  程序使用虚拟地址:                                              │</span><br><span class="line">│    0x7fff12345678                                              │</span><br><span class="line">│         │                                                      │</span><br><span class="line">│         ▼                                                      │</span><br><span class="line">│  ┌─────────────┐                                               │</span><br><span class="line">│  │    MMU      │                                               │</span><br><span class="line">│  │ (地址转换)   │                                               │</span><br><span class="line">│  └──────┬──────┘                                               │</span><br><span class="line">│         │                                                      │</span><br><span class="line">│         ▼                                                      │</span><br><span class="line">│  物理地址: 0x87654321                                          │</span><br><span class="line">│         │                                                      │</span><br><span class="line">│         ▼                                                      │</span><br><span class="line">│  ┌─────────────┐                                               │</span><br><span class="line">│  │   物理内存   │                                               │</span><br><span class="line">│  └─────────────┘                                               │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-1-2-页式存储管理"><a href="#1-1-2-页式存储管理" class="headerlink" title="1.1.2 页式存储管理"></a>1.1.2 页式存储管理</h3><p>Linux 使用<strong>页式存储管理</strong>，将内存划分为固定大小的块：</p>
+<table>
+<thead>
+<tr>
+<th>术语</th>
+<th>大小 (x86_64)</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>页 (Page)</td>
+<td>4KB</td>
+<td>内存管理的基本单位</td>
+</tr>
+<tr>
+<td>巨页 (Huge Page)</td>
+<td>2MB&#x2F;1GB</td>
+<td>提高性能，减少 TLB 压力</td>
+</tr>
+<tr>
+<td>PTE (Page Table Entry)</td>
+<td>8 bytes</td>
+<td>页表项，存储一个页的映射</td>
+</tr>
+</tbody></table>
+<p><strong>为什么需要分页?</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">不分页的问题:</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│  问题 1: 碎片化                                                │</span><br><span class="line">│    ├── 程序 A 需要连续 1MB 内存                                │</span><br><span class="line">│    ├── 物理内存有足够空间但不连续                                │</span><br><span class="line">│    └── 分配失败                                               │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  问题 2: 内存保护                                              │</span><br><span class="line">│    ├── 进程 A 可以访问进程 B 的内存                            │</span><br><span class="line">│    └── 安全隐患                                               │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  问题 3: 地址空间限制                                          │</span><br><span class="line">│    ├── 32 位系统最多 4GB 地址空间                             │</span><br><span class="line">│    └── 无法运行大型程序                                        │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">分页的优势:</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│  优势 1: 消除碎片化                                            │</span><br><span class="line">│    ├── 虚拟地址连续即可                                         │</span><br><span class="line">│    ├── 物理页可以分散                                          │</span><br><span class="line">│    └── 提高内存利用率                                         │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  优势 2: 内存隔离                                              │</span><br><span class="line">│    ├── 每个进程独立的页表                                      │</span><br><span class="line">│    ├── 硬件强制权限检查                                        │</span><br><span class="line">│    └── 安全可靠                                               │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  优势 3: 虚拟地址空间                                          │</span><br><span class="line">│    ├── 64 位系统支持 256TB 地址空间                           │</span><br><span class="line">│    ├── 只需加载需要的页面 (按需分页)                           │</span><br><span class="line">│    └── 节省物理内存                                            │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-1-3-用户空间-vs-内核空间"><a href="#1-1-3-用户空间-vs-内核空间" class="headerlink" title="1.1.3 用户空间 vs 内核空间"></a>1.1.3 用户空间 vs 内核空间</h3><p>Linux 将虚拟地址空间划分为两部分：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              64 位系统虚拟地址空间布局                           │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  0xFFFFFFFFFFFFFFFF (用户空间最大地址)                           │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│         │         用户空间 (User Space)                          │</span><br><span class="line">│         │         ┌───────────────────────────┐                   │</span><br><span class="line">│         │         │                           │                   │</span><br><span class="line">│         │         │  程序代码、数据、堆、栈     │                   │</span><br><span class="line">│         │         │  约 128TB (默认)          │                   │</span><br><span class="line">│         │         │                           │                   │</span><br><span class="line">│         │         └───────────────────────────┘                   │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│  0x00007FFFFFFFFFFF                                              │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│  ────────┼──────────────── (分界线)                                │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│  0xFFFF800000000000                                              │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│         │         内核空间 (Kernel Space)                         │</span><br><span class="line">│         │         ┌───────────────────────────┐                   │</span><br><span class="line">│         │         │                           │                   │</span><br><span class="line">│         │         │  内核代码、数据、结构体     │                   │</span><br><span class="line">│         │         │  直接映射区、vmalloc区等   │                   │</span><br><span class="line">│         │         │                           │                   │</span><br><span class="line">│         │         └───────────────────────────┘                   │</span><br><span class="line">│         │                                                        │</span><br><span class="line">│  0xFFFF800000000000                                              │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>用户空间特性:</strong></p>
+<ul>
+<li>每个进程独立</li>
+<li>使用较低的虚拟地址</li>
+<li>通过系统调用访问内核</li>
+</ul>
+<p><strong>内核空间特性:</strong></p>
+<ul>
+<li>所有进程共享</li>
+<li>使用较高的虚拟地址</li>
+<li>受保护，用户无法直接访问</li>
+</ul>
+<hr>
+<h2 id="1-2-内存管理子系统职责"><a href="#1-2-内存管理子系统职责" class="headerlink" title="1.2 内存管理子系统职责"></a>1.2 内存管理子系统职责</h2><h3 id="核心功能"><a href="#核心功能" class="headerlink" title="核心功能"></a>核心功能</h3><p><strong>物理内存管理</strong></p>
+<ul>
+<li>页面的分配、释放、回收</li>
+<li>通过伙伴系统 (Buddy System) 管理物理内存</li>
+<li>支持 NUMA 架构的多节点内存管理</li>
+</ul>
+<p><strong>虚拟内存管理</strong></p>
+<ul>
+<li>地址空间的创建、映射、保护</li>
+<li>每个进程有独立的虚拟地址空间</li>
+<li>实现进程间的内存隔离</li>
+</ul>
+<p><strong>页表管理</strong></p>
+<ul>
+<li>多级页表的创建、更新、遍历</li>
+<li>实现虚拟地址到物理地址的转换 (MMU)</li>
+<li>TLB (Translation Lookaside Buffer) 管理</li>
+</ul>
+<p><strong>缺页处理</strong></p>
+<ul>
+<li>按需加载 (Demand Paging)</li>
+<li>写时复制 (Copy-on-Write)</li>
+<li>延迟分配策略提高内存利用率</li>
+</ul>
+<p><strong>页面回收</strong></p>
+<ul>
+<li>LRU (Least Recently Used) 算法</li>
+<li>交换 (Swap) 机制</li>
+<li>在内存不足时回收页面</li>
+</ul>
+<p><strong>内存共享</strong></p>
+<ul>
+<li>进程间共享内存</li>
+<li>写时复制节省物理内存</li>
+</ul>
+<hr>
+<h2 id="1-2-内存管理架构"><a href="#1-2-内存管理架构" class="headerlink" title="1.2 内存管理架构"></a>1.2 内存管理架构</h2><h3 id="1-2-1-子系统组件"><a href="#1-2-1-子系统组件" class="headerlink" title="1.2.1 子系统组件"></a>1.2.1 子系统组件</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     内存管理子系统                              │</span><br><span class="line">├────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐    │</span><br><span class="line">│  │  页面分配器   │  │  Slab/Slub   │  │   页表管理      │    │</span><br><span class="line">│  │  Buddy System│  │  Allocator   │  │   Paging        │    │</span><br><span class="line">│  │              │  │              │  │                 │    │</span><br><span class="line">│  │  - 物理页面   │  │  - 小对象分配│  │   - 多级页表     │    │</span><br><span class="line">│  │  - 伙伴算法   │  │  - 内核缓存  │  │   - TLB 管理    │    │</span><br><span class="line">│  │  - 迁移类型   │  │  - kmalloc   │  │   - 缺页处理    │    │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └─────────────────┘    │</span><br><span class="line">│                                                                │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐    │</span><br><span class="line">│  │  页面回收     │  │  缺页处理     │  │   内存映射      │    │</span><br><span class="line">│  │  Page Reclaim│  │  Page Fault  │  │   Memory Map    │    │</span><br><span class="line">│  │              │  │              │  │                 │    │</span><br><span class="line">│  │  - LRU 管理   │  │  - 匿名页    │  │   - mmap        │    │</span><br><span class="line">│  │  - kswapd    │  │  - 文件页    │  │   - mprotect    │    │</span><br><span class="line">│  │  - 直接回收   │  │  - COW      │  │   - munmap      │    │</span><br><span class="line">│  │  - 多代 LRU  │  │              │  │                 │    │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └─────────────────┘    │</span><br><span class="line">│                                                                │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐    │</span><br><span class="line">│  │  交换机制     │  │  内存压缩     │  │   内存 cgroup   │    │</span><br><span class="line">│  │  Swap        │  │  Compaction  │  │   Memcg         │    │</span><br><span class="line">│  │              │  │              │  │                 │    │</span><br><span class="line">│  │  - 交换分区   │  │  - 页面迁移  │  │   - 限制内存    │    │</span><br><span class="line">│  │  - 交换缓存   │  │  - 碎片整理  │  │   - 统计使用    │    │</span><br><span class="line">│  │  - zswap     │  │  - kcompactd │  │   - OOM 控制    │    │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └─────────────────┘    │</span><br><span class="line">│                                                                │</span><br><span class="line">└────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="1-2-2-内存管理全景关联图"><a href="#1-2-2-内存管理全景关联图" class="headerlink" title="1.2.2 内存管理全景关联图"></a>1.2.2 内存管理全景关联图</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     Linux 6.12 内存管理全景图                      │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│  ┌──────────────┐                                                  │</span><br><span class="line">│  │  用户进程     │                                                  │</span><br><span class="line">│  │  malloc/mmap │                                                  │</span><br><span class="line">│  └──────┬───────┘                                                  │</span><br><span class="line">│         │ 系统调用                                                  │</span><br><span class="line">│         ▼                                                          │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                    内核空间                                   │   │</span><br><span class="line">│  ├──────────────────────────────────────────────────────────────┤   │</span><br><span class="line">│  │                                                              │   │</span><br><span class="line">│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐    │   │</span><br><span class="line">│  │  │ VMA管理      │────▶│ 页表管理     │────▶│ 缺页处理     │    │   │</span><br><span class="line">│  │  │ mmap/munmap │     │ PGD/PUD/PMD │     │ do_anonymous │    │   │</span><br><span class="line">│  │  │ (ch06,11)   │     │ /PTE (ch05) │     │ _page (ch09) │    │   │</span><br><span class="line">│  │  └─────────────┘     └──────┬──────┘     └──────┬──────┘    │   │</span><br><span class="line">│  │                              │                     │          │   │</span><br><span class="line">│  │                              ▼                     ▼          │   │</span><br><span class="line">│  │  ┌─────────────────────────────────────────────────────────┐    │   │</span><br><span class="line">│  │  │              物理内存分配器 (Buddy System)              │    │   │</span><br><span class="line">│  │  │              free_area[order][migratetype]             │    │   │</span><br><span class="line">│  │  │                        (ch03)                          │    │   │</span><br><span class="line">│  │  └─────────────────────────────────────────────────────────┘    │   │</span><br><span class="line">│  │                              ▲                                  │   │</span><br><span class="line">│  │                              │                                  │   │</span><br><span class="line">│  │  ┌─────────────┐     ┌─────────────────────────────────┐    │   │</span><br><span class="line">│  │  │ 页面分配     │◀────│     页面回收                    │    │   │</span><br><span class="line">│  │  │ alloc_pages │     │     kswapd/direct reclaim       │    │   │</span><br><span class="line">│  │  │ (ch07)      │     │     (ch10)                      │    │   │</span><br><span class="line">│  │  └─────────────┘     └─────────────────────────────────┘    │   │</span><br><span class="line">│  │                                                              │   │</span><br><span class="line">│  └──────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                     │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                   物理内存层次结构                            │   │</span><br><span class="line">│  │  Node (pglist_data) → Zone → Page → Slab Object              │   │</span><br><span class="line">│  │        (ch02)          (ch02)  (ch02)      (ch08)            │   │</span><br><span class="line">│  └──────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                     │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>图例说明：</strong></p>
+<ul>
+<li><code>──►</code> : 数据流向</li>
+<li><code>──▲</code> : 反向依赖</li>
+<li><code>(chXX)</code> : 对应章节</li>
+</ul>
+<hr>
+<h2 id="1-3-关键源码位置"><a href="#1-3-关键源码位置" class="headerlink" title="1.3 关键源码位置"></a>1.3 关键源码位置</h2><table>
+<thead>
+<tr>
+<th>功能</th>
+<th>目录</th>
+<th>主要文件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心内存管理</td>
+<td><code>mm/</code></td>
+<td><code>memory.c</code>, <code>page_alloc.c</code></td>
+</tr>
+<tr>
+<td>页表管理</td>
+<td><code>mm/</code></td>
+<td><code>pgtable.c</code>, <code>fault.c</code>, <code>mmap.c</code></td>
+</tr>
+<tr>
+<td>Slab 分配器</td>
+<td><code>mm/</code></td>
+<td><code>slab.c</code>, <code>slub.c</code>, <code>slob.c</code></td>
+</tr>
+<tr>
+<td>页面回收</td>
+<td><code>mm/</code></td>
+<td><code>vmscan.c</code></td>
+</tr>
+<tr>
+<td>交换机制</td>
+<td><code>mm/</code></td>
+<td><code>swap.c</code>, <code>swap_state.c</code>, <code>swapfile.c</code></td>
+</tr>
+<tr>
+<td>内存压缩</td>
+<td><code>mm/</code></td>
+<td><code>compaction.c</code></td>
+</tr>
+<tr>
+<td>页迁移</td>
+<td><code>mm/</code></td>
+<td><code>migrate.c</code></td>
+</tr>
+<tr>
+<td>页缓存</td>
+<td><code>mm/</code></td>
+<td><code>filemap.c</code>, <code>page-io.c</code></td>
+</tr>
+<tr>
+<td>匿名内存</td>
+<td><code>mm/</code></td>
+<td><code>mprotect.c</code>, <code>mlock.c</code></td>
+</tr>
+<tr>
+<td>内存 cgroup</td>
+<td><code>mm/</code></td>
+<td><code>memcontrol.c</code></td>
+</tr>
+<tr>
+<td>KSM</td>
+<td><code>mm/</code></td>
+<td><code>ksm.c</code></td>
+</tr>
+<tr>
+<td>内核页表</td>
+<td><code>arch/*/mm/</code></td>
+<td><code>pgtable.c</code>, <code>init.c</code></td>
+</tr>
+<tr>
+<td>头文件</td>
+<td><code>include/linux/</code></td>
+<td><code>mm.h</code>, <code>mm_types.h</code>, <code>mmzone.h</code>, <code>pgtable.h</code>, <code>gfp.h</code></td>
+</tr>
+<tr>
+<td>体系相关</td>
+<td><code>arch/*/mm/</code></td>
+<td>各种体系结构相关文件</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-4-相关数据结构概览"><a href="#1-4-相关数据结构概览" class="headerlink" title="1.4 相关数据结构概览"></a>1.4 相关数据结构概览</h2><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 物理内存管理 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span>;</span>                  <span class="comment">// 物理页面描述符</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">folio</span>;</span>                 <span class="comment">// 多页复合页描述符 (Linux 5.15+)</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">zone</span>;</span>                  <span class="comment">// 内存区域管理</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pglist_data</span>;</span>           <span class="comment">// 节点管理 (NUMA)</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">lruvec</span>;</span>                <span class="comment">// LRU 向量</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 虚拟内存管理 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span>;</span>        <span class="comment">// 虚拟内存区域 (VMA)</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span>;</span>             <span class="comment">// 内存描述符</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_struct</span>;</span>             <span class="comment">// 内核虚拟内存区域</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 页表管理 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">ptdesc</span>;</span>                <span class="comment">// 页表描述符 (Linux 6.6+)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 文件映射 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">address_space</span>;</span>         <span class="comment">// 地址空间 (页缓存)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 内存控制 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mem_cgroup</span>;</span>            <span class="comment">// 内存控制组</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 对象分配 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span>;</span>            <span class="comment">// Slab 缓存</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 页面回收 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">reclaim_state</span>;</span>         <span class="comment">// 回收状态</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">shrinker</span>;</span>              <span class="comment">// 缓存收缩器</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 交换 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">swap_info_struct</span>;</span>      <span class="comment">// 交换分区信息</span></span><br></pre></td></tr></table></figure></div>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-01</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:37:24</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:10
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-01/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-02/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-02</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-00/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-00</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-01</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC1%E7%AB%A0%EF%BC%9A%E6%A6%82%E8%BF%B0"><span class="nav-text">第1章：概述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5"><span class="nav-text">1.1 基础概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-1-%E7%89%A9%E7%90%86%E5%9C%B0%E5%9D%80-vs-%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80"><span class="nav-text">1.1.1 物理地址 vs 虚拟地址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-2-%E9%A1%B5%E5%BC%8F%E5%AD%98%E5%82%A8%E7%AE%A1%E7%90%86"><span class="nav-text">1.1.2 页式存储管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-3-%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4-vs-%E5%86%85%E6%A0%B8%E7%A9%BA%E9%97%B4"><span class="nav-text">1.1.3 用户空间 vs 内核空间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%AD%90%E7%B3%BB%E7%BB%9F%E8%81%8C%E8%B4%A3"><span class="nav-text">1.2 内存管理子系统职责</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD"><span class="nav-text">核心功能</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%9E%B6%E6%9E%84"><span class="nav-text">1.2 内存管理架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-1-%E5%AD%90%E7%B3%BB%E7%BB%9F%E7%BB%84%E4%BB%B6"><span class="nav-text">1.2.1 子系统组件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%85%A8%E6%99%AF%E5%85%B3%E8%81%94%E5%9B%BE"><span class="nav-text">1.2.2 内存管理全景关联图</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-%E5%85%B3%E9%94%AE%E6%BA%90%E7%A0%81%E4%BD%8D%E7%BD%AE"><span class="nav-text">1.3 关键源码位置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-%E7%9B%B8%E5%85%B3%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%A6%82%E8%A7%88"><span class="nav-text">1.4 相关数据结构概览</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

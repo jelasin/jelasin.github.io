@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-12/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-12">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-12/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:41.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:04:48.768Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-12 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-12</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:41</span>
+        <span class="mobile">2026-01-20 21:39:41</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:04:48</span>
+            <span class="mobile">2026-02-24 14:04:48</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第12章：匿名内存与页缓存"><a href="#第12章：匿名内存与页缓存" class="headerlink" title="第12章：匿名内存与页缓存"></a>第12章：匿名内存与页缓存</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="12-1-匿名内存概述"><a href="#12-1-匿名内存概述" class="headerlink" title="12.1 匿名内存概述"></a>12.1 匿名内存概述</h2><h3 id="12-1-1-什么是匿名内存"><a href="#12-1-1-什么是匿名内存" class="headerlink" title="12.1.1 什么是匿名内存"></a>12.1.1 什么是匿名内存</h3><p>匿名内存是不与文件关联的内存，主要用于：</p>
+<ul>
+<li><strong>堆 (Heap)</strong>: malloc&#x2F;brk 分配的内存</li>
+<li><strong>栈 (Stack)</strong>: 线程栈</li>
+<li><strong>匿名 mmap</strong>: mmap(MAP_ANONYMOUS) 分配的内存</li>
+</ul>
+<h3 id="12-1-2-匿名内存特点"><a href="#12-1-2-匿名内存特点" class="headerlink" title="12.1.2 匿名内存特点"></a>12.1.2 匿名内存特点</h3><table>
+<thead>
+<tr>
+<th>特点</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>无文件后端</td>
+<td>不与任何文件关联</td>
+</tr>
+<tr>
+<td>使用 swap</td>
+<td>作为后备存储</td>
+</tr>
+<tr>
+<td>初始为零</td>
+<td>首次访问时分配清零页面</td>
+</tr>
+<tr>
+<td>私有</td>
+<td>进程独占</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="12-2-brk-系统调用"><a href="#12-2-brk-系统调用" class="headerlink" title="12.2 brk 系统调用"></a>12.2 brk 系统调用</h2><h3 id="12-2-1-sys-brk"><a href="#12-2-1-sys-brk" class="headerlink" title="12.2.1 sys_brk"></a>12.2.1 sys_brk</h3><p><strong>位置:</strong> <code>mm/mmap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">SYSCALL_DEFINE1(brk, <span class="type">unsigned</span> <span class="type">long</span>, brk)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">mm</span> =</span> current-&gt;mm;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> newbrk, oldbrk;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 获取当前 brk */</span></span><br><span class="line">    oldbrk = mm-&gt;brk;</span><br><span class="line">    newbrk = PAGE_ALIGN(brk);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 检查是否需要调整 */</span></span><br><span class="line">    <span class="keyword">if</span> (newbrk &lt; oldbrk) &#123;</span><br><span class="line">        <span class="comment">/* 缩小堆 */</span></span><br><span class="line">        <span class="keyword">if</span> (!do_munmap(mm, newbrk, oldbrk - newbrk))</span><br><span class="line">            <span class="keyword">return</span> newbrk;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (newbrk &gt; oldbrk) &#123;</span><br><span class="line">        <span class="comment">/* 扩大堆 */</span></span><br><span class="line">        vma = find_vma(mm, oldbrk);</span><br><span class="line">        <span class="keyword">if</span> (!vma || vma-&gt;vm_start != oldbrk)</span><br><span class="line">            <span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 扩展 VMA */</span></span><br><span class="line">        <span class="keyword">if</span> (vma-&gt;vm_end &lt; newbrk) &#123;</span><br><span class="line">            <span class="keyword">if</span> (expand_stack(vma, newbrk))</span><br><span class="line">                <span class="keyword">return</span> -ENOMEM;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 3. 设置新的 brk */</span></span><br><span class="line">    mm-&gt;brk = newbrk;</span><br><span class="line">    <span class="keyword">return</span> brk;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-2-2-brk-流程"><a href="#12-2-2-brk-流程" class="headerlink" title="12.2.2 brk 流程"></a>12.2.2 brk 流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">brk(new_brk)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 1. 获取当前 brk                     │</span><br><span class="line">│    - mm-&gt;brk                         │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 2. 比较新旧 brk                     │</span><br><span class="line">│    - new_brk &lt; old_brk: 缩小堆       │</span><br><span class="line">│    - new_brk &gt; old_brk: 扩大堆       │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        扩大</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 3. 查找堆 VMA                       │</span><br><span class="line">│    - find_vma                        │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 4. 扩展 VMA                         │</span><br><span class="line">│    - expand_stack                    │</span><br><span class="line">└──────────────────────────────────────┘</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│ 5. 设置新的 brk                      │</span><br><span class="line">│    - mm-&gt;brk = new_brk               │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-3-页缓存概述"><a href="#12-3-页缓存概述" class="headerlink" title="12.3 页缓存概述"></a>12.3 页缓存概述</h2><h3 id="12-3-1-什么是页缓存"><a href="#12-3-1-什么是页缓存" class="headerlink" title="12.3.1 什么是页缓存"></a>12.3.1 什么是页缓存</h3><p>页缓存是 Linux 内核用于缓存文件内容的机制，减少磁盘 I&#x2F;O。</p>
+<h3 id="12-3-2-address-space-结构"><a href="#12-3-2-address-space-结构" class="headerlink" title="12.3.2 address_space 结构"></a>12.3.2 address_space 结构</h3><p><strong>位置:</strong> <code>include/linux/pagemap.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">address_space</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">inode</span>        *<span class="title">host</span>;</span>      <span class="comment">/* 所属 inode */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">xarray</span>       <span class="title">i_pages</span>;</span>    <span class="comment">/* 页缓存基数树 */</span></span><br><span class="line">    <span class="type">gfp_t</span>               gfp_mask;   <span class="comment">/* 分配标志 */</span></span><br><span class="line">    <span class="type">spinlock_t</span>          i_lock;     <span class="comment">/* 内部锁 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span>        i_pagesize; <span class="comment">/* 页大小 */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">address_space_operations</span> *<span class="title">a_ops</span>;</span> <span class="comment">/* 操作 */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span>       flags;      <span class="comment">/* 错误标志 */</span></span><br><span class="line">    <span class="type">errseq_t</span>            wb_err;     <span class="comment">/* 写回错误 */</span></span><br><span class="line"></span><br><span class="line">    <span class="type">spinlock_t</span>          private_lock;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">private_list</span>;</span></span><br><span class="line">    <span class="type">void</span>                *private_data;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-3-3-address-space-operations"><a href="#12-3-3-address-space-operations" class="headerlink" title="12.3.3 address_space_operations"></a>12.3.3 address_space_operations</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">address_space_operations</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 读取页面 */</span></span><br><span class="line">    <span class="type">int</span> (*read_folio)(<span class="keyword">struct</span> file *filp, <span class="keyword">struct</span> folio *folio);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 写入页面 */</span></span><br><span class="line">    <span class="type">int</span> (*writepage)(<span class="keyword">struct</span> page *page, <span class="keyword">struct</span> writeback_control *wbc);</span><br><span class="line">    <span class="type">int</span> (*writepages)(<span class="keyword">struct</span> address_space *, <span class="keyword">struct</span> writeback_control *);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 释放页面 */</span></span><br><span class="line">    <span class="type">void</span> (*release_folio)(<span class="keyword">struct</span> folio *folio);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 直接 I/O */</span></span><br><span class="line">    <span class="type">ssize_t</span> (*direct_IO)(<span class="keyword">struct</span> kiocb *, <span class="keyword">struct</span> iov_iter *iter);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多操作... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-4-页缓存操作"><a href="#12-4-页缓存操作" class="headerlink" title="12.4 页缓存操作"></a>12.4 页缓存操作</h2><h3 id="12-4-1-查找页面"><a href="#12-4-1-查找页面" class="headerlink" title="12.4.1 查找页面"></a>12.4.1 查找页面</h3><p><strong>位置:</strong> <code>mm/filemap.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 查找页面 */</span></span><br><span class="line"><span class="keyword">struct</span> folio *<span class="title function_">filemap_get_folio</span><span class="params">(<span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                                  <span class="type">pgoff_t</span> index)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 从 xarray 查找 */</span></span><br><span class="line">    folio = xa_load(&amp;mapping-&gt;i_pages, index);</span><br><span class="line">    <span class="keyword">if</span> (folio) &#123;</span><br><span class="line">        <span class="comment">/* 增加 folio 引用 */</span></span><br><span class="line">        folio_ref_add(folio);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> folio;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找或创建页面 */</span></span><br><span class="line"><span class="keyword">struct</span> folio *<span class="title function_">filemap_grab_folio</span><span class="params">(<span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                                   <span class="type">pgoff_t</span> index)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span>;</span></span><br><span class="line"></span><br><span class="line">repeat:</span><br><span class="line">    folio = filemap_get_folio(mapping, index);</span><br><span class="line">    <span class="keyword">if</span> (folio) &#123;</span><br><span class="line">        <span class="comment">/* folio 存在 */</span></span><br><span class="line">        <span class="keyword">if</span> (folio_test_locked(folio)) &#123;</span><br><span class="line">            <span class="comment">/* 等待解锁 */</span></span><br><span class="line">            folio_wait_locked(folio);</span><br><span class="line">            <span class="keyword">goto</span> repeat;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> folio;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 分配新 folio */</span></span><br><span class="line">    folio = filemap_alloc_folio(mapping, index);</span><br><span class="line">    <span class="keyword">if</span> (!folio)</span><br><span class="line">        <span class="keyword">return</span> ERR_PTR(-ENOMEM);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 插入缓存 */</span></span><br><span class="line">    <span class="keyword">if</span> (xa_insert(&amp;mapping-&gt;i_pages, index, folio, GFP_KERNEL)) &#123;</span><br><span class="line">        folio_put(folio);</span><br><span class="line">        <span class="keyword">goto</span> repeat;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> folio;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-4-2-添加页面"><a href="#12-4-2-添加页面" class="headerlink" title="12.4.2 添加页面"></a>12.4.2 添加页面</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 添加页面到缓存 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">add_to_page_cache_lru</span><span class="params">(<span class="keyword">struct</span> page *page, <span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                           <span class="type">pgoff_t</span> index, <span class="type">gfp_t</span> gfp)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 初始化页面 */</span></span><br><span class="line">    __set_page_locked(page);</span><br><span class="line">    set_page_private(page, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 添加到 LRU */</span></span><br><span class="line">    lru_cache_add(page);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 插入到 address_space */</span></span><br><span class="line">    xa_lock(&amp;mapping-&gt;i_pages);</span><br><span class="line">    <span class="keyword">if</span> (xa_is_locked(&amp;mapping-&gt;i_pages)) &#123;</span><br><span class="line">        xas_store(&amp;xas, page);</span><br><span class="line">        xas_unlock(&amp;xas);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-4-3-删除页面"><a href="#12-4-3-删除页面" class="headerlink" title="12.4.3 删除页面"></a>12.4.3 删除页面</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 从缓存删除页面 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">delete_from_page_cache</span><span class="params">(<span class="keyword">struct</span> page *page)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">address_space</span> *<span class="title">mapping</span> =</span> page-&gt;mapping;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 从 address_space 删除 */</span></span><br><span class="line">    xa_lock_irq(&amp;mapping-&gt;i_pages);</span><br><span class="line">    __delete_from_page_cache(page, <span class="literal">NULL</span>);</span><br><span class="line">    xa_unlock_irq(&amp;mapping-&gt;i_pages);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 释放页面 */</span></span><br><span class="line">    put_page(page);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-5-页回写"><a href="#12-5-页回写" class="headerlink" title="12.5 页回写"></a>12.5 页回写</h2><h3 id="12-5-1-回写触发"><a href="#12-5-1-回写触发" class="headerlink" title="12.5.1 回写触发"></a>12.5.1 回写触发</h3><p><strong>位置:</strong> <code>mm/page-writeback.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 当脏页达到阈值时触发 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">balance_dirty_pages_ratelimited</span><span class="params">(<span class="keyword">struct</span> address_space *mapping)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">backing_dev_info</span> *<span class="title">bdi</span> =</span> inode_to_bdi(mapping-&gt;host);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查是否需要回写 */</span></span><br><span class="line">    <span class="keyword">if</span> (dirty_exceeded &amp;&amp; !(current-&gt;flags &amp; PF_LESS_THROTTLE)) &#123;</span><br><span class="line">        <span class="comment">/* 启动回写 */</span></span><br><span class="line">        wb_start_background_writeback(bdi);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 周期性回写 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">wb_kupdate</span><span class="params">(<span class="type">void</span> *dummy)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">while</span> (!kthread_should_stop()) &#123;</span><br><span class="line">        <span class="comment">/* 等待 */</span></span><br><span class="line">        schedule_timeout_interruptible(dirty_writeback_interval);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 执行回写 */</span></span><br><span class="line">        wakeup_flusher_threads(WB_REASON_PERIODIC);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-5-2-脏页阈值"><a href="#12-5-2-脏页阈值" class="headerlink" title="12.5.2 脏页阈值"></a>12.5.2 脏页阈值</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /proc/sys/vm 参数</span></span><br><span class="line">/proc/sys/vm/dirty_background_ratio      <span class="comment"># 后台回写比例 (默认 10%)</span></span><br><span class="line">/proc/sys/vm/dirty_background_bytes     <span class="comment"># 后台回写字节数</span></span><br><span class="line">/proc/sys/vm/dirty_ratio                <span class="comment"># 脏页比例 (默认 20%)</span></span><br><span class="line">/proc/sys/vm/dirty_bytes                <span class="comment"># 脏页字节数</span></span><br><span class="line">/proc/sys/vm/dirty_expire_centisecs     <span class="comment"># 脏页过期时间 (默认 3000)</span></span><br><span class="line">/proc/sys/vm/dirty_writeback_centisecs  <span class="comment"># 回写周期 (默认 500)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-5-3-回写流程"><a href="#12-5-3-回写流程" class="headerlink" title="12.5.3 回写流程"></a>12.5.3 回写流程</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        页回写流程                          │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                               │</span><br><span class="line">│  1. 用户写入内存 (write/mmap)                                  │</span><br><span class="line">│                                                               │</span><br><span class="line">│  2. 标记页面为脏 (set_page_dirty)                               │</span><br><span class="line">│                                                               │</span><br><span class="line">│  3. 检查脏页阈值                                                 │</span><br><span class="line">│     - 如果超过 dirty_ratio: 阻止写入                          │</span><br><span class="line">│     - 如果超过 dirty_background_ratio: 后台回写               │</span><br><span class="line">│                                                               │</span><br><span class="line">│  4. 后台回写 (wb_kupdate)                                       │</span><br><span class="line">│     - 唤醒 pdflush/kworker 线程                                │</span><br><span class="line">│     - 将脏页写入磁盘                                           │</span><br><span class="line">│     - 清除脏位                                                  │</span><br><span class="line">│                                                               │</span><br><span class="line">│  5. 周期性回写                                                   │</span><br><span class="line">│     - dirty_expire_centisecs 后过期                             │</span><br><span class="line">│     - 强制回写到磁盘                                            │</span><br><span class="line">│                                                               │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-6-文件锁"><a href="#12-6-文件锁" class="headerlink" title="12.6 文件锁"></a>12.6 文件锁</h2><h3 id="12-6-1-文件锁类型"><a href="#12-6-1-文件锁类型" class="headerlink" title="12.6.1 文件锁类型"></a>12.6.1 文件锁类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 文件锁类型 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_RDLCK        0   <span class="comment">/* 读锁 (共享锁) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_WRLCK        1   <span class="comment">/* 写锁 (独占锁) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_UNLCK        2   <span class="comment">/* 解锁 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 文件锁命令 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_GETLK         5   <span class="comment">/* 获取锁 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_SETLK         6   <span class="comment">/* 设置锁 (非阻塞) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> F_SETLKW        7   <span class="comment">/* 设置锁 (阻塞) */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="12-6-2-flock-系统调用"><a href="#12-6-2-flock-系统调用" class="headerlink" title="12.6.2 flock 系统调用"></a>12.6.2 flock 系统调用</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* flock 系统调用 */</span></span><br><span class="line">SYSCALL_DEFINE3(flock, <span class="type">unsigned</span> <span class="type">int</span>, fd, <span class="type">unsigned</span> <span class="type">int</span>, cmd,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span>, arg)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">file</span>;</span></span><br><span class="line">    <span class="type">int</span> error;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 1. 获取文件 */</span></span><br><span class="line">    error = -EBADF;</span><br><span class="line">    file = fget(fd);</span><br><span class="line">    <span class="keyword">if</span> (!file)</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 2. 执行锁操作 */</span></span><br><span class="line">    error = locks_lock_file(file, cmd, arg);</span><br><span class="line"></span><br><span class="line">out:</span><br><span class="line">    <span class="keyword">return</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-7-readahead"><a href="#12-7-readahead" class="headerlink" title="12.7 readahead"></a>12.7 readahead</h2><h3 id="12-7-1-readahead-概述"><a href="#12-7-1-readahead-概述" class="headerlink" title="12.7.1 readahead 概述"></a>12.7.1 readahead 概述</h3><p>readahead 是 Linux 的预读机制，提前读取文件内容到缓存，提高性能。</p>
+<h3 id="12-7-2-readahead-API"><a href="#12-7-2-readahead-API" class="headerlink" title="12.7.2 readahead API"></a>12.7.2 readahead API</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 页缓存预读 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">page_cache_sync_readahead</span><span class="params">(<span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> file_ra_state *ra,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> file *filp,</span></span><br><span class="line"><span class="params">                                 <span class="type">pgoff_t</span> index,</span></span><br><span class="line"><span class="params">                                 <span class="type">unsigned</span> <span class="type">long</span> req_count)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 强制预读 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">force_page_cache_readahead</span><span class="params">(<span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                                  <span class="keyword">struct</span> file_ra_state *ra,</span></span><br><span class="line"><span class="params">                                  <span class="keyword">struct</span> file *filp,</span></span><br><span class="line"><span class="params">                                  <span class="type">pgoff_t</span> offset,</span></span><br><span class="line"><span class="params">                                  <span class="type">unsigned</span> <span class="type">long</span> nr_to_read)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 自适应预读 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">page_cache_async_ra_init</span><span class="params">(<span class="keyword">struct</span> address_space *mapping,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> file_ra_state *ra,</span></span><br><span class="line"><span class="params">                               <span class="type">unsigned</span> <span class="type">long</span> nr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 预读状态 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">file_ra_state</span> &#123;</span></span><br><span class="line">    <span class="type">pgoff_t</span> start;               <span class="comment">/* 预读起始位置 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> size;           <span class="comment">/* 预读大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> async_size;     <span class="comment">/* 异步预读大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> ra_pages;       <span class="comment">/* 预读页面数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> prev_pos;      <span class="comment">/* 上次预读位置 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="12-8-本章小结"><a href="#12-8-本章小结" class="headerlink" title="12.8 本章小结"></a>12.8 本章小结</h2><p>本章介绍了 Linux 6.12 的匿名内存与页缓存：</p>
+<ol>
+<li><strong>匿名内存</strong>: 堆、栈、匿名 mmap，无文件后端</li>
+<li><strong>brk 系统调用</strong>: 调整堆大小，expand_stack</li>
+<li><strong>页缓存</strong>: 缓存文件内容，减少磁盘 I&#x2F;O</li>
+<li><strong>address_space</strong>: 页缓存管理结构</li>
+<li><strong>页缓存操作</strong>: 查找、添加、删除页面</li>
+<li><strong>页回写</strong>: 脏页阈值，后台&#x2F;周期性回写</li>
+<li><strong>文件锁</strong>: 读锁、写锁</li>
+<li><strong>readahead</strong>: 预读机制，提高性能</li>
+</ol>
+<p>下一章将介绍内存压缩与迁移。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-12</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:41</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:04:48
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-12/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-13/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-13</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-11/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-11</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-12</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC12%E7%AB%A0%EF%BC%9A%E5%8C%BF%E5%90%8D%E5%86%85%E5%AD%98%E4%B8%8E%E9%A1%B5%E7%BC%93%E5%AD%98"><span class="nav-text">第12章：匿名内存与页缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#12-1-%E5%8C%BF%E5%90%8D%E5%86%85%E5%AD%98%E6%A6%82%E8%BF%B0"><span class="nav-text">12.1 匿名内存概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-1-%E4%BB%80%E4%B9%88%E6%98%AF%E5%8C%BF%E5%90%8D%E5%86%85%E5%AD%98"><span class="nav-text">12.1.1 什么是匿名内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-1-2-%E5%8C%BF%E5%90%8D%E5%86%85%E5%AD%98%E7%89%B9%E7%82%B9"><span class="nav-text">12.1.2 匿名内存特点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-2-brk-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">12.2 brk 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-1-sys-brk"><span class="nav-text">12.2.1 sys_brk</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-2-2-brk-%E6%B5%81%E7%A8%8B"><span class="nav-text">12.2.2 brk 流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-3-%E9%A1%B5%E7%BC%93%E5%AD%98%E6%A6%82%E8%BF%B0"><span class="nav-text">12.3 页缓存概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-3-1-%E4%BB%80%E4%B9%88%E6%98%AF%E9%A1%B5%E7%BC%93%E5%AD%98"><span class="nav-text">12.3.1 什么是页缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-3-2-address-space-%E7%BB%93%E6%9E%84"><span class="nav-text">12.3.2 address_space 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-3-3-address-space-operations"><span class="nav-text">12.3.3 address_space_operations</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-4-%E9%A1%B5%E7%BC%93%E5%AD%98%E6%93%8D%E4%BD%9C"><span class="nav-text">12.4 页缓存操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-1-%E6%9F%A5%E6%89%BE%E9%A1%B5%E9%9D%A2"><span class="nav-text">12.4.1 查找页面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-2-%E6%B7%BB%E5%8A%A0%E9%A1%B5%E9%9D%A2"><span class="nav-text">12.4.2 添加页面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-4-3-%E5%88%A0%E9%99%A4%E9%A1%B5%E9%9D%A2"><span class="nav-text">12.4.3 删除页面</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-5-%E9%A1%B5%E5%9B%9E%E5%86%99"><span class="nav-text">12.5 页回写</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-1-%E5%9B%9E%E5%86%99%E8%A7%A6%E5%8F%91"><span class="nav-text">12.5.1 回写触发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-2-%E8%84%8F%E9%A1%B5%E9%98%88%E5%80%BC"><span class="nav-text">12.5.2 脏页阈值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-5-3-%E5%9B%9E%E5%86%99%E6%B5%81%E7%A8%8B"><span class="nav-text">12.5.3 回写流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-6-%E6%96%87%E4%BB%B6%E9%94%81"><span class="nav-text">12.6 文件锁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-6-1-%E6%96%87%E4%BB%B6%E9%94%81%E7%B1%BB%E5%9E%8B"><span class="nav-text">12.6.1 文件锁类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-6-2-flock-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">12.6.2 flock 系统调用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-7-readahead"><span class="nav-text">12.7 readahead</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#12-7-1-readahead-%E6%A6%82%E8%BF%B0"><span class="nav-text">12.7.1 readahead 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-7-2-readahead-API"><span class="nav-text">12.7.2 readahead API</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#12-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">12.8 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

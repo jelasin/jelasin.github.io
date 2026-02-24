@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-08/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-08">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-08/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:23.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:31.647Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-08 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-08</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:23</span>
+        <span class="mobile">2026-01-20 21:39:23</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:31</span>
+            <span class="mobile">2026-02-24 14:05:31</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="Linux-6-12-内存管理详解-第8章：Slab-分配器与-PCP"><a href="#Linux-6-12-内存管理详解-第8章：Slab-分配器与-PCP" class="headerlink" title="Linux 6.12 内存管理详解 - 第8章：Slab 分配器与 PCP"></a>Linux 6.12 内存管理详解 - 第8章：Slab 分配器与 PCP</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="8-1-概述：内存分配层次结构"><a href="#8-1-概述：内存分配层次结构" class="headerlink" title="8.1 概述：内存分配层次结构"></a>8.1 概述：内存分配层次结构</h2><p>Linux 内核的内存管理采用分层架构，从底层到上层依次为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        内核内存分配层次                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  专用分配器 (Specialized Allocators)                     │  │</span><br><span class="line">│  │  • kmem_cache_alloc - 固定大小对象                       │  │</span><br><span class="line">│  │  • kmalloc/kzalloc - 通用小对象分配                     │  │</span><br><span class="line">│  │  • vmalloc - 非连续物理内存                              │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                              │                                  │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  Slab 分配器 (SLUB/SLO B)                                 │  │</span><br><span class="line">│  │  • 管理小对象缓存                                         │  │</span><br><span class="line">│  │  • 减少内零碎片                                           │  │</span><br><span class="line">│  │  • 提高缓存利用率                                         │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                              │                                  │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  PCP (Per-CPU Pageframe Allocator)                       │  │</span><br><span class="line">│  │  • Per-CPU 页面缓存                                       │  │</span><br><span class="line">│  │  • 减少自旋锁竞争                                         │  │</span><br><span class="line">│  │  • 提高分配性能                                           │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                              │                                  │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  伙伴系统 (Buddy System)                                  │  │</span><br><span class="line">│  │  • 管理物理页面                                           │  │</span><br><span class="line">│  │  • 最小单位: 1 页 (4KB)                                   │  │</span><br><span class="line">│  │  • 2^n 页面块分配                                         │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                              │                                  │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  物理内存                                                 │  │</span><br><span class="line">│  └──────────────────────────────────────────────────────────┘  │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>为什么需要多层分配器？</strong></p>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>问题</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>伙伴系统</td>
+<td>最小分配单位 4KB，小对象浪费严重</td>
+<td>-</td>
+</tr>
+<tr>
+<td>PCP</td>
+<td>频繁获取 zone-&gt;lock，竞争激烈</td>
+<td>Per-CPU 缓存减少锁竞争</td>
+</tr>
+<tr>
+<td>Slab</td>
+<td>对象构造&#x2F;析构开销，内存碎片</td>
+<td>对象池，减少碎片，缓存热点对象</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-2-PCP-Per-CPU-Pageframe-Allocator"><a href="#8-2-PCP-Per-CPU-Pageframe-Allocator" class="headerlink" title="8.2 PCP (Per-CPU Pageframe Allocator)"></a>8.2 PCP (Per-CPU Pageframe Allocator)</h2><h3 id="8-2-1-PCP-设计目的"><a href="#8-2-1-PCP-设计目的" class="headerlink" title="8.2.1 PCP 设计目的"></a>8.2.1 PCP 设计目的</h3><p><strong>问题：</strong><br>在 PCP 引入之前，每次分配和释放页面都需要获取 zone-&gt;lock，这在多处理器系统上导致严重的锁竞争。</p>
+<p><strong>解决方案：</strong><br>为每个 CPU 的每个 zone 维护独立的页面缓存，大多数分配&#x2F;释放可以在无锁或少锁的情况下完成。</p>
+<p><strong>位置：</strong> <code>mm/page_alloc.c</code>, <code>include/linux/mmzone.h</code></p>
+<h3 id="8-2-2-PCP-数据结构"><a href="#8-2-2-PCP-数据结构" class="headerlink" title="8.2.2 PCP 数据结构"></a>8.2.2 PCP 数据结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: include/linux/mmzone.h:683 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> &#123;</span></span><br><span class="line">    <span class="type">spinlock_t</span> lock;        <span class="comment">/* 保护 lists 字段 */</span></span><br><span class="line">    <span class="type">int</span> count;              <span class="comment">/* 列表中的页面数 */</span></span><br><span class="line">    <span class="type">int</span> high;               <span class="comment">/* 高水位，达到时需要释放 */</span></span><br><span class="line">    <span class="type">int</span> high_min;           <span class="comment">/* 最小高水位 */</span></span><br><span class="line">    <span class="type">int</span> high_max;           <span class="comment">/* 最大高水位 */</span></span><br><span class="line">    <span class="type">int</span> batch;              <span class="comment">/* 批量添加/移除的块大小 */</span></span><br><span class="line">    u8 flags;               <span class="comment">/* 标志位 */</span></span><br><span class="line">    u8 alloc_factor;        <span class="comment">/* 分配时的批处理缩放因子 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">    u8 expire;              <span class="comment">/* 为 0 时，远程 pageset 被排空 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="type">short</span> free_count;       <span class="comment">/* 连续释放计数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面列表，每种迁移类型一个 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">lists</span>[<span class="title">NR_PCP_LISTS</span>];</span></span><br><span class="line">&#125; ____cacheline_aligned_in_smp;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>PCP 列表数量：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: include/linux/mmzone.h:665 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NR_LOWORDER_PCP_LISTS (MIGRATE_PCPTYPES * (PAGE_ALLOC_COSTLY_ORDER + 1))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NR_PCP_LISTS (NR_LOWORDER_PCP_LISTS + NR_PCP_THP)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* MIGRATE_PCPTYPES = 3 (MIGRATE_MOVABLE, MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE) */</span></span><br><span class="line"><span class="comment">/* PAGE_ALLOC_COSTLY_ORDER = 3 */</span></span><br><span class="line"><span class="comment">/* 对于 THP，额外的 2 个列表 */</span></span><br></pre></td></tr></table></figure></div>
+
+<p><strong>zone 中的 PCP：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: include/linux/mmzone.h:843 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">zone</span> &#123;</span></span><br><span class="line">    <span class="comment">/* ... 其他字段 ... */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> __<span class="title">percpu</span> *<span class="title">per_cpu_pageset</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_zonestat</span> __<span class="title">percpu</span> *<span class="title">per_cpu_zonestats</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* high 和 batch 值被复制到各个 pageset 以加快访问 */</span></span><br><span class="line">    <span class="type">int</span> pageset_high_min;</span><br><span class="line">    <span class="type">int</span> pageset_high_max;</span><br><span class="line">    <span class="type">int</span> pageset_batch;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-3-PCP-工作原理"><a href="#8-2-3-PCP-工作原理" class="headerlink" title="8.2.3 PCP 工作原理"></a>8.2.3 PCP 工作原理</h3><p><strong>水位管理：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">        high</span><br><span class="line">         │─────────────────────────────────────</span><br><span class="line">         │</span><br><span class="line">         │</span><br><span class="line">         │   正常工作区</span><br><span class="line">         │</span><br><span class="line">         │</span><br><span class="line">         │</span><br><span class="line">         │─────────────────────────────────────</span><br><span class="line">         0</span><br><span class="line"></span><br><span class="line">• count &lt; high:    正常状态</span><br><span class="line">• count &gt;= high:   需要释放一批页面到伙伴系统</span><br><span class="line">• count 为 0:      需要从伙伴系统批量分配</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>batch 动态调整：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:2973 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">nr_pcp_alloc</span><span class="params">(<span class="keyword">struct</span> per_cpu_pages *pcp, <span class="keyword">struct</span> zone *zone,</span></span><br><span class="line"><span class="params">                        <span class="type">unsigned</span> <span class="type">int</span> order)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> batch = READ_ONCE(pcp-&gt;batch);</span><br><span class="line">    <span class="type">int</span> max_nr_alloc;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 根据分配频率调整 */</span></span><br><span class="line">    <span class="keyword">if</span> (pcp-&gt;free_count) &#123;</span><br><span class="line">        <span class="comment">/* 有连续释放时，增加批量大小 */</span></span><br><span class="line">        max_nr_alloc = batch &lt;&lt; min(pcp-&gt;free_count,</span><br><span class="line">                                    CONFIG_PCP_BATCH_SCALE_MAX);</span><br><span class="line">        <span class="keyword">if</span> (batch &lt;= max_nr_alloc &amp;&amp;</span><br><span class="line">            pcp-&gt;alloc_factor &lt; CONFIG_PCP_BATCH_SCALE_MAX)</span><br><span class="line">            pcp-&gt;alloc_factor++;</span><br><span class="line">        batch = min(batch, max_nr_alloc);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 根据 order 调整 */</span></span><br><span class="line">    <span class="keyword">if</span> (batch &gt; <span class="number">1</span>)</span><br><span class="line">        batch = max(batch &gt;&gt; order, <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> batch;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-4-PCP-分配流程"><a href="#8-2-4-PCP-分配流程" class="headerlink" title="8.2.4 PCP 分配流程"></a>8.2.4 PCP 分配流程</h3><p><strong>完整分配路径：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">__alloc_pages()</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">rmqueue()</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ rmqueue_pcplist() - 从 PCP 分配                              │</span><br><span class="line">│ 位置: mm/page_alloc.c:3052                                   │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 1. 尝试获取 PCP 锁                                           │</span><br><span class="line">│    pcp_spin_trylock(zone-&gt;per_cpu_pageset)                  │</span><br><span class="line">│    │                                                         │</span><br><span class="line">│    ├─ 成功 ──────────────────────────────────┐              │</span><br><span class="line">│    │                                          │              │</span><br><span class="line">│    └─ 失败 → 返回 NULL                        │              │</span><br><span class="line">│                                               │              │</span><br><span class="line">│ 2. 减少释放批处理因子                         │              │</span><br><span class="line">│    pcp-&gt;free_count &gt;&gt;= 1                     │              │</span><br><span class="line">│                                               │              │</span><br><span class="line">│ 3. 选择对应的迁移类型列表                     │              │</span><br><span class="line">│    list = &amp;pcp-&gt;lists[order_to_pindex(...)]  │              │</span><br><span class="line">│                                               │              │</span><br><span class="line">│ 4. __rmqueue_pcplist()                        │              │</span><br><span class="line">│    │                                           │              │</span><br><span class="line">│    ├─ 列表为空?                                │              │</span><br><span class="line">│    │   │                                       │              │</span><br><span class="line">│    │   └─ 是 → rmqueue_bulk()                 │              │</span><br><span class="line">│    │          从伙伴系统批量分配页面            │              │</span><br><span class="line">│    │          添加到 PCP 列表                  │              │</span><br><span class="line">│    │                                           │              │</span><br><span class="line">│    └─ 从列表取出第一个页面                    │              │</span><br><span class="line">│                                               │              │</span><br><span class="line">│ 5. 释放 PCP 锁                                │              │</span><br><span class="line">│                                               │              │</span><br><span class="line">│ 6. 返回页面                                   │              │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">__rmqueue_pcplist() - 位置: mm/page_alloc.c:3021</span><br><span class="line">    │</span><br><span class="line">    ├─ 列表为空?</span><br><span class="line">    │   │</span><br><span class="line">    │   └─ 是 → rmqueue_bulk()</span><br><span class="line">    │              │</span><br><span class="line">    │              ▼</span><br><span class="line">    │         ┌─────────────────────────────────────┐</span><br><span class="line">    │         │ 从伙伴系统分配 batch 个页面          │</span><br><span class="line">    │         │ 持有 zone-&gt;lock                     │</span><br><span class="line">    │         │ 循环调用 __rmqueue()                │</span><br><span class="line">    │         └─────────────────────────────────────┘</span><br><span class="line">    │</span><br><span class="line">    └─ list_first_entry() 取出页面</span><br><span class="line">        list_del(&amp;page-&gt;pcp_list)</span><br><span class="line">        pcp-&gt;count -= 1 &lt;&lt; order</span><br><span class="line">        return page</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>关键代码分析：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:3021 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">rmqueue_pcplist</span>(<span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span>,</span></span><br><span class="line"><span class="class">                                             <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>,</span></span><br><span class="line"><span class="class">                                             <span class="title">int</span> <span class="title">migratetype</span>,</span></span><br><span class="line"><span class="class">                                             <span class="title">unsigned</span> <span class="title">int</span> <span class="title">alloc_flags</span>,</span></span><br><span class="line"><span class="class">                                             <span class="keyword">struct</span> <span class="title">per_cpu_pages</span> *<span class="title">pcp</span>,</span></span><br><span class="line"><span class="class">                                             <span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">list</span>)</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="comment">/* 检查列表是否为空 */</span></span><br><span class="line">        <span class="keyword">if</span> (list_empty(<span class="built_in">list</span>)) &#123;</span><br><span class="line">            <span class="comment">/* 计算批量大小 */</span></span><br><span class="line">            <span class="type">int</span> batch = nr_pcp_alloc(pcp, zone, order);</span><br><span class="line">            <span class="type">int</span> alloced;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 从伙伴系统批量分配 */</span></span><br><span class="line">            alloced = rmqueue_bulk(zone, order,</span><br><span class="line">                                   batch, <span class="built_in">list</span>,</span><br><span class="line">                                   migratetype, alloc_flags);</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 更新计数 */</span></span><br><span class="line">            pcp-&gt;count += alloced &lt;&lt; order;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 如果仍然为空，返回 NULL */</span></span><br><span class="line">            <span class="keyword">if</span> (unlikely(list_empty(<span class="built_in">list</span>)))</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 从列表取出第一个页面 */</span></span><br><span class="line">        page = list_first_entry(<span class="built_in">list</span>, <span class="keyword">struct</span> page, pcp_list);</span><br><span class="line">        list_del(&amp;page-&gt;pcp_list);</span><br><span class="line">        pcp-&gt;count -= <span class="number">1</span> &lt;&lt; order;</span><br><span class="line">    &#125; <span class="keyword">while</span> (check_new_pages(page, order));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> page;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-5-PCP-释放流程"><a href="#8-2-5-PCP-释放流程" class="headerlink" title="8.2.5 PCP 释放流程"></a>8.2.5 PCP 释放流程</h3><p><strong>完整释放路径：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">__free_pages() / put_page()</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">free_unref_page() - 位置: mm/page_alloc.c:2675</span><br><span class="line">    │</span><br><span class="line">    ├─ pcp_allowed_order(order)?</span><br><span class="line">    │   │</span><br><span class="line">    │   ├─ 否 → __free_pages_ok() 直接到伙伴系统</span><br><span class="line">    │   │</span><br><span class="line">    │   └─ 是 → 继续</span><br><span class="line">    │</span><br><span class="line">    ├─ free_pages_prepare() 页面检查和清理</span><br><span class="line">    │</span><br><span class="line">    ├─ 获取页面迁移类型</span><br><span class="line">    │   migratetype = get_pfnblock_migratetype(page, pfn)</span><br><span class="line">    │</span><br><span class="line">    ├─ 尝试获取 PCP 锁</span><br><span class="line">    │   pcp = pcp_spin_trylock(zone-&gt;per_cpu_pageset)</span><br><span class="line">    │   │</span><br><span class="line">    │   ├─ 成功 → free_unref_page_commit()</span><br><span class="line">    │   │          │</span><br><span class="line">    │   │          ├─ 添加到 PCP 列表</span><br><span class="line">    │   │          │   list_add(&amp;page-&gt;pcp_list, &amp;pcp-&gt;lists[pindex])</span><br><span class="line">    │   │          │   pcp-&gt;count += 1 &lt;&lt; order</span><br><span class="line">    │   │          │</span><br><span class="line">    │   │          ├─ 检查是否超过高水位</span><br><span class="line">    │   │          │   if (pcp-&gt;count &gt;= high)</span><br><span class="line">    │   │          │       free_pcppages_bulk()</span><br><span class="line">    │   │          │</span><br><span class="line">    │   │          └─ 释放锁</span><br><span class="line">    │   │</span><br><span class="line">    │   └─ 失败 → free_one_page() 直接到伙伴系统</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>释放提交代码：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:2624 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">free_unref_page_commit</span><span class="params">(<span class="keyword">struct</span> zone *zone,</span></span><br><span class="line"><span class="params">                                   <span class="keyword">struct</span> per_cpu_pages *pcp,</span></span><br><span class="line"><span class="params">                                   <span class="keyword">struct</span> page *page,</span></span><br><span class="line"><span class="params">                                   <span class="type">int</span> migratetype,</span></span><br><span class="line"><span class="params">                                   <span class="type">unsigned</span> <span class="type">int</span> order)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> high, batch;</span><br><span class="line">    <span class="type">int</span> pindex;</span><br><span class="line">    <span class="type">bool</span> free_high = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 减少分配批处理因子 */</span></span><br><span class="line">    pcp-&gt;alloc_factor &gt;&gt;= <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 统计 */</span></span><br><span class="line">    __count_vm_events(PGFREE, <span class="number">1</span> &lt;&lt; order);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 确定列表索引 */</span></span><br><span class="line">    pindex = order_to_pindex(migratetype, order);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 添加到对应的 PCP 列表 */</span></span><br><span class="line">    list_add(&amp;page-&gt;pcp_list, &amp;pcp-&gt;lists[pindex]);</span><br><span class="line">    pcp-&gt;count += <span class="number">1</span> &lt;&lt; order;</span><br><span class="line"></span><br><span class="line">    batch = READ_ONCE(pcp-&gt;batch);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 高阶页面处理 */</span></span><br><span class="line">    <span class="keyword">if</span> (order &amp;&amp; order &lt;= PAGE_ALLOC_COSTLY_ORDER) &#123;</span><br><span class="line">        free_high = (pcp-&gt;free_count &gt;= batch &amp;&amp;</span><br><span class="line">                     (pcp-&gt;flags &amp; PCPF_PREV_FREE_HIGH_ORDER) &amp;&amp;</span><br><span class="line">                     (!(pcp-&gt;flags &amp; PCPF_FREE_HIGH_BATCH) ||</span><br><span class="line">                      pcp-&gt;count &gt;= READ_ONCE(batch)));</span><br><span class="line">        pcp-&gt;flags |= PCPF_PREV_FREE_HIGH_ORDER;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更新连续释放计数 */</span></span><br><span class="line">    <span class="keyword">if</span> (pcp-&gt;free_count &lt; (batch &lt;&lt; CONFIG_PCP_BATCH_SCALE_MAX))</span><br><span class="line">        pcp-&gt;free_count += (<span class="number">1</span> &lt;&lt; order);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 计算高水位 */</span></span><br><span class="line">    high = nr_pcp_high(pcp, zone, batch, free_high);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 超过水位，批量释放到伙伴系统 */</span></span><br><span class="line">    <span class="keyword">if</span> (pcp-&gt;count &gt;= high) &#123;</span><br><span class="line">        free_pcppages_bulk(zone, nr_pcp_free(pcp, batch, high, free_high),</span><br><span class="line">                           pcp, pindex);</span><br><span class="line">        <span class="keyword">if</span> (test_bit(ZONE_BELOW_HIGH, &amp;zone-&gt;flags) &amp;&amp;</span><br><span class="line">            zone_watermark_ok(zone, <span class="number">0</span>, high_wmark_pages(zone),</span><br><span class="line">                              ZONE_MOVABLE, <span class="number">0</span>))</span><br><span class="line">            clear_bit(ZONE_BELOW_HIGH, &amp;zone-&gt;flags);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-6-PCP-批量释放到伙伴系统"><a href="#8-2-6-PCP-批量释放到伙伴系统" class="headerlink" title="8.2.6 PCP 批量释放到伙伴系统"></a>8.2.6 PCP 批量释放到伙伴系统</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:1171 */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">free_pcppages_bulk</span><span class="params">(<span class="keyword">struct</span> zone *zone, <span class="type">int</span> count,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> per_cpu_pages *pcp,</span></span><br><span class="line"><span class="params">                               <span class="type">int</span> pindex)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> order;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 确保正确的 count */</span></span><br><span class="line">    count = min(pcp-&gt;count, count);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 首先释放请求的 pindex */</span></span><br><span class="line">    pindex = pindex - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    spin_lock_irqsave(&amp;zone-&gt;lock, flags);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (count &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">list</span>;</span></span><br><span class="line">        <span class="type">int</span> nr_pages;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 以轮询方式从各个列表移除页面 */</span></span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (++pindex &gt; NR_PCP_LISTS - <span class="number">1</span>)</span><br><span class="line">                pindex = <span class="number">0</span>;</span><br><span class="line">            <span class="built_in">list</span> = &amp;pcp-&gt;lists[pindex];</span><br><span class="line">        &#125; <span class="keyword">while</span> (list_empty(<span class="built_in">list</span>));</span><br><span class="line"></span><br><span class="line">        order = pindex_to_order(pindex);</span><br><span class="line">        nr_pages = <span class="number">1</span> &lt;&lt; order;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> pfn;</span><br><span class="line">            <span class="type">int</span> mt;</span><br><span class="line"></span><br><span class="line">            page = list_last_entry(<span class="built_in">list</span>, <span class="keyword">struct</span> page, pcp_list);</span><br><span class="line">            pfn = page_to_pfn(page);</span><br><span class="line">            mt = get_pfnblock_migratetype(page, pfn);</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 必须删除以避免损坏 pcp 列表 */</span></span><br><span class="line">            list_del(&amp;page-&gt;pcp_list);</span><br><span class="line">            count -= nr_pages;</span><br><span class="line">            pcp-&gt;count -= nr_pages;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* 释放到伙伴系统 */</span></span><br><span class="line">            __free_one_page(page, pfn, zone, order, mt, FPI_NONE);</span><br><span class="line">            trace_mm_page_pcpu_drain(page, order, mt);</span><br><span class="line">        &#125; <span class="keyword">while</span> (count &gt; <span class="number">0</span> &amp;&amp; !list_empty(<span class="built_in">list</span>));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    spin_unlock_irqrestore(&amp;zone-&gt;lock, flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-7-PCP-水位衰减"><a href="#8-2-7-PCP-水位衰减" class="headerlink" title="8.2.7 PCP 水位衰减"></a>8.2.7 PCP 水位衰减</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:2366 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">decay_pcp_high</span><span class="params">(<span class="keyword">struct</span> zone *zone, <span class="keyword">struct</span> per_cpu_pages *pcp)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> high_min, to_drain, batch;</span><br><span class="line">    <span class="type">int</span> todo = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    high_min = READ_ONCE(pcp-&gt;high_min);</span><br><span class="line">    batch = READ_ONCE(pcp-&gt;batch);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 定期降低 pcp-&gt;high 以尝试释放可能的空闲 PCP 页面 */</span></span><br><span class="line">    <span class="keyword">if</span> (pcp-&gt;high &gt; high_min) &#123;</span><br><span class="line">        pcp-&gt;high = max3(pcp-&gt;count - (batch &lt;&lt; CONFIG_PCP_BATCH_SCALE_MAX),</span><br><span class="line">                         pcp-&gt;high - (pcp-&gt;high &gt;&gt; <span class="number">3</span>), high_min);</span><br><span class="line">        <span class="keyword">if</span> (pcp-&gt;high &gt; high_min)</span><br><span class="line">            todo++;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 如果超过水位，释放页面 */</span></span><br><span class="line">    to_drain = pcp-&gt;count - pcp-&gt;high;</span><br><span class="line">    <span class="keyword">if</span> (to_drain &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        spin_lock(&amp;pcp-&gt;lock);</span><br><span class="line">        free_pcppages_bulk(zone, to_drain, pcp, <span class="number">0</span>);</span><br><span class="line">        spin_unlock(&amp;pcp-&gt;lock);</span><br><span class="line">        todo++;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> todo;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-2-8-PCP-支持的分配阶数"><a href="#8-2-8-PCP-支持的分配阶数" class="headerlink" title="8.2.8 PCP 支持的分配阶数"></a>8.2.8 PCP 支持的分配阶数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/page_alloc.c:542 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">pcp_allowed_order</span><span class="params">(<span class="type">unsigned</span> <span class="type">int</span> order)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/* 支持 0 阶和低于 PAGE_ALLOC_COSTLY_ORDER 的高阶分配 */</span></span><br><span class="line">    <span class="keyword">return</span> order &lt;= PAGE_ALLOC_COSTLY_ORDER;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* PAGE_ALLOC_COSTLY_ORDER = 3，即最多支持 8 页 (32KB) 的分配 */</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-3-SLUB-分配器-默认实现"><a href="#8-3-SLUB-分配器-默认实现" class="headerlink" title="8.3 SLUB 分配器 (默认实现)"></a>8.3 SLUB 分配器 (默认实现)</h2><h3 id="8-3-1-SLUB-概述"><a href="#8-3-1-SLUB-概述" class="headerlink" title="8.3.1 SLUB 概述"></a>8.3.1 SLUB 概述</h3><p><strong>设计目标：</strong></p>
+<ul>
+<li>简化数据结构</li>
+<li>减少 Cache Line 占用</li>
+<li>提高分配性能</li>
+<li>更好的 NUMA 支持</li>
+</ul>
+<p><strong>位置：</strong> <code>mm/slub.c</code></p>
+<p><strong>SLUB 特点：</strong></p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>SLAB</th>
+<th>SLUB</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Per-CPU 队列</td>
+<td>3个列表 (full, partial, free)</td>
+<td>单个 freelist</td>
+</tr>
+<tr>
+<td>对象指针</td>
+<td>间接引用</td>
+<td>直接引用</td>
+</tr>
+<tr>
+<td>内存开销</td>
+<td>较高</td>
+<td>较低</td>
+</tr>
+<tr>
+<td>代码复杂度</td>
+<td>高</td>
+<td>低</td>
+</tr>
+<tr>
+<td>调试功能</td>
+<td>有限</td>
+<td>丰富</td>
+</tr>
+</tbody></table>
+<h3 id="8-3-2-SLUB-数据结构"><a href="#8-3-2-SLUB-数据结构" class="headerlink" title="8.3.2 SLUB 数据结构"></a>8.3.2 SLUB 数据结构</h3><p><strong>kmem_cache 结构：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: include/linux/slub_def.h */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 对象配置 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> object_size;     <span class="comment">/* 原始对象大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> size;            <span class="comment">/* 包含对齐后的对象大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> offset;          <span class="comment">/* 到对象的偏移 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> freelist_idx_size;   <span class="comment">/* freelist 索引大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> inuse;           <span class="comment">/* 偏移到元数据 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> align;           <span class="comment">/* 对齐要求 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> red_left_pad;    <span class="comment">/* 红区左填充 */</span></span><br><span class="line">    <span class="type">slab_flags_t</span> flags;           <span class="comment">/* 标志 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> useroffset;     <span class="comment">/* 用户拷贝偏移 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> usersize;       <span class="comment">/* 用户拷贝大小 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* slab 配置 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> reciprocal_floor_size;  <span class="comment">/* 1/slab 大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> obj_offset;       <span class="comment">/* free 指针偏移 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Per-CPU 数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_cpu</span> __<span class="title">percpu</span> *<span class="title">cpu_slab</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 节点数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_node</span> *<span class="title">node</span>[<span class="title">MAX_NUMNODES</span>];</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 构造/析构 */</span></span><br><span class="line">    <span class="type">void</span> (*ctor)(<span class="type">void</span> *object);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 名称和大小 */</span></span><br><span class="line">    <span class="type">const</span> <span class="type">char</span> *name;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> flags;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> object_size;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ... 更多字段 ... */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>Per-CPU 数据：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c:384 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_cpu</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="type">void</span> **freelist;    <span class="comment">/* 指向下一个可用对象的指针 */</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> tid;  <span class="comment">/* 全局唯一的事务 ID */</span></span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="type">freelist_aba_t</span> freelist_tid;</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">slab</span>;</span>          <span class="comment">/* 当前从中分配的 slab */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SLUB_CPU_PARTIAL</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">partial</span>;</span>       <span class="comment">/* 部分分配的 slab */</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="type">local_lock_t</span> lock;          <span class="comment">/* 保护上述字段 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SLUB_STATS</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> stat[NR_SLUB_STAT_ITEMS];</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>节点数据：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c:425 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_node</span> &#123;</span></span><br><span class="line">    <span class="type">spinlock_t</span> list_lock;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr_partial;   <span class="comment">/* 部分 slab 数量 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">partial</span>;</span>   <span class="comment">/* 部分 slab 列表 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_SLUB_DEBUG</span></span><br><span class="line">    <span class="type">atomic_long_t</span> nr_slabs;     <span class="comment">/* 总 slab 数量 */</span></span><br><span class="line">    <span class="type">atomic_long_t</span> total_objects; <span class="comment">/* 总对象数量 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">full</span>;</span>      <span class="comment">/* 满 slab 列表 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-3-3-SLUB-Slab-状态"><a href="#8-3-3-SLUB-Slab-状态" class="headerlink" title="8.3.3 SLUB Slab 状态"></a>8.3.3 SLUB Slab 状态</h3><p><strong>Slab 四种状态：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    SLUB Slab 状态管理                            │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  1. CPU Slab (当前 slab)                                        │</span><br><span class="line">│     ┌────────────────────────────────────┐                     │</span><br><span class="line">│     │ frozen = true                      │                     │</span><br><span class="line">│     │ PG_workingset = 0                  │                     │</span><br><span class="line">│     │                                     │                     │</span><br><span class="line">│     │ 当前 CPU 正在从中分配对象的 slab     │                     │</span><br><span class="line">│     │ 不在任何列表中                      │                     │</span><br><span class="line">│     └────────────────────────────────────┘                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  2. CPU Partial (Per-CPU 部分 slab)                            │</span><br><span class="line">│     ┌────────────────────────────────────┐                     │</span><br><span class="line">│     │ frozen = false                     │                     │</span><br><span class="line">│     │ PG_workingset = 0                  │                     │</span><br><span class="line">│     │                                     │                     │</span><br><span class="line">│     │ Per-CPU 缓存的部分空 slab           │                     │</span><br><span class="line">│     │ 用于减少 node list_lock 竞争        │                     │</span><br><span class="line">│     └────────────────────────────────────┘                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  3. Node Partial (节点部分 slab)                               │</span><br><span class="line">│     ┌────────────────────────────────────┐                     │</span><br><span class="line">│     │ frozen = false                     │                     │</span><br><span class="line">│     │ PG_workingset = 1                  │                     │</span><br><span class="line">│     │                                     │                     │</span><br><span class="line">│     │ 节点的部分 slab 列表                │                     │</span><br><span class="line">│     │ 受 node-&gt;list_lock 保护             │                     │</span><br><span class="line">│     └────────────────────────────────────┘                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  4. Full (满 slab)                                             │</span><br><span class="line">│     ┌────────────────────────────────────┐                     │</span><br><span class="line">│     │ frozen = false                     │                     │</span><br><span class="line">│     │ PG_workingset = 0                  │                     │</span><br><span class="line">│     │                                     │                     │</span><br><span class="line">│     │ 所有对象都被分配                    │                     │</span><br><span class="line">│     │ 不在任何活跃列表中                  │                     │</span><br><span class="line">│     └────────────────────────────────────┘                     │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-3-4-SLUB-分配流程"><a href="#8-3-4-SLUB-分配流程" class="headerlink" title="8.3.4 SLUB 分配流程"></a>8.3.4 SLUB 分配流程</h3><p><strong>完整分配路径：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">kmem_cache_alloc(s, flags)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">slab_alloc_node() - 位置: mm/slub.c:4127</span><br><span class="line">    │</span><br><span class="line">    ├─ slab_pre_alloc_hook() - 分配前钩子</span><br><span class="line">    │</span><br><span class="line">    ├─ kfence_alloc() - KFENCE 采样</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">__slab_alloc_node() - 位置: mm/slub.c:3934</span><br><span class="line">    │</span><br><span class="line">    ├─ 获取 Per-CPU 数据</span><br><span class="line">    │   c = raw_cpu_ptr(s-&gt;cpu_slab)</span><br><span class="line">    │   tid = READ_ONCE(c-&gt;tid)</span><br><span class="line">    │</span><br><span class="line">    ├─ 快速路径检查</span><br><span class="line">    │   │</span><br><span class="line">    │   ├─ object = c-&gt;freelist</span><br><span class="line">    │   │   slab = c-&gt;slab</span><br><span class="line">    │   │</span><br><span class="line">    │   └─ USE_LOCKLESS_FAST_PATH() &amp;&amp; object &amp;&amp; slab &amp;&amp; node_match()</span><br><span class="line">    │       │</span><br><span class="line">    │       ├─ 是 → 快速路径</span><br><span class="line">    │       │   │</span><br><span class="line">    │       │   ├─ next_object = get_freepointer_safe(s, object)</span><br><span class="line">    │       │   │</span><br><span class="line">    │       │   ├─ __update_cpu_freelist_fast()</span><br><span class="line">    │       │   │   原子更新: (freelist, tid)</span><br><span class="line">    │       │   │</span><br><span class="line">    │       │   └─ 返回 object</span><br><span class="line">    │       │</span><br><span class="line">    │       └─ 否 → 慢速路径</span><br><span class="line">    │           │</span><br><span class="line">    │           └─ __slab_alloc()</span><br><span class="line">    │               │</span><br><span class="line">    │               ├─ 检查是否需要新 slab</span><br><span class="line">    │               │</span><br><span class="line">    │               ├─ get_partial() - 获取部分 slab</span><br><span class="line">    │               │</span><br><span class="line">    │               └─ new_slab() - 分配新 slab</span><br><span class="line">    │</span><br><span class="line">    └─ slab_post_alloc_hook() - 分配后钩子</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>快速路径代码：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c:3934 */</span></span><br><span class="line"><span class="type">static</span> __always_inline <span class="type">void</span> *__slab_alloc_node(<span class="keyword">struct</span> kmem_cache *s,</span><br><span class="line">                                               <span class="type">gfp_t</span> gfpflags, <span class="type">int</span> node,</span><br><span class="line">                                               <span class="type">unsigned</span> <span class="type">long</span> addr,</span><br><span class="line">                                               <span class="type">size_t</span> orig_size)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_cpu</span> *<span class="title">c</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">slab</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> tid;</span><br><span class="line">    <span class="type">void</span> *object;</span><br><span class="line"></span><br><span class="line">redo:</span><br><span class="line">    <span class="comment">/* 获取 Per-CPU slab 数据 */</span></span><br><span class="line">    c = raw_cpu_ptr(s-&gt;cpu_slab);</span><br><span class="line">    tid = READ_ONCE(c-&gt;tid);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 内存屏障，确保 tid 先于其他数据读取 */</span></span><br><span class="line">    barrier();</span><br><span class="line"></span><br><span class="line">    object = c-&gt;freelist;</span><br><span class="line">    slab = c-&gt;slab;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 快速路径: 有空闲对象且匹配节点 */</span></span><br><span class="line">    <span class="keyword">if</span> (!USE_LOCKLESS_FAST_PATH() ||</span><br><span class="line">        unlikely(!object || !slab || !node_match(slab, node))) &#123;</span><br><span class="line">        <span class="comment">/* 慢速路径 */</span></span><br><span class="line">        object = __slab_alloc(s, gfpflags, node, addr, c, orig_size);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="type">void</span> *next_object = get_freepointer_safe(s, object);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * cmpxchg 双原子操作:</span></span><br><span class="line"><span class="comment">         * 1. 验证 tid 未改变 (未发生抢占或迁移)</span></span><br><span class="line"><span class="comment">         * 2. 验证 freelist 未改变</span></span><br><span class="line"><span class="comment">         * 3. 更新 freelist 和 tid</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (unlikely(!__update_cpu_freelist_fast(s, object,</span><br><span class="line">                                                  next_object, tid))) &#123;</span><br><span class="line">            note_cmpxchg_failure(<span class="string">&quot;slab_alloc&quot;</span>, s, tid);</span><br><span class="line">            <span class="keyword">goto</span> redo;</span><br><span class="line">        &#125;</span><br><span class="line">        prefetch_freepointer(s, next_object);</span><br><span class="line">        stat(s, ALLOC_FASTPATH);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> object;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>TID (Transaction ID) 机制：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">TID 机制确保无锁路径的正确性:</span><br><span class="line"></span><br><span class="line">1. 分配前:</span><br><span class="line">   c-&gt;freelist = object1</span><br><span class="line">   c-&gt;tid = 5</span><br><span class="line"></span><br><span class="line">2. 发生抢占/迁移:</span><br><span class="line">   - 在另一个 CPU 上，c-&gt;tid 会递增</span><br><span class="line">   - 当前 CPU 的 tid 值会失效</span><br><span class="line"></span><br><span class="line">3. cmpxchg 检查:</span><br><span class="line">   - 同时比较 freelist 和 tid</span><br><span class="line">   - 如果任一改变，操作失败</span><br><span class="line">   - 重新获取数据并重试</span><br><span class="line"></span><br><span class="line">这确保了:</span><br><span class="line">- 不会使用过期 CPU 的数据</span><br><span class="line">- 并发操作被正确检测</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-3-5-SLUB-释放流程"><a href="#8-3-5-SLUB-释放流程" class="headerlink" title="8.3.5 SLUB 释放流程"></a>8.3.5 SLUB 释放流程</h3><p><strong>完整释放路径：</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">kmem_cache_free(s, object)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">do_slab_free() - 位置: mm/slub.c</span><br><span class="line">    │</span><br><span class="line">    ├─ 检查对象有效性</span><br><span class="line">    │</span><br><span class="line">    ├─ 快速路径</span><br><span class="line">    │   │</span><br><span class="line">    │   ├─ 获取 CPU slab</span><br><span class="line">    │   │   c = raw_cpu_ptr(s-&gt;cpu_slab)</span><br><span class="line">    │   │</span><br><span class="line">    │   ├─ 检查是否可以释放到当前 slab</span><br><span class="line">    │   │   slab = c-&gt;slab</span><br><span class="line">    │   │   slab_cmpxchg_double()</span><br><span class="line">    │   │</span><br><span class="line">    │   └─ 更新 freelist</span><br><span class="line">    │</span><br><span class="line">    └─ 慢速路径</span><br><span class="line">        │</span><br><span class="line">        ├─ slab_free()</span><br><span class="line">        │   │</span><br><span class="line">        │   ├─ 检查 slab 是否为空</span><br><span class="line">        │   │</span><br><span class="line">        │   ├─ 空 -&gt; 移除 slab</span><br><span class="line">        │   │</span><br><span class="line">        │   └─ 不空 -&gt; 添加到 freelist</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-3-6-SLUB-slab-分配"><a href="#8-3-6-SLUB-slab-分配" class="headerlink" title="8.3.6 SLUB slab 分配"></a>8.3.6 SLUB slab 分配</h3><p><strong>从伙伴系统分配 slab：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> slab *<span class="title function_">new_slab</span><span class="params">(<span class="keyword">struct</span> kmem_cache *s, <span class="type">gfp_t</span> flags, <span class="type">int</span> node)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> order = slub_get_order(s, s-&gt;size);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">folio</span> *<span class="title">folio</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">slab</span>;</span></span><br><span class="line"></span><br><span class="line">    flags |= __GFP_NOTRACK;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 从伙伴系统分配页面 */</span></span><br><span class="line">    folio = alloc_slab_folios(s, flags, order, node);</span><br><span class="line">    <span class="keyword">if</span> (!folio)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    slab = &amp;folio-&gt;page;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 初始化 slab */</span></span><br><span class="line">    __slab_set_guard(slab);</span><br><span class="line">    inc_slabs_node(s, node, folio_nr_pages(folio));</span><br><span class="line">    memcg_slab_post_alloc_hook(s, flags, <span class="number">1</span>, &amp;folio);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> slab;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-3-7-SLUB-对象布局"><a href="#8-3-7-SLUB-对象布局" class="headerlink" title="8.3.7 SLUB 对象布局"></a>8.3.7 SLUB 对象布局</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    SLUB Slab 布局                               │</span><br><span class="line">├────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  Slab (1 或多个页面)                                            │</span><br><span class="line">│  ┌────────────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  Object 0    Object 1    Object 2    ...    Object N   │    │</span><br><span class="line">│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐         ┌─────────┐│    │</span><br><span class="line">│  │  │         │ │         │ │         │         │         ││    │</span><br><span class="line">│  │  │ Object  │ │ Object  │ │ Object  │         │ Object  ││    │</span><br><span class="line">│  │  │ Data    │ │ Data    │ │ Data    │         │ Data    ││    │</span><br><span class="line">│  │  │         │ │         │ │         │         │         ││    │</span><br><span class="line">│  │  └─────────┘ └─────────┘ └─────────┘         └─────────┘│    │</span><br><span class="line">│  │       │            │                              │       │    │</span><br><span class="line">│  │       ▼            ▼                              ▼       │    │</span><br><span class="line">│  │   Freelist     Freelist                      Freelist    │    │</span><br><span class="line">│  │                                                             │    │</span><br><span class="line">│  │  每个对象末尾存储指向下一个空闲对象的指针                     │    │</span><br><span class="line">│  └────────────────────────────────────────────────────────┘    │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  元数据位置:                                                     │</span><br><span class="line">│  • offset = s-&gt;offset (从对象起始到元数据的偏移)                │</span><br><span class="line">│  • freelist 指针通常存储在对象起始位置                          │</span><br><span class="line">│                                                                 │</span><br><span class="line">└────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-4-SLAB-分配器-传统实现"><a href="#8-4-SLAB-分配器-传统实现" class="headerlink" title="8.4 SLAB 分配器 (传统实现)"></a>8.4 SLAB 分配器 (传统实现)</h2><h3 id="8-4-1-SLAB-概述"><a href="#8-4-1-SLAB-概述" class="headerlink" title="8.4.1 SLAB 概述"></a>8.4.1 SLAB 概述</h3><p><strong>特点：</strong></p>
+<ul>
+<li>原始的 slab 分配器实现</li>
+<li>三队列管理 (full, partial, free)</li>
+<li>更复杂但功能完整</li>
+<li>支持着色 (coloring) 优化缓存行使用</li>
+</ul>
+<p><strong>注意：</strong> 在 Linux 6.12 中，SLAB 已被标记为过时，SLUB 是默认且推荐的实现。</p>
+<h3 id="8-4-2-SLAB-数据结构"><a href="#8-4-2-SLAB-数据结构" class="headerlink" title="8.4.2 SLAB 数据结构"></a>8.4.2 SLAB 数据结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: include/linux/slab_def.h */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 对象大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> object_size;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> size;        <span class="comment">/* 完整对象大小 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> align;       <span class="comment">/* 对齐 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* slab 管理 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> num;         <span class="comment">/* 每个 slab 的对象数 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> gfporder;    <span class="comment">/* 分配阶数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Per-CPU 数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_cpu</span> __<span class="title">percpu</span> *<span class="title">cpu_slab</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 节点数据 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_node</span> *<span class="title">node</span>[<span class="title">MAX_NUMNODES</span>];</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 构造函数 */</span></span><br><span class="line">    <span class="type">void</span> (*ctor)(<span class="type">void</span> *object);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* ... */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Per-CPU slab 数据 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_cpu</span> &#123;</span></span><br><span class="line">    <span class="type">void</span> **freelist;         <span class="comment">/* 空闲对象列表 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">slab</span>;</span>       <span class="comment">/* 当前 slab */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">partial</span>;</span>    <span class="comment">/* 部分 slab */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 节点 slab 数据 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_node</span> &#123;</span></span><br><span class="line">    <span class="type">spinlock_t</span> list_lock;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">slabs_full</span>;</span>     <span class="comment">/* 满 slab */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">slabs_partial</span>;</span>  <span class="comment">/* 部分 slab */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">slabs_free</span>;</span>     <span class="comment">/* 空 slab */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-4-3-SLAB-三队列管理"><a href="#8-4-3-SLAB-三队列管理" class="headerlink" title="8.4.3 SLAB 三队列管理"></a>8.4.3 SLAB 三队列管理</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    SLAB 三队列管理                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                 │</span><br><span class="line">│  Full Slabs (满)                                                │</span><br><span class="line">│  ┌───────────┐  ┌───────────┐  ┌───────────┐                   │</span><br><span class="line">│  │ □ □ □ □ │  │ □ □ □ □ │  │ □ □ □ □ │                       │</span><br><span class="line">│  │ □ □ □ □ │  │ □ □ □ □ │  │ □ □ □ □ │  所有对象已分配        │</span><br><span class="line">│  │ □ □ □ □ │  │ □ □ □ □ │  │ □ □ □ □ │                       │</span><br><span class="line">│  └───────────┘  └───────────┘  └───────────┘                   │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  Partial Slabs (部分)                                           │</span><br><span class="line">│  ┌───────────┐  ┌───────────┐  ┌───────────┐                   │</span><br><span class="line">│  │ □ □ □ □ │  │ □ □ □ □ │  │ □ □ □ □ │  部分对象已分配        │</span><br><span class="line">│  │ □ □ □ □ │  │ □ □ □ □ │  │ □ □ □ □ │                       │</span><br><span class="line">│  │ . . □ □ │  │ . . . □ │  │ □ . □ □ │                       │</span><br><span class="line">│  └───────────┘  └───────────┘  └───────────┘                   │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  Free Slabs (空)                                                │</span><br><span class="line">│  ┌───────────┐  ┌───────────┐  ┌───────────┐                   │</span><br><span class="line">│  │ . . . . │  │ . . . . │  │ . . . . │  所有对象空闲           │</span><br><span class="line">│  │ . . . . │  │ . . . . │  │ . . . . │                       │</span><br><span class="line">│  │ . . . . │  │ . . . . │  │ . . . . │                       │</span><br><span class="line">│  └───────────┘  └───────────┘  └───────────┘                   │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  分配流程:                                                      │</span><br><span class="line">│  1. 从 partial 首部分配                                        │</span><br><span class="line">│  2. 若 partial 为空，从 free 移动一个到 partial                 │</span><br><span class="line">│  3. 若 free 为空，分配新 slab 到 free                          │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  释放流程:                                                      │</span><br><span class="line">│  1. 释放到 partial                                             │</span><br><span class="line">│  2. 若 partial 变满，移动到 full                               │</span><br><span class="line">│  3. 若 partial 变空，移动到 free                               │</span><br><span class="line">│                                                                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-5-SLOB-分配器-已移除"><a href="#8-5-SLOB-分配器-已移除" class="headerlink" title="8.5 SLOB 分配器 (已移除)"></a>8.5 SLOB 分配器 (已移除)</h2><h3 id="8-5-1-SLOB-概述"><a href="#8-5-1-SLOB-概述" class="headerlink" title="8.5.1 SLOB 概述"></a>8.5.1 SLOB 概述</h3><p><strong>注意：</strong> SLOB 已在较新的内核版本中被移除。</p>
+<p><strong>历史特点：</strong></p>
+<ul>
+<li>极简的 slab 实现</li>
+<li>适合资源受限的嵌入式系统</li>
+<li>使用简单的链表管理空闲块</li>
+<li>内存开销最小，但性能较低</li>
+</ul>
+<p><strong>移除原因：</strong></p>
+<ul>
+<li>SLUB 已经足够高效</li>
+<li>维护三种实现的成本高</li>
+<li>SLUB tiny 配置可以满足大多数嵌入式需求</li>
+</ul>
+<hr>
+<h2 id="8-6-kmalloc-实现"><a href="#8-6-kmalloc-实现" class="headerlink" title="8.6 kmalloc 实现"></a>8.6 kmalloc 实现</h2><h3 id="8-6-1-kmalloc-缓存数组"><a href="#8-6-1-kmalloc-缓存数组" class="headerlink" title="8.6.1 kmalloc 缓存数组"></a>8.6.1 kmalloc 缓存数组</h3><p><strong>kmalloc 大小类别：</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slab_common.c */</span></span><br><span class="line"><span class="comment">/* kmalloc 分配大小表 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmalloc_info</span> &#123;</span></span><br><span class="line">    <span class="type">const</span> <span class="type">char</span> *name;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> size;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">kmalloc_info</span> <span class="title">kmalloc_info</span>[] =</span> &#123;</span><br><span class="line">    &#123; <span class="literal">NULL</span>,                      <span class="number">0</span> &#125;,   <span class="comment">/* 0 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-8&quot;</span>,               <span class="number">8</span> &#125;,   <span class="comment">/* 1 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-16&quot;</span>,             <span class="number">16</span> &#125;,   <span class="comment">/* 2 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-32&quot;</span>,             <span class="number">32</span> &#125;,   <span class="comment">/* 3 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-64&quot;</span>,             <span class="number">64</span> &#125;,   <span class="comment">/* 4 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-128&quot;</span>,           <span class="number">128</span> &#125;,   <span class="comment">/* 5 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-256&quot;</span>,           <span class="number">256</span> &#125;,   <span class="comment">/* 6 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-512&quot;</span>,           <span class="number">512</span> &#125;,   <span class="comment">/* 7 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-1024&quot;</span>,         <span class="number">1024</span> &#125;,   <span class="comment">/* 8 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-2048&quot;</span>,         <span class="number">2048</span> &#125;,   <span class="comment">/* 9 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-4096&quot;</span>,         <span class="number">4096</span> &#125;,   <span class="comment">/* 10 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-8192&quot;</span>,         <span class="number">8192</span> &#125;,   <span class="comment">/* 11 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-16384&quot;</span>,       <span class="number">16384</span> &#125;,   <span class="comment">/* 12 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-32768&quot;</span>,       <span class="number">32768</span> &#125;,   <span class="comment">/* 13 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-65536&quot;</span>,       <span class="number">65536</span> &#125;,   <span class="comment">/* 14 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-131072&quot;</span>,     <span class="number">131072</span> &#125;,   <span class="comment">/* 15 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-262144&quot;</span>,     <span class="number">262144</span> &#125;,   <span class="comment">/* 16 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-524288&quot;</span>,     <span class="number">524288</span> &#125;,   <span class="comment">/* 17 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-1048576&quot;</span>,   <span class="number">1048576</span> &#125;,   <span class="comment">/* 18 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-2097152&quot;</span>,   <span class="number">2097152</span> &#125;,   <span class="comment">/* 19 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-4194304&quot;</span>,   <span class="number">4194304</span> &#125;,   <span class="comment">/* 20 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-8388608&quot;</span>,   <span class="number">8388608</span> &#125;,   <span class="comment">/* 21 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-16777216&quot;</span>, <span class="number">16777216</span> &#125;,   <span class="comment">/* 22 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-33554432&quot;</span>, <span class="number">33554432</span> &#125;,   <span class="comment">/* 23 */</span></span><br><span class="line">    &#123; <span class="string">&quot;kmalloc-67108864&quot;</span>, <span class="number">67108864</span> &#125;,   <span class="comment">/* 24 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-6-2-kmalloc-实现"><a href="#8-6-2-kmalloc-实现" class="headerlink" title="8.6.2 kmalloc 实现"></a>8.6.2 kmalloc 实现</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c:4263 */</span></span><br><span class="line"><span class="type">static</span> __always_inline</span><br><span class="line"><span class="type">void</span> *__do_kmalloc_node(<span class="type">size_t</span> size, kmem_buckets *b, <span class="type">gfp_t</span> flags,</span><br><span class="line">                        <span class="type">int</span> node, <span class="type">unsigned</span> <span class="type">long</span> caller)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> *<span class="title">s</span>;</span></span><br><span class="line">    <span class="type">void</span> *ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 查找合适的缓存 */</span></span><br><span class="line">    <span class="keyword">if</span> (size &lt;= KMALLOC_MAX_CACHE_SIZE) &#123;</span><br><span class="line">        <span class="comment">/* 小分配: 使用 slab 缓存 */</span></span><br><span class="line">        s = kmalloc_slab(size, flags);</span><br><span class="line">        ret = slab_alloc_node(s, <span class="literal">NULL</span>, flags, node, caller, size);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* 大分配: 直接分配页面 */</span></span><br><span class="line">        ret = ___kmalloc_large_node(size, flags, node);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ret = kasan_kmalloc(ret, size, flags);</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-6-3-kmalloc-大小选择"><a href="#8-6-3-kmalloc-大小选择" class="headerlink" title="8.6.3 kmalloc 大小选择"></a>8.6.3 kmalloc 大小选择</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">size &lt;= 192:     使用 2 的幂次对齐</span><br><span class="line">size &lt;= 1024:    使用通用 kmalloc 缓存</span><br><span class="line">size &gt; 1024:     可能使用 kmalloc_large 直接分配页面</span><br><span class="line">size &gt; 2MB:      直接调用伙伴系统</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-7-调试与监控"><a href="#8-7-调试与监控" class="headerlink" title="8.7 调试与监控"></a>8.7 调试与监控</h2><h3 id="8-7-1-Slab-调试选项"><a href="#8-7-1-Slab-调试选项" class="headerlink" title="8.7.1 Slab 调试选项"></a>8.7.1 Slab 调试选项</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># SLUB 调试</span><br><span class="line">CONFIG_SLUB_DEBUG=y</span><br><span class="line">CONFIG_SLUB_DEBUG_ON=y      # 启动时启用调试</span><br><span class="line">CONFIG_SLUB_STATS=y         # 统计信息</span><br><span class="line"></span><br><span class="line"># 对象调试</span><br><span class="line">CONFIG_SLUB_RCU_DEBUG=y     # RCU 调试</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK=y     # 内存泄漏检测</span><br><span class="line">CONFIG_DEBUG_OBJECTS=y      # 对象状态调试</span><br><span class="line"></span><br><span class="line"># 其他</span><br><span class="line">CONFIG_KASAN=y              # 地址消毒剂</span><br><span class="line">CONFIG_KFENCE=y             # 低开销内存错误检测</span><br><span class="line">CONFIG_DEBUG_SLAB=y         # SLAB 调试</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-7-2-调试接口"><a href="#8-7-2-调试接口" class="headerlink" title="8.7.2 调试接口"></a>8.7.2 调试接口</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 slab 信息</span></span><br><span class="line"><span class="built_in">cat</span> /proc/slabinfo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实时监控</span></span><br><span class="line">slabtop</span><br><span class="line"></span><br><span class="line"><span class="comment"># SLUB 调试文件</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/slab/*/alloc_traces</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/slab/*/free_traces</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/slab/*/slabs</span><br><span class="line"></span><br><span class="line"><span class="comment"># 特定缓存信息</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/slab/kmalloc-256/objects</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/slab/kmalloc-256/objs_per_slab</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/slab/kmalloc-256/order</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-7-3-调试示例"><a href="#8-7-3-调试示例" class="headerlink" title="8.7.3 调试示例"></a>8.7.3 调试示例</h3><p><strong>查找内存泄漏：</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 记录初始状态</span></span><br><span class="line"><span class="built_in">cat</span> /proc/slabinfo &gt; /tmp/slab_before</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 运行测试程序</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 记录结束状态</span></span><br><span class="line"><span class="built_in">cat</span> /proc/slabinfo &gt; /tmp/slab_after</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 比较</span></span><br><span class="line">diff /tmp/slab_before /tmp/slab_after</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 使用 kmemleak</span></span><br><span class="line"><span class="built_in">echo</span> scan &gt; /sys/kernel/debug/kmemleak</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/kmemleak</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>跟踪分配：</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用跟踪</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/kernel/slab/dentry/trace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看分配跟踪</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/slab/dentry/alloc_traces</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用跟踪</span></span><br><span class="line"><span class="built_in">echo</span> 0 &gt; /sys/kernel/slab/dentry/trace</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-7-4-SLUB-统计"><a href="#8-7-4-SLUB-统计" class="headerlink" title="8.7.4 SLUB 统计"></a>8.7.4 SLUB 统计</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 位置: mm/slub.c */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">stat_item</span> &#123;</span></span><br><span class="line">    ALLOC_FASTPATH,         <span class="comment">/* 快速路径分配 */</span></span><br><span class="line">    ALLOC_SLOWPATH,         <span class="comment">/* 慢速路径分配 */</span></span><br><span class="line">    FREE_FASTPATH,          <span class="comment">/* 快速路径释放 */</span></span><br><span class="line">    FREE_SLOWPATH,          <span class="comment">/* 慢速路径释放 */</span></span><br><span class="line">    FREE_FROZEN,            <span class="comment">/* 释放到 frozen slab */</span></span><br><span class="line">    FREE_ADD_PARTIAL,       <span class="comment">/* 添加到部分列表 */</span></span><br><span class="line">    FREE_REMOVE_PARTIAL,    <span class="comment">/* 从部分列表移除 */</span></span><br><span class="line">    ALLOC_FROM_PARTIAL,     <span class="comment">/* 从部分列表分配 */</span></span><br><span class="line">    ALLOC_SLAB,             <span class="comment">/* 分配新 slab */</span></span><br><span class="line">    ALLOC_NODE_MISMATCH,    <span class="comment">/* 节点不匹配 */</span></span><br><span class="line">    FREE_SLAB,              <span class="comment">/* 释放 slab */</span></span><br><span class="line">    CPUSLAB_FLUSH,          <span class="comment">/* 刷新 CPU slab */</span></span><br><span class="line">    DEACTIVATE_FULL,        <span class="comment">/* 停用满 slab */</span></span><br><span class="line">    DEACTIVATE_EMPTY,       <span class="comment">/* 停用空 slab */</span></span><br><span class="line">    DEACTIVATE_TO_HEAD,     <span class="comment">/* 停用到头部 */</span></span><br><span class="line">    DEACTIVATE_TO_TAIL,     <span class="comment">/* 停用到尾部 */</span></span><br><span class="line">    DEACTIVATE_REMOTE_FREES,<span class="comment">/* 远程释放 */</span></span><br><span class="line">    DEACTIVATE_BYPASS,      <span class="comment">/* 绕过停用 */</span></span><br><span class="line">    ORDER_FALLBACK,         <span class="comment">/* 阶数回退 */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查看统计 */</span></span><br><span class="line">cat /sys/kernel/slab/&lt;cache&gt;/stats</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-8-性能优化"><a href="#8-8-性能优化" class="headerlink" title="8.8 性能优化"></a>8.8 性能优化</h2><h3 id="8-8-1-Per-CPU-优化"><a href="#8-8-1-Per-CPU-优化" class="headerlink" title="8.8.1 Per-CPU 优化"></a>8.8.1 Per-CPU 优化</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 定义 Per-CPU 变量 */</span></span><br><span class="line"><span class="type">static</span> <span class="title function_">DEFINE_PER_CPU</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span>, counters)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 访问 */</span></span><br><span class="line">this_cpu_inc(counters);              <span class="comment">/* 无锁访问 */</span></span><br><span class="line">__this_cpu_inc(counters);             <span class="comment">/* 更快但需要保护 */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 禁用抢占 */</span></span><br><span class="line">preempt_disable();</span><br><span class="line">this_cpu_inc(counters);</span><br><span class="line">preempt_enable();</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-8-2-批量操作"><a href="#8-8-2-批量操作" class="headerlink" title="8.8.2 批量操作"></a>8.8.2 批量操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 批量分配 */</span></span><br><span class="line"><span class="type">void</span> *objects[<span class="number">10</span>];</span><br><span class="line"><span class="type">int</span> n = kmem_cache_alloc_bulk(cache, GFP_KERNEL, <span class="number">10</span>, objects);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 批量释放 */</span></span><br><span class="line"><span class="keyword">if</span> (n &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    kmem_cache_free_bulk(cache, n, objects);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-8-3-NUMA-优化"><a href="#8-8-3-NUMA-优化" class="headerlink" title="8.8.3 NUMA 优化"></a>8.8.3 NUMA 优化</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 从本地节点分配 */</span></span><br><span class="line"><span class="type">void</span> *obj = kmem_cache_alloc_node(cache, GFP_KERNEL, numa_node_id());</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 从指定节点分配 */</span></span><br><span class="line"><span class="type">void</span> *obj = kmalloc_node(size, GFP_KERNEL, node);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-8-4-对象构造"><a href="#8-8-4-对象构造" class="headerlink" title="8.8.4 对象构造"></a>8.8.4 对象构造</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 使用构造函数初始化对象 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> *<span class="title">cache</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">ctor</span><span class="params">(<span class="type">void</span> *obj)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">my_struct</span> *<span class="title">p</span> =</span> obj;</span><br><span class="line">    INIT_LIST_HEAD(&amp;p-&gt;<span class="built_in">list</span>);</span><br><span class="line">    <span class="comment">/* 其他初始化 */</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">cache = kmem_cache_create(<span class="string">&quot;my_cache&quot;</span>,</span><br><span class="line">                          <span class="keyword">sizeof</span>(<span class="keyword">struct</span> my_struct),</span><br><span class="line">                          __alignof__(<span class="keyword">struct</span> my_struct),</span><br><span class="line">                          <span class="number">0</span>, ctor);</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="8-9-常见问题"><a href="#8-9-常见问题" class="headerlink" title="8.9 常见问题"></a>8.9 常见问题</h2><h3 id="8-9-1-Slab-泄漏"><a href="#8-9-1-Slab-泄漏" class="headerlink" title="8.9.1 Slab 泄漏"></a>8.9.1 Slab 泄漏</h3><p><strong>症状：</strong></p>
+<ul>
+<li>系统内存持续增长</li>
+<li>&#x2F;proc&#x2F;meminfo 中 Slab 持续增加</li>
+<li>系统性能下降</li>
+</ul>
+<p><strong>诊断：</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看哪个缓存增长最快</span></span><br><span class="line">watch -n 1 <span class="string">&#x27;cat /proc/slabinfo | head -20 | sort -k2 -nr&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 kmemleak</span></span><br><span class="line"><span class="built_in">echo</span> scan &gt; /sys/kernel/debug/kmemleak</span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/kmemleak</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-9-2-Slab-碎片"><a href="#8-9-2-Slab-碎片" class="headerlink" title="8.9.2 Slab 碎片"></a>8.9.2 Slab 碎片</h3><p><strong>症状：</strong></p>
+<ul>
+<li>大量 partial slabs</li>
+<li>内存利用率低</li>
+</ul>
+<p><strong>解决：</strong></p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 合并相同的缓存</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/kernel/slab/merge</span><br><span class="line"></span><br><span class="line"><span class="comment"># slab 收缩</span></span><br><span class="line"><span class="built_in">echo</span> 2 &gt; /proc/sys/vm/drop_caches</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-9-3-性能问题"><a href="#8-9-3-性能问题" class="headerlink" title="8.9.3 性能问题"></a>8.9.3 性能问题</h3><p><strong>症状：</strong></p>
+<ul>
+<li>分配&#x2F;释放慢</li>
+<li>高 CPU 使用率</li>
+</ul>
+<p><strong>解决：</strong></p>
+<ol>
+<li>检查是否使用了正确的分配器</li>
+<li>考虑使用批量分配</li>
+<li>优化对象大小</li>
+<li>检查是否有缓存抖动</li>
+</ol>
+<hr>
+<h2 id="8-10-本章小结"><a href="#8-10-本章小结" class="headerlink" title="8.10 本章小结"></a>8.10 本章小结</h2><p>本章详细介绍了 Linux 6.12 的内存分配器系统：</p>
+<h3 id="8-10-1-PCP-Per-CPU-Pageframe-Allocator"><a href="#8-10-1-PCP-Per-CPU-Pageframe-Allocator" class="headerlink" title="8.10.1 PCP (Per-CPU Pageframe Allocator)"></a>8.10.1 PCP (Per-CPU Pageframe Allocator)</h3><ul>
+<li><strong>设计目的</strong>: 减少 zone-&gt;lock 竞争</li>
+<li><strong>关键结构</strong>: <code>struct per_cpu_pages</code></li>
+<li><strong>工作原理</strong>: Per-CPU 页面缓存，批量操作</li>
+<li><strong>支持阶数</strong>: 0 到 PAGE_ALLOC_COSTLY_ORDER (3)</li>
+</ul>
+<h3 id="8-10-2-SLUB-分配器-默认"><a href="#8-10-2-SLUB-分配器-默认" class="headerlink" title="8.10.2 SLUB 分配器 (默认)"></a>8.10.2 SLUB 分配器 (默认)</h3><ul>
+<li><strong>设计目标</strong>: 简化结构，提高性能</li>
+<li><strong>关键结构</strong>: <code>struct kmem_cache_cpu</code>, <code>struct kmem_cache_node</code></li>
+<li><strong>Slab 状态</strong>: CPU Slab, CPU Partial, Node Partial, Full</li>
+<li><strong>无锁分配</strong>: 基于 TID 的 lockless fastpath</li>
+</ul>
+<h3 id="8-10-3-SLAB-分配器-传统"><a href="#8-10-3-SLAB-分配器-传统" class="headerlink" title="8.10.3 SLAB 分配器 (传统)"></a>8.10.3 SLAB 分配器 (传统)</h3><ul>
+<li><strong>特点</strong>: 三队列管理，功能完整</li>
+<li><strong>状态</strong>: 已标记为过时</li>
+<li><strong>适用</strong>: 特定场景或兼容性需求</li>
+</ul>
+<h3 id="8-10-4-SLOB-分配器"><a href="#8-10-4-SLOB-分配器" class="headerlink" title="8.10.4 SLOB 分配器"></a>8.10.4 SLOB 分配器</h3><ul>
+<li><strong>状态</strong>: 已在较新版本中移除</li>
+<li><strong>原因</strong>: SLUB 已足够高效</li>
+</ul>
+<h3 id="8-10-5-分配层次"><a href="#8-10-5-分配层次" class="headerlink" title="8.10.5 分配层次"></a>8.10.5 分配层次</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">用户接口 (kmalloc/kmem_cache_alloc)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">Slab 分配器 (SLUB)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">PCP (Per-CPU Pageframe Allocator)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">伙伴系统 (Buddy System)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">物理内存</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="8-10-6-关键函数位置"><a href="#8-10-6-关键函数位置" class="headerlink" title="8.10.6 关键函数位置"></a>8.10.6 关键函数位置</h3><table>
+<thead>
+<tr>
+<th>函数</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>__rmqueue_pcplist</code></td>
+<td>mm&#x2F;page_alloc.c:3021</td>
+</tr>
+<tr>
+<td><code>rmqueue_pcplist</code></td>
+<td>mm&#x2F;page_alloc.c:3052</td>
+</tr>
+<tr>
+<td><code>free_unref_page</code></td>
+<td>mm&#x2F;page_alloc.c:2675</td>
+</tr>
+<tr>
+<td><code>free_pcppages_bulk</code></td>
+<td>mm&#x2F;page_alloc.c:1171</td>
+</tr>
+<tr>
+<td><code>slab_alloc_node</code></td>
+<td>mm&#x2F;slub.c:4127</td>
+</tr>
+<tr>
+<td><code>__slab_alloc_node</code></td>
+<td>mm&#x2F;slub.c:3934</td>
+</tr>
+<tr>
+<td><code>kmem_cache_alloc</code></td>
+<td>mm&#x2F;slub.c:4158</td>
+</tr>
+</tbody></table>
+<p>下一章将介绍缺页异常处理。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-08</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:23</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:31
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-08/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-09/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-09</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-07/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-07</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-08</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-6-12-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E8%AF%A6%E8%A7%A3-%E7%AC%AC8%E7%AB%A0%EF%BC%9ASlab-%E5%88%86%E9%85%8D%E5%99%A8%E4%B8%8E-PCP"><span class="nav-text">Linux 6.12 内存管理详解 - 第8章：Slab 分配器与 PCP</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#8-1-%E6%A6%82%E8%BF%B0%EF%BC%9A%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84"><span class="nav-text">8.1 概述：内存分配层次结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-2-PCP-Per-CPU-Pageframe-Allocator"><span class="nav-text">8.2 PCP (Per-CPU Pageframe Allocator)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-1-PCP-%E8%AE%BE%E8%AE%A1%E7%9B%AE%E7%9A%84"><span class="nav-text">8.2.1 PCP 设计目的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-2-PCP-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">8.2.2 PCP 数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-3-PCP-%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="nav-text">8.2.3 PCP 工作原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-4-PCP-%E5%88%86%E9%85%8D%E6%B5%81%E7%A8%8B"><span class="nav-text">8.2.4 PCP 分配流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-5-PCP-%E9%87%8A%E6%94%BE%E6%B5%81%E7%A8%8B"><span class="nav-text">8.2.5 PCP 释放流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-6-PCP-%E6%89%B9%E9%87%8F%E9%87%8A%E6%94%BE%E5%88%B0%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F"><span class="nav-text">8.2.6 PCP 批量释放到伙伴系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-7-PCP-%E6%B0%B4%E4%BD%8D%E8%A1%B0%E5%87%8F"><span class="nav-text">8.2.7 PCP 水位衰减</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-8-PCP-%E6%94%AF%E6%8C%81%E7%9A%84%E5%88%86%E9%85%8D%E9%98%B6%E6%95%B0"><span class="nav-text">8.2.8 PCP 支持的分配阶数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-3-SLUB-%E5%88%86%E9%85%8D%E5%99%A8-%E9%BB%98%E8%AE%A4%E5%AE%9E%E7%8E%B0"><span class="nav-text">8.3 SLUB 分配器 (默认实现)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-1-SLUB-%E6%A6%82%E8%BF%B0"><span class="nav-text">8.3.1 SLUB 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-2-SLUB-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">8.3.2 SLUB 数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-3-SLUB-Slab-%E7%8A%B6%E6%80%81"><span class="nav-text">8.3.3 SLUB Slab 状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-4-SLUB-%E5%88%86%E9%85%8D%E6%B5%81%E7%A8%8B"><span class="nav-text">8.3.4 SLUB 分配流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-5-SLUB-%E9%87%8A%E6%94%BE%E6%B5%81%E7%A8%8B"><span class="nav-text">8.3.5 SLUB 释放流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-6-SLUB-slab-%E5%88%86%E9%85%8D"><span class="nav-text">8.3.6 SLUB slab 分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-7-SLUB-%E5%AF%B9%E8%B1%A1%E5%B8%83%E5%B1%80"><span class="nav-text">8.3.7 SLUB 对象布局</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-4-SLAB-%E5%88%86%E9%85%8D%E5%99%A8-%E4%BC%A0%E7%BB%9F%E5%AE%9E%E7%8E%B0"><span class="nav-text">8.4 SLAB 分配器 (传统实现)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-4-1-SLAB-%E6%A6%82%E8%BF%B0"><span class="nav-text">8.4.1 SLAB 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-4-2-SLAB-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">8.4.2 SLAB 数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-4-3-SLAB-%E4%B8%89%E9%98%9F%E5%88%97%E7%AE%A1%E7%90%86"><span class="nav-text">8.4.3 SLAB 三队列管理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-5-SLOB-%E5%88%86%E9%85%8D%E5%99%A8-%E5%B7%B2%E7%A7%BB%E9%99%A4"><span class="nav-text">8.5 SLOB 分配器 (已移除)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-5-1-SLOB-%E6%A6%82%E8%BF%B0"><span class="nav-text">8.5.1 SLOB 概述</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-6-kmalloc-%E5%AE%9E%E7%8E%B0"><span class="nav-text">8.6 kmalloc 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-6-1-kmalloc-%E7%BC%93%E5%AD%98%E6%95%B0%E7%BB%84"><span class="nav-text">8.6.1 kmalloc 缓存数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-6-2-kmalloc-%E5%AE%9E%E7%8E%B0"><span class="nav-text">8.6.2 kmalloc 实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-6-3-kmalloc-%E5%A4%A7%E5%B0%8F%E9%80%89%E6%8B%A9"><span class="nav-text">8.6.3 kmalloc 大小选择</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-7-%E8%B0%83%E8%AF%95%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="nav-text">8.7 调试与监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-7-1-Slab-%E8%B0%83%E8%AF%95%E9%80%89%E9%A1%B9"><span class="nav-text">8.7.1 Slab 调试选项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-7-2-%E8%B0%83%E8%AF%95%E6%8E%A5%E5%8F%A3"><span class="nav-text">8.7.2 调试接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-7-3-%E8%B0%83%E8%AF%95%E7%A4%BA%E4%BE%8B"><span class="nav-text">8.7.3 调试示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-7-4-SLUB-%E7%BB%9F%E8%AE%A1"><span class="nav-text">8.7.4 SLUB 统计</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-8-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="nav-text">8.8 性能优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-8-1-Per-CPU-%E4%BC%98%E5%8C%96"><span class="nav-text">8.8.1 Per-CPU 优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-8-2-%E6%89%B9%E9%87%8F%E6%93%8D%E4%BD%9C"><span class="nav-text">8.8.2 批量操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-8-3-NUMA-%E4%BC%98%E5%8C%96"><span class="nav-text">8.8.3 NUMA 优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-8-4-%E5%AF%B9%E8%B1%A1%E6%9E%84%E9%80%A0"><span class="nav-text">8.8.4 对象构造</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-9-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-text">8.9 常见问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-9-1-Slab-%E6%B3%84%E6%BC%8F"><span class="nav-text">8.9.1 Slab 泄漏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-9-2-Slab-%E7%A2%8E%E7%89%87"><span class="nav-text">8.9.2 Slab 碎片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-9-3-%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98"><span class="nav-text">8.9.3 性能问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-10-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">8.10 本章小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-1-PCP-Per-CPU-Pageframe-Allocator"><span class="nav-text">8.10.1 PCP (Per-CPU Pageframe Allocator)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-2-SLUB-%E5%88%86%E9%85%8D%E5%99%A8-%E9%BB%98%E8%AE%A4"><span class="nav-text">8.10.2 SLUB 分配器 (默认)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-3-SLAB-%E5%88%86%E9%85%8D%E5%99%A8-%E4%BC%A0%E7%BB%9F"><span class="nav-text">8.10.3 SLAB 分配器 (传统)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-4-SLOB-%E5%88%86%E9%85%8D%E5%99%A8"><span class="nav-text">8.10.4 SLOB 分配器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-5-%E5%88%86%E9%85%8D%E5%B1%82%E6%AC%A1"><span class="nav-text">8.10.5 分配层次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-10-6-%E5%85%B3%E9%94%AE%E5%87%BD%E6%95%B0%E4%BD%8D%E7%BD%AE"><span class="nav-text">8.10.6 关键函数位置</span></a></li></ol></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

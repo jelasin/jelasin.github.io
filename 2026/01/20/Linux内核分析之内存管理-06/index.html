@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-06/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-06">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-06/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:13.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:05:18.354Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-06 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-06</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:13</span>
+        <span class="mobile">2026-01-20 21:39:13</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:05:18</span>
+            <span class="mobile">2026-02-24 14:05:18</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第6章：虚拟内存区域-VMA"><a href="#第6章：虚拟内存区域-VMA" class="headerlink" title="第6章：虚拟内存区域 (VMA)"></a>第6章：虚拟内存区域 (VMA)</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="6-1-VMA-概述"><a href="#6-1-VMA-概述" class="headerlink" title="6.1 VMA 概述"></a>6.1 VMA 概述</h2><h3 id="6-1-1-什么是-VMA"><a href="#6-1-1-什么是-VMA" class="headerlink" title="6.1.1 什么是 VMA"></a>6.1.1 什么是 VMA</h3><p>VMA (Virtual Memory Area，虚拟内存区域) 表示进程地址空间中的一个连续区域，每个 VMA 具有相同的访问权限和属性。</p>
+<p><strong>VMA 特点:</strong></p>
+<ul>
+<li>连续的虚拟地址范围</li>
+<li>相同的访问权限 (读&#x2F;写&#x2F;执行)</li>
+<li>相同的映射类型 (文件映射、匿名映射)</li>
+<li>每个进程的地址空间由多个 VMA 组成</li>
+</ul>
+<h3 id="6-1-2-VMA-示例"><a href="#6-1-2-VMA-示例" class="headerlink" title="6.1.2 VMA 示例"></a>6.1.2 VMA 示例</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">进程地址空间:</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                                                             │</span><br><span class="line">│  0x400000 ────┐  代码段 (VMA1)                             │</span><br><span class="line">│               │    - 可读、可执行                           │</span><br><span class="line">│  0x401000 ────┘                                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  0x600000 ────┐  数据段 (VMA2)                             │</span><br><span class="line">│               │    - 可读、可写                             │</span><br><span class="line">│  0x601000 ────┘                                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  0x7fff0000 ─┐  栈段 (VMA3)                                │</span><br><span class="line">│              │    - 可读、可写、向下增长                     │</span><br><span class="line">│  0x7ffffffff┘                                              │</span><br><span class="line">│                                                             │</span><br><span class="line">│  mmap 区域 (多个 VMA):                                      │</span><br><span class="line">│    - 动态库映射                                            │</span><br><span class="line">│    - 共享内存                                              │</span><br><span class="line">│    - 匿名映射                                              │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-2-vm-area-struct-结构"><a href="#6-2-vm-area-struct-结构" class="headerlink" title="6.2 vm_area_struct 结构"></a>6.2 vm_area_struct 结构</h2><h3 id="6-2-1-结构定义"><a href="#6-2-1-结构定义" class="headerlink" title="6.2.1 结构定义"></a>6.2.1 结构定义</h3><p><strong>位置:</strong> <code>include/linux/mm_types.h:697</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 第一个缓存行包含 VMA 树遍历所需的信息 */</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="comment">/* VMA 覆盖 [vm_start; vm_end) 地址范围 */</span></span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> vm_start;</span><br><span class="line">            <span class="type">unsigned</span> <span class="type">long</span> vm_end;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="meta">#<span class="keyword">ifdef</span> CONFIG_PER_VMA_LOCK</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">vm_rcu</span>;</span>  <span class="comment">/* 用于延迟释放 */</span></span><br><span class="line">        <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 我们所属的地址空间。</span></span><br><span class="line"><span class="comment">     * RCU 读者可以读取此字段。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mm_struct</span> *<span class="title">vm_mm</span>;</span></span><br><span class="line">    <span class="type">pgprot_t</span> vm_page_prot;          <span class="comment">/* 此 VMA 的访问权限 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 标志，见 mm.h。</span></span><br><span class="line"><span class="comment">     * 要修改请使用 vm_flags_&#123;init|reset|set|clear|mod&#125; 函数。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">const</span> <span class="type">vm_flags_t</span> vm_flags;</span><br><span class="line">        <span class="type">vm_flags_t</span> __private __vm_flags;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_PER_VMA_LOCK</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 指示从 mm-&gt;mm_mt 树分离的区域。</span></span><br><span class="line"><span class="comment">     * RCU 读者可以读取此字段。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">bool</span> detached;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 可以在持有时写入 (使用 WRITE_ONCE())：</span></span><br><span class="line"><span class="comment">     *  - mmap_lock (写模式)</span></span><br><span class="line"><span class="comment">     *  - vm_lock-&gt;lock (写模式)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span> vm_lock_seq;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* RCU 读者可以读取此字段 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vma_lock</span> *<span class="title">vm_lock</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 对于有地址空间和后备存储的区域，</span></span><br><span class="line"><span class="comment">     * 链接到 address_space-&gt;i_mmap 区间树。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span> <span class="title">rb</span>;</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> rb_subtree_last;</span><br><span class="line">    &#125; shared;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 文件的 MAP_PRIVATE vma 可以同时在 i_mmap 树和 anon_vma 列表中，</span></span><br><span class="line"><span class="comment">     * 在 COW 文件页面后。MAP_SHARED vma 只能在 i_mmap 树中。</span></span><br><span class="line"><span class="comment">     * 匿名 MAP_PRIVATE、栈或 brk vma (NULL 文件) 只能在 anon_vma 列表中。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">anon_vma_chain</span>;</span>  <span class="comment">/* 由 mmap_lock &amp; page_table_lock 序列化 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">anon_vma</span> *<span class="title">anon_vma</span>;</span>        <span class="comment">/* 由 page_table_lock 序列化 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 处理此结构的函数指针 */</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">vm_operations_struct</span> *<span class="title">vm_ops</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 关于我们后备存储的信息 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> vm_pgoff;           <span class="comment">/* 偏移 (在 vm_file 中)，以 PAGE_SIZE 为单位 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">vm_file</span>;</span>             <span class="comment">/* 我们映射到的文件 (可以为 NULL) */</span></span><br><span class="line">    <span class="type">void</span> *vm_private_data;            <span class="comment">/* 是 vm_pte (共享内存) */</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_ANON_VMA_NAME</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 对于私有和共享匿名映射，指向以 null 结尾的字符串的指针，</span></span><br><span class="line"><span class="comment">     * 包含给 vma 的名称，或如果未命名则为 NULL。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">anon_vma_name</span> *<span class="title">anon_name</span>;</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_SWAP</span></span><br><span class="line">    <span class="type">atomic_long_t</span> swap_readahead_info;</span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifndef</span> CONFIG_MMU</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_region</span> *<span class="title">vm_region</span>;</span>      <span class="comment">/* NOMMU 映射区域 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mempolicy</span> *<span class="title">vm_policy</span>;</span>      <span class="comment">/* VMA 的 NUMA 策略 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NUMA_BALANCING</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vma_numab_state</span> *<span class="title">numab_state</span>;</span>  <span class="comment">/* NUMA 平衡状态 */</span></span><br><span class="line">    <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_userfaultfd_ctx</span> <span class="title">vm_userfaultfd_ctx</span>;</span></span><br><span class="line">&#125; __randomize_layout;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-2-2-VMA-核心字段"><a href="#6-2-2-VMA-核心字段" class="headerlink" title="6.2.2 VMA 核心字段"></a>6.2.2 VMA 核心字段</h3><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>vm_start</code></td>
+<td>VMA 起始虚拟地址</td>
+</tr>
+<tr>
+<td><code>vm_end</code></td>
+<td>VMA 结束虚拟地址 (不包含)</td>
+</tr>
+<tr>
+<td><code>vm_mm</code></td>
+<td>所属的 mm_struct</td>
+</tr>
+<tr>
+<td><code>vm_page_prot</code></td>
+<td>页保护权限</td>
+</tr>
+<tr>
+<td><code>vm_flags</code></td>
+<td>VMA 标志</td>
+</tr>
+<tr>
+<td><code>vm_ops</code></td>
+<td>VMA 操作函数</td>
+</tr>
+<tr>
+<td><code>vm_file</code></td>
+<td>映射的文件 (可为 NULL)</td>
+</tr>
+<tr>
+<td><code>vm_pgoff</code></td>
+<td>文件偏移 (页为单位)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-3-VMA-标志"><a href="#6-3-VMA-标志" class="headerlink" title="6.3 VMA 标志"></a>6.3 VMA 标志</h2><h3 id="6-3-1-VMA-标志定义"><a href="#6-3-1-VMA-标志定义" class="headerlink" title="6.3.1 VMA 标志定义"></a>6.3.1 VMA 标志定义</h3><p><strong>位置:</strong> <code>include/linux/mm.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* VMA 标志 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_READ         0x00000001  <span class="comment">/* 可读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_WRITE        0x00000002  <span class="comment">/* 可写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_EXEC         0x00000004  <span class="comment">/* 可执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_SHARED       0x00000008  <span class="comment">/* 共享映射 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_MAYREAD      0x00000010  <span class="comment">/* 可能可读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_MAYWRITE     0x00000020  <span class="comment">/* 可能可写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_MAYEXEC      0x00000040  <span class="comment">/* 可能可执行 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_MAYSHARE     0x00000080  <span class="comment">/* 可能共享 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_GROWSDOWN    0x00000100  <span class="comment">/* 向下增长 (栈) */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_GROWSUP      0x00000200  <span class="comment">/* 向上增长 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_PFNMAP       0x00000400  <span class="comment">/* PFN 映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_DENYWRITE    0x00000800  <span class="comment">/* 拒绝写入 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_IO           0x00004000  <span class="comment">/* IO 映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_LOCKED       0x00008000  <span class="comment">/* 锁定内存 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_SEQ_READ     0x00010000  <span class="comment">/* 顺序读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_RAND_READ    0x00020000  <span class="comment">/* 随机读 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_DONTCOPY     0x00040000  <span class="comment">/* fork 时不复制 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_DONTEXPAND   0x00080000  <span class="comment">/* 不扩展 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_LOCKONFAULT  0x00100000  <span class="comment">/* 缺页时锁定 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_ACCOUNT      0x00200000  <span class="comment">/* 计入内存 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_NORESERVE    0x00400000  <span class="comment">/* 不保留交换空间 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_HUGETLB      0x00400000  <span class="comment">/* 巨页 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_SYNC         0x00800000  <span class="comment">/* 同步写 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_ARCH_1       0x01000000  <span class="comment">/* 架构特定 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_WIPEONFORK   0x02000000  <span class="comment">/* fork 时清零 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_DONTDUMP     0x04000000  <span class="comment">/* 不 dump */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_MIXEDMAP     0x10000000  <span class="comment">/* 混合映射 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_HUGESPACE    0x40000000  <span class="comment">/* 巨页空间 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> VM_SOFTDIRTY    0x80000000  <span class="comment">/* 软脏位 */</span></span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-3-2-标志操作函数"><a href="#6-3-2-标志操作函数" class="headerlink" title="6.3.2 标志操作函数"></a>6.3.2 标志操作函数</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化 VMA 标志 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">vm_flags_init</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                  <span class="type">vm_flags_t</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 重置 VMA 标志 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">vm_flags_reset</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                   <span class="type">vm_flags_t</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 设置 VMA 标志 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">vm_flags_set</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                 <span class="type">vm_flags_t</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 清除 VMA 标志 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">vm_flags_clear</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                   <span class="type">vm_flags_t</span> flags)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 修改 VMA 标志 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">vm_flags_mod</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                 <span class="type">vm_flags_t</span> <span class="built_in">set</span>, <span class="type">vm_flags_t</span> clear)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-4-VMA-操作"><a href="#6-4-VMA-操作" class="headerlink" title="6.4 VMA 操作"></a>6.4 VMA 操作</h2><h3 id="6-4-1-vm-operations-struct"><a href="#6-4-1-vm-operations-struct" class="headerlink" title="6.4.1 vm_operations_struct"></a>6.4.1 vm_operations_struct</h3><p><strong>位置:</strong> <code>include/linux/mm.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_operations_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 打开 VMA */</span></span><br><span class="line">    <span class="type">void</span> (*open)(<span class="keyword">struct</span> vm_area_struct * area);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 关闭 VMA */</span></span><br><span class="line">    <span class="type">void</span> (*close)(<span class="keyword">struct</span> vm_area_struct * area);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 缺页处理 (读) */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*fault)(<span class="keyword">struct</span> vm_fault *vmf);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 缺页处理 (写，COW) */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*page_mkwrite)(<span class="keyword">struct</span> vm_fault *vmf);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面错误 (写保护) */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*pfn_mkwrite)(<span class="keyword">struct</span> vm_fault *vmf);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 访问许可 */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*access)(<span class="keyword">struct</span> vm_fault *vmf);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 分裂 huge page */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*split)(<span class="keyword">struct</span> vm_fault *vmf);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面标记脏 */</span></span><br><span class="line">    <span class="type">vm_fault_t</span> (*pmd_fault)(<span class="keyword">struct</span> vm_fault *vmf, <span class="type">unsigned</span> <span class="type">long</span> address);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面迁移 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="title function_">long</span> <span class="params">(*pagesize)</span><span class="params">(<span class="keyword">struct</span> vm_area_struct * area)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* mprotect 通知 */</span></span><br><span class="line">    <span class="type">int</span> (*mprotect)(<span class="keyword">struct</span> vm_area_struct *vma,</span><br><span class="line">                   <span class="type">unsigned</span> <span class="type">long</span> start, <span class="type">unsigned</span> <span class="type">long</span> end,</span><br><span class="line">                   <span class="type">unsigned</span> <span class="type">long</span> newflags);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 匿名 VMA 名称 */</span></span><br><span class="line">    <span class="type">void</span> (*vma_name)(<span class="keyword">struct</span> vm_area_struct *vma, <span class="type">char</span> *name, <span class="type">size_t</span> count);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-4-2-VMA-查找操作"><a href="#6-4-2-VMA-查找操作" class="headerlink" title="6.4.2 VMA 查找操作"></a>6.4.2 VMA 查找操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 查找包含地址的 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">find_vma</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm, <span class="type">unsigned</span> <span class="type">long</span> addr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找并锁定 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">lock_vma_under_rcu</span><span class="params">(<span class="keyword">struct</span> mm_area_struct *mm,</span></span><br><span class="line"><span class="params">                                          <span class="type">unsigned</span> <span class="type">long</span> addr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找最近的 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">find_vma_prev</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm,</span></span><br><span class="line"><span class="params">                                     <span class="type">unsigned</span> <span class="type">long</span> addr,</span></span><br><span class="line"><span class="params">                                     <span class="keyword">struct</span> vm_area_struct **pprev)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 查找 VMA 交集 */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">find_vma_intersection</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm,</span></span><br><span class="line"><span class="params">                                            <span class="type">unsigned</span> <span class="type">long</span> start_addr,</span></span><br><span class="line"><span class="params">                                            <span class="type">unsigned</span> <span class="type">long</span> end_addr)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-4-3-VMA-创建-删除"><a href="#6-4-3-VMA-创建-删除" class="headerlink" title="6.4.3 VMA 创建&#x2F;删除"></a>6.4.3 VMA 创建&#x2F;删除</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 插入 VMA */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">insert_vm_struct</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm, <span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 创建 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vm_area_alloc</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 释放 VMA */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">vm_area_free</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 合并 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_merge</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> vm_area_struct *prev,</span></span><br><span class="line"><span class="params">                                 <span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">unsigned</span> <span class="type">long</span> end,</span></span><br><span class="line"><span class="params">                                 <span class="type">unsigned</span> <span class="type">long</span> vm_flags,</span></span><br><span class="line"><span class="params">                                 <span class="type">pgprot_t</span> vm_prot,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> mempolicy *policy,</span></span><br><span class="line"><span class="params">                                 <span class="type">unsigned</span> <span class="type">long</span> vm_pgoff,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> anon_vma *anon_vma,</span></span><br><span class="line"><span class="params">                                 <span class="keyword">struct</span> file *file, <span class="type">pgoff_t</span> vm_pgoff)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-5-VMA-管理"><a href="#6-5-VMA-管理" class="headerlink" title="6.5 VMA 管理"></a>6.5 VMA 管理</h2><h3 id="6-5-1-Maple-Tree-管理"><a href="#6-5-1-Maple-Tree-管理" class="headerlink" title="6.5.1 Maple Tree 管理"></a>6.5.1 Maple Tree 管理</h3><p>Linux 5.13+ 使用 Maple Tree 管理 VMA，替代了之前的红黑树。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Maple Tree 操作 */</span></span><br><span class="line"><span class="type">void</span> __vma_link_list(<span class="keyword">struct</span> vm_area_struct *vma,</span><br><span class="line">                     <span class="keyword">struct</span> vm_area_struct *prev,</span><br><span class="line">                     <span class="keyword">struct</span> vm_area_struct *next);</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> __vma_unlink_list(<span class="keyword">struct</span> mm_struct *mm,</span><br><span class="line">                       <span class="keyword">struct</span> vm_area_struct *vma);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Maple Tree 查找 */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_lookup</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm,</span></span><br><span class="line"><span class="params">                                  <span class="type">unsigned</span> <span class="type">long</span> addr)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取第一个 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_first</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取下一个 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_next</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取上一个 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_prev</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-5-2-VMA-分裂和合并"><a href="#6-5-2-VMA-分裂和合并" class="headerlink" title="6.5.2 VMA 分裂和合并"></a>6.5.2 VMA 分裂和合并</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分裂 VMA */</span></span><br><span class="line"><span class="type">int</span> __split_vma(<span class="keyword">struct</span> mm_struct *mm, <span class="keyword">struct</span> vm_area_struct *vma,</span><br><span class="line">               <span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">int</span> new_below);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 合并 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">vma_merge</span><span class="params">(<span class="keyword">struct</span> mm_struct *mm,</span></span><br><span class="line"><span class="params">                                <span class="keyword">struct</span> vm_area_struct *prev,</span></span><br><span class="line"><span class="params">                                <span class="type">unsigned</span> <span class="type">long</span> addr, <span class="type">unsigned</span> <span class="type">long</span> end,</span></span><br><span class="line"><span class="params">                                <span class="type">unsigned</span> <span class="type">long</span> vm_flags, <span class="type">pgprot_t</span> vm_prot,</span></span><br><span class="line"><span class="params">                                <span class="keyword">struct</span> mempolicy *policy,</span></span><br><span class="line"><span class="params">                                <span class="type">unsigned</span> <span class="type">long</span> vm_pgoff,</span></span><br><span class="line"><span class="params">                                <span class="keyword">struct</span> anon_vma *anon_vma,</span></span><br><span class="line"><span class="params">                                <span class="keyword">struct</span> file *file)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 检查是否可以合并 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">vma_can_merge</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma, <span class="keyword">struct</span> vm_area_struct *next)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-5-3-VMA-调整大小"><a href="#6-5-3-VMA-调整大小" class="headerlink" title="6.5.3 VMA 调整大小"></a>6.5.3 VMA 调整大小</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 扩展栈 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">expand_stack</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma, <span class="type">unsigned</span> <span class="type">long</span> address)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 扩展 VMA */</span></span><br><span class="line"><span class="keyword">struct</span> vm_area_struct *<span class="title function_">expand_vma</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                                  <span class="type">unsigned</span> <span class="type">long</span> delta)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 调整 VMA 大小 */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">vma_adjust</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma, <span class="type">unsigned</span> <span class="type">long</span> start,</span></span><br><span class="line"><span class="params">              <span class="type">unsigned</span> <span class="type">long</span> end, <span class="type">pgoff_t</span> pgoff,</span></span><br><span class="line"><span class="params">              <span class="keyword">struct</span> vm_area_struct *insert)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-6-匿名-VMA"><a href="#6-6-匿名-VMA" class="headerlink" title="6.6 匿名 VMA"></a>6.6 匿名 VMA</h2><h3 id="6-6-1-anon-vma-结构"><a href="#6-6-1-anon-vma-结构" class="headerlink" title="6.6.1 anon_vma 结构"></a>6.6.1 anon_vma 结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">anon_vma</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">anon_vma</span> *<span class="title">root</span>;</span>        <span class="comment">/* 根 anon_vma */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rw_semaphore</span> <span class="title">rwsem</span>;</span>    <span class="comment">/* 读写锁 */</span></span><br><span class="line">    <span class="type">atomic_long_t</span> refcount;       <span class="comment">/* 引用计数 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 底层红黑树的根节点，按地址排序</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_root_cached</span> <span class="title">rb_root</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 此 anon_vma 所属的 VMA 列表 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-6-2-anon-vma-chain"><a href="#6-6-2-anon-vma-chain" class="headerlink" title="6.6.2 anon_vma_chain"></a>6.6.2 anon_vma_chain</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">anon_vma_chain</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">vm_area_struct</span> *<span class="title">vma</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">anon_vma</span> *<span class="title">anon_vma</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">same_vma</span>;</span>   <span class="comment">/* 同 VMA 的链表 */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span> <span class="title">rb</span>;</span>           <span class="comment">/* 按 addr 排序 */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> rb_subtree_last;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-6-3-匿名-VMA-操作"><a href="#6-6-3-匿名-VMA-操作" class="headerlink" title="6.6.3 匿名 VMA 操作"></a>6.6.3 匿名 VMA 操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 分配 anon_vma */</span></span><br><span class="line"><span class="keyword">struct</span> anon_vma *<span class="title function_">anon_vma_alloc</span><span class="params">(<span class="type">void</span>)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">anon_vma_free</span><span class="params">(<span class="keyword">struct</span> anon_vma *anon_vma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 关联 anon_vma */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">anon_vma_fork</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma,</span></span><br><span class="line"><span class="params">                 <span class="keyword">struct</span> vm_area_struct *pvma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取 anon_vma */</span></span><br><span class="line"><span class="keyword">struct</span> anon_vma *<span class="title function_">page_get_anon_vma</span><span class="params">(<span class="keyword">struct</span> page *page)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 匿名 VMA 名称 (用于 /proc/[pid]/maps) */</span></span><br><span class="line"><span class="keyword">struct</span> anon_vma_name *<span class="title function_">anon_vma_name_alloc</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *name)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">anon_vma_name_free</span><span class="params">(<span class="keyword">struct</span> kref *kref)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-7-VMA-锁"><a href="#6-7-VMA-锁" class="headerlink" title="6.7 VMA 锁"></a>6.7 VMA 锁</h2><h3 id="6-7-1-Per-VMA-Lock"><a href="#6-7-1-Per-VMA-Lock" class="headerlink" title="6.7.1 Per-VMA Lock"></a>6.7.1 Per-VMA Lock</h3><p>Linux 6.1+ 引入了 Per-VMA 锁机制，减少 mmap_lock 的竞争。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vma_lock</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rw_semaphore</span> <span class="title">lock</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* VMA 锁操作 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">vma_start_read</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">vma_end_read</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">vma_start_write</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">vma_end_write</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 尝试锁定 */</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">vma_start_read_trylock</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">vma_start_write_trylock</span><span class="params">(<span class="keyword">struct</span> vm_area_struct *vma)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-7-2-锁定顺序"><a href="#6-7-2-锁定顺序" class="headerlink" title="6.7.2 锁定顺序"></a>6.7.2 锁定顺序</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">VMA 锁的锁定顺序：</span><br><span class="line">1. mmap_lock (读或写)</span><br><span class="line">2. vm_lock-&gt;lock (读或写)</span><br><span class="line"></span><br><span class="line">VMA 锁的使用场景：</span><br><span class="line">- 缺页处理</span><br><span class="line">- 页面错误处理</span><br><span class="line">- VMA 查找</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="6-8-本章小结"><a href="#6-8-本章小结" class="headerlink" title="6.8 本章小结"></a>6.8 本章小结</h2><p>本章介绍了 Linux 6.12 的虚拟内存区域 (VMA)：</p>
+<ol>
+<li><strong>VMA 概述</strong>: 进程地址空间中的连续区域，相同权限和属性</li>
+<li><strong>vm_area_struct</strong>: VMA 核心数据结构</li>
+<li><strong>VMA 标志</strong>: 访问权限、增长方向、映射类型等</li>
+<li><strong>VMA 操作</strong>: 查找、创建、删除、合并、分裂</li>
+<li><strong>Maple Tree</strong>: Linux 5.13+ 使用的 VMA 管理数据结构</li>
+<li><strong>匿名 VMA</strong>: 匿名映射的 VMA 管理</li>
+<li><strong>VMA 锁</strong>: Per-VMA 锁机制，减少竞争</li>
+</ol>
+<p>下一章将介绍页面分配。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-06</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:13</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:05:18
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-06/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-07/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-07</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-05/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-05</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-06</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC6%E7%AB%A0%EF%BC%9A%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E5%8C%BA%E5%9F%9F-VMA"><span class="nav-text">第6章：虚拟内存区域 (VMA)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-VMA-%E6%A6%82%E8%BF%B0"><span class="nav-text">6.1 VMA 概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-1-%E4%BB%80%E4%B9%88%E6%98%AF-VMA"><span class="nav-text">6.1.1 什么是 VMA</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-2-VMA-%E7%A4%BA%E4%BE%8B"><span class="nav-text">6.1.2 VMA 示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-vm-area-struct-%E7%BB%93%E6%9E%84"><span class="nav-text">6.2 vm_area_struct 结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-1-%E7%BB%93%E6%9E%84%E5%AE%9A%E4%B9%89"><span class="nav-text">6.2.1 结构定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-2-VMA-%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5"><span class="nav-text">6.2.2 VMA 核心字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-VMA-%E6%A0%87%E5%BF%97"><span class="nav-text">6.3 VMA 标志</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-1-VMA-%E6%A0%87%E5%BF%97%E5%AE%9A%E4%B9%89"><span class="nav-text">6.3.1 VMA 标志定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-2-%E6%A0%87%E5%BF%97%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-text">6.3.2 标志操作函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-4-VMA-%E6%93%8D%E4%BD%9C"><span class="nav-text">6.4 VMA 操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-1-vm-operations-struct"><span class="nav-text">6.4.1 vm_operations_struct</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-2-VMA-%E6%9F%A5%E6%89%BE%E6%93%8D%E4%BD%9C"><span class="nav-text">6.4.2 VMA 查找操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-3-VMA-%E5%88%9B%E5%BB%BA-%E5%88%A0%E9%99%A4"><span class="nav-text">6.4.3 VMA 创建&#x2F;删除</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-5-VMA-%E7%AE%A1%E7%90%86"><span class="nav-text">6.5 VMA 管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-1-Maple-Tree-%E7%AE%A1%E7%90%86"><span class="nav-text">6.5.1 Maple Tree 管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-2-VMA-%E5%88%86%E8%A3%82%E5%92%8C%E5%90%88%E5%B9%B6"><span class="nav-text">6.5.2 VMA 分裂和合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-3-VMA-%E8%B0%83%E6%95%B4%E5%A4%A7%E5%B0%8F"><span class="nav-text">6.5.3 VMA 调整大小</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-6-%E5%8C%BF%E5%90%8D-VMA"><span class="nav-text">6.6 匿名 VMA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-1-anon-vma-%E7%BB%93%E6%9E%84"><span class="nav-text">6.6.1 anon_vma 结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-2-anon-vma-chain"><span class="nav-text">6.6.2 anon_vma_chain</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-3-%E5%8C%BF%E5%90%8D-VMA-%E6%93%8D%E4%BD%9C"><span class="nav-text">6.6.3 匿名 VMA 操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-VMA-%E9%94%81"><span class="nav-text">6.7 VMA 锁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-7-1-Per-VMA-Lock"><span class="nav-text">6.7.1 Per-VMA Lock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-7-2-%E9%94%81%E5%AE%9A%E9%A1%BA%E5%BA%8F"><span class="nav-text">6.7.2 锁定顺序</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">6.8 本章小结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>

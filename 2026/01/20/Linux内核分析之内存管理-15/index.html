@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set data attribute for CSS variables
+                root.setAttribute("data-theme", theme);
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes once DOM is ready
+            if (document.readyState !== "loading") {
+                document.body.classList.add(theme + "-mode");
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    document.body.classList.add(theme + "-mode");
+                    document.body.classList.remove((theme === DARK ? LIGHT : DARK) + "-mode");
+                });
+            }
+        })();
+    </script>
+    
+    <!-- Critical CSS to prevent flash -->
+    <style>
+        :root[data-theme="dark"] {
+            --background-color: #202124;
+            --background-color-transparent: rgba(32, 33, 36, 0.6);
+            --second-background-color: #2d2e32;
+            --third-background-color: #34353a;
+            --third-background-color-transparent: rgba(32, 33, 36, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #ffffff;
+            --second-text-color: #eeeeee;
+            --third-text-color: #bebec6;
+            --fourth-text-color: #999999;
+            --default-text-color: #bebec6;
+            --invert-text-color: #373D3F;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(255, 255, 255, 0.08);
+            --shadow-color-2: rgba(255, 255, 255, 0.05);
+        }
+        
+        :root[data-theme="light"] {
+            --background-color: #fff;
+            --background-color-transparent: rgba(255, 255, 255, 0.6);
+            --second-background-color: #f8f8f8;
+            --third-background-color: #f2f2f2;
+            --third-background-color-transparent: rgba(241, 241, 241, 0.6);
+            --primary-color: #0066CC;
+            --first-text-color: #16171a;
+            --second-text-color: #2f3037;
+            --third-text-color: #5e5e5e;
+            --fourth-text-color: #eeeeee;
+            --default-text-color: #373D3F;
+            --invert-text-color: #bebec6;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --selection-color: #0066CC;
+            --shadow-color-1: rgba(0, 0, 0, 0.08);
+            --shadow-color-2: rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+        
+        /* Apply body classes as soon as DOM is ready */
+        :root[data-theme="dark"] body {
+            background-color: var(--background-color);
+            color: var(--default-text-color);
+        }
+    </style>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/01/20/linux内核分析之内存管理-15/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之内存管理-15">
+<meta property="og:url" content="https://jelasin.github.io/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-15/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-01-20T13:39:55.000Z">
+<meta property="article:modified_time" content="2026-02-24T06:04:51.090Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之内存管理-15 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.xml"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.8.5","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footerStart":"2023/9/20 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">38</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">17</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">172</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之内存管理-15</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-01-20 21:39:55</span>
+        <span class="mobile">2026-01-20 21:39:55</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-02-24 14:04:51</span>
+            <span class="mobile">2026-02-24 14:04:51</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="第15章：内存统计与调试"><a href="#第15章：内存统计与调试" class="headerlink" title="第15章：内存统计与调试"></a>第15章：内存统计与调试</h1><blockquote>
+<p>基于 Linux 6.12.38 源码</p>
+</blockquote>
+<hr>
+<h2 id="15-1-内存统计概述"><a href="#15-1-内存统计概述" class="headerlink" title="15.1 内存统计概述"></a>15.1 内存统计概述</h2><h3 id="15-1-1-统计接口"><a href="#15-1-1-统计接口" class="headerlink" title="15.1.1 统计接口"></a>15.1.1 统计接口</h3><p>Linux 内核提供多种内存统计接口：</p>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&#x2F;proc&#x2F;meminfo</td>
+<td>系统内存信息</td>
+</tr>
+<tr>
+<td>&#x2F;proc&#x2F;vmstat</td>
+<td>虚拟内存统计</td>
+</tr>
+<tr>
+<td>&#x2F;proc&#x2F;zoneinfo</td>
+<td>Zone 详细信息</td>
+</tr>
+<tr>
+<td>&#x2F;proc&#x2F;pid&#x2F;maps</td>
+<td>进程内存映射</td>
+</tr>
+<tr>
+<td>&#x2F;proc&#x2F;pid&#x2F;smaps</td>
+<td>进程内存统计</td>
+</tr>
+<tr>
+<td>sysfs (cgroup)</td>
+<td>内存控制组统计</td>
+</tr>
+</tbody></table>
+<h3 id="15-1-2-统计架构"><a href="#15-1-2-统计架构" class="headerlink" title="15.1.2 统计架构"></a>15.1.2 统计架构</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                   内存统计架构                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌────────────────┐      ┌────────────────┐               │</span><br><span class="line">│  │  Zone 统计      │      │  Node 统计      │               │</span><br><span class="line">│  │  vm_zone_stat  │      │  vm_node_stat  │               │</span><br><span class="line">│  └────────────────┘      └────────────────┘               │</span><br><span class="line">│         │                        │                         │</span><br><span class="line">│         └────────────┬───────────┘                         │</span><br><span class="line">│                      ▼                                     │</span><br><span class="line">│         ┌──────────────────────────┐                       │</span><br><span class="line">│         │    全局计数器             │                       │</span><br><span class="line">│         │    vm_event_state        │                       │</span><br><span class="line">│         └──────────────────────────┘                       │</span><br><span class="line">│                      │                                     │</span><br><span class="line">│                      ▼                                     │</span><br><span class="line">│         ┌──────────────────────────┐                       │</span><br><span class="line">│         │    /proc 接口             │                       │</span><br><span class="line">│         │    (meminfo, vmstat)      │                       │</span><br><span class="line">│         └──────────────────────────┘                       │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-2-vm-stat-结构"><a href="#15-2-vm-stat-结构" class="headerlink" title="15.2 vm_stat 结构"></a>15.2 vm_stat 结构</h2><h3 id="15-2-1-统计项定义"><a href="#15-2-1-统计项定义" class="headerlink" title="15.2.1 统计项定义"></a>15.2.1 统计项定义</h3><p><strong>位置:</strong> <code>include/linux/vmstat.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Zone 统计项 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">zone_stat_item</span> &#123;</span></span><br><span class="line">    <span class="comment">/* LRU 统计 */</span></span><br><span class="line">    NR_ANON_MAPPED,           <span class="comment">/* 匿名映射页面 */</span></span><br><span class="line">    NR_FILE_MAPPED,           <span class="comment">/* 文件映射页面 */</span></span><br><span class="line">    NR_FILE_PAGES,            <span class="comment">/* 文件页面 */</span></span><br><span class="line">    NR_FILE_DIRTY,            <span class="comment">/* 脏文件页面 */</span></span><br><span class="line">    NR_WRITEBACK,             <span class="comment">/* 正在回写的页面 */</span></span><br><span class="line">    NR_ANON_THPS,             <span class="comment">/* 匿名透明巨页 */</span></span><br><span class="line">    NR_FILE_THPS,             <span class="comment">/* 文件透明巨页 */</span></span><br><span class="line">    NR_SHMEM,                 <span class="comment">/* shmem 页面 */</span></span><br><span class="line">    NR_SHMEM_THPS,            <span class="comment">/* shmem 巨页 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Slab 统计 */</span></span><br><span class="line">    NR_SLAB_RECLAIMABLE,      <span class="comment">/* 可回收 slab */</span></span><br><span class="line">    NR_SLAB_UNRECLAIMABLE,    <span class="comment">/* 不可回收 slab */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面状态 */</span></span><br><span class="line">    NR_PAGETABLE,             <span class="comment">/* 页表使用的页面 */</span></span><br><span class="line">    NR_KERNEL_STACK_KB,       <span class="comment">/* 内核栈使用 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 稳定页面 */</span></span><br><span class="line">    NR_UNSTABLE_NFS,          <span class="comment">/* 不稳定 NFS 页面 */</span></span><br><span class="line">    NR_VMSCAN_WRITE,          <span class="comment">/* kswapd 写入的页面 */</span></span><br><span class="line">    NR_VMSCAN_IMMEDIATE,      <span class="comment">/* 立即回收的页面 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多统计项... */</span></span><br><span class="line">    NR_VM_ZONE_STAT_ITEMS,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Node 统计项 */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">node_stat_item</span> &#123;</span></span><br><span class="line">    NR_LRU_BASE,              <span class="comment">/* LRU 基础 */</span></span><br><span class="line">    NR_INACTIVE_ANON,         <span class="comment">/* 非活跃匿名页 */</span></span><br><span class="line">    NR_ACTIVE_ANON,           <span class="comment">/* 活跃匿名页 */</span></span><br><span class="line">    NR_INACTIVE_FILE,         <span class="comment">/* 非活跃文件页 */</span></span><br><span class="line">    NR_ACTIVE_FILE,           <span class="comment">/* 活跃文件页 */</span></span><br><span class="line">    NR_UNEVICTABLE,           <span class="comment">/* 不可驱逐页 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 工作集 */</span></span><br><span class="line">    NR_WORKINGSET_NODES,      <span class="comment">/* 工作集节点 */</span></span><br><span class="line">    NR_WORKINGSET_REFAULT,    <span class="comment">/* 工作集重故障 */</span></span><br><span class="line">    NR_WORKINGSET_RESTORE,    <span class="comment">/* 工作集恢复 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多统计项... */</span></span><br><span class="line">    NR_VM_NODE_STAT_ITEMS,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-2-2-统计操作"><a href="#15-2-2-统计操作" class="headerlink" title="15.2.2 统计操作"></a>15.2.2 统计操作</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Zone 统计操作 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> __mod_zone_page_state(<span class="keyword">struct</span> zone *zone,</span><br><span class="line">                                         <span class="keyword">enum</span> zone_stat_item item, <span class="type">long</span> delta)</span><br><span class="line">&#123;</span><br><span class="line">    atomic_long_add(delta, &amp;zone-&gt;vm_stat[item]);</span><br><span class="line">    atomic_long_add(delta, &amp;vm_zone_stat[item]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Node 统计操作 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> __mod_node_page_state(<span class="keyword">struct</span> pglist_data *pgdat,</span><br><span class="line">                                         <span class="keyword">enum</span> node_stat_item item, <span class="type">long</span> delta)</span><br><span class="line">&#123;</span><br><span class="line">    atomic_long_add(delta, &amp;pgdat-&gt;vm_stat[item]);</span><br><span class="line">    atomic_long_add(delta, &amp;vm_node_stat[item]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 全局计数器 */</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">atomic_long_t</span> vm_zone_stat[NR_VM_ZONE_STAT_ITEMS];</span><br><span class="line"><span class="keyword">extern</span> <span class="type">atomic_long_t</span> vm_node_stat[NR_VM_NODE_STAT_ITEMS];</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-3-vm-event-计数器"><a href="#15-3-vm-event-计数器" class="headerlink" title="15.3 vm_event 计数器"></a>15.3 vm_event 计数器</h2><h3 id="15-3-1-事件定义"><a href="#15-3-1-事件定义" class="headerlink" title="15.3.1 事件定义"></a>15.3.1 事件定义</h3><p><strong>位置:</strong> <code>include/linux/vm_event_item.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">vm_event_item</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 分配/释放 */</span></span><br><span class="line">    PGPGIN,                   <span class="comment">/* 页面换入 */</span></span><br><span class="line">    PGPGOUT,                  <span class="comment">/* 页面换出 */</span></span><br><span class="line">    PSWPIN,                   <span class="comment">/* Swap 换入 */</span></span><br><span class="line">    PSWPOUT,                  <span class="comment">/* Swap 换出 */</span></span><br><span class="line">    PGFREE,                   <span class="comment">/* 页面释放 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面激活 */</span></span><br><span class="line">    PGACTIVATE,               <span class="comment">/* 页面激活 */</span></span><br><span class="line">    PGDEACTIVATE,             <span class="comment">/* 页面停用 */</span></span><br><span class="line">    PGLAZYFREE,               <span class="comment">/* 懒惰释放 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 缺页异常 */</span></span><br><span class="line">    PGFAULT,                  <span class="comment">/* 缺页异常 */</span></span><br><span class="line">    PGMAJFAULT,               <span class="comment">/* 主缺页异常 (需要 I/O) */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 页面回收 */</span></span><br><span class="line">    PGSTEAL_KSWAPD,           <span class="comment">/* kswapd 回收 */</span></span><br><span class="line">    PGSTEAL_DIRECT,           <span class="comment">/* 直接回收 */</span></span><br><span class="line">    PGSCAN_KSWAPD,            <span class="comment">/* kswapd 扫描 */</span></span><br><span class="line">    PGSCAN_DIRECT,            <span class="comment">/* 直接扫描 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 压缩 */</span></span><br><span class="line">    COMPACTSTALL,             <span class="comment">/* 压缩延迟 */</span></span><br><span class="line">    COMPACTFAIL,              <span class="comment">/* 压缩失败 */</span></span><br><span class="line">    COMPACTSUCCESS,           <span class="comment">/* 压缩成功 */</span></span><br><span class="line">    KCOMPACTD_WAKE,           <span class="comment">/* kcompactd 唤醒 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 巨页 */</span></span><br><span class="line">    THP_FAULT_ALLOC,          <span class="comment">/* 巨页分配 */</span></span><br><span class="line">    THP_FAULT_FALLBACK,       <span class="comment">/* 巨页回退 */</span></span><br><span class="line">    THP_COLLAPSE_ALLOC,       <span class="comment">/* 巨页折叠 */</span></span><br><span class="line">    THP_SPLIT_PAGE,           <span class="comment">/* 巨页分裂 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 交换 */</span></span><br><span class="line">    SWAP_RA,                  <span class="comment">/* Swap 预读 */</span></span><br><span class="line">    SWAP_RA_HIT,              <span class="comment">/* Swap 预读命中 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更多事件... */</span></span><br><span class="line">    NR_VM_EVENT_ITEMS</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-3-2-事件计数"><a href="#15-3-2-事件计数" class="headerlink" title="15.3.2 事件计数"></a>15.3.2 事件计数</h3><p><strong>位置:</strong> <code>include/linux/vmstat.h</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 每核事件状态 */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">vm_event_state</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> event[NR_VM_EVENT_ITEMS];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">DECLARE_PER_CPU(<span class="keyword">struct</span> vm_event_state, vm_event_states);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 计数事件 */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">count_vm_event</span><span class="params">(<span class="keyword">enum</span> vm_event_item item)</span></span><br><span class="line">&#123;</span><br><span class="line">    this_cpu_inc(vm_event_states.event[item]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">count_vm_events</span><span class="params">(<span class="keyword">enum</span> vm_event_item item, <span class="type">long</span> delta)</span></span><br><span class="line">&#123;</span><br><span class="line">    this_cpu_add(vm_event_states.event[item], delta);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 汇总所有 CPU 的事件 */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">all_vm_events</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> *ret)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> cpu;</span><br><span class="line">    <span class="type">int</span> i;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">memset</span>(ret, <span class="number">0</span>, NR_VM_EVENT_ITEMS * <span class="keyword">sizeof</span>(<span class="type">unsigned</span> <span class="type">long</span>));</span><br><span class="line"></span><br><span class="line">    for_each_online_cpu(cpu) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">vm_event_state</span> *<span class="title">this</span> =</span> &amp;per_cpu(vm_event_states, cpu);</span><br><span class="line">        <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; NR_VM_EVENT_ITEMS; i++)</span><br><span class="line">            ret[i] += this-&gt;event[i];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-4-proc-meminfo"><a href="#15-4-proc-meminfo" class="headerlink" title="15.4 &#x2F;proc&#x2F;meminfo"></a>15.4 &#x2F;proc&#x2F;meminfo</h2><h3 id="15-4-1-meminfo-实现"><a href="#15-4-1-meminfo-实现" class="headerlink" title="15.4.1 meminfo 实现"></a>15.4.1 meminfo 实现</h3><p><strong>位置:</strong> <code>mm/page_alloc.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">meminfo_proc_show</span><span class="params">(<span class="keyword">struct</span> seq_file *m, <span class="type">void</span> *v)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sysinfo</span> <span class="title">i</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> committed;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> allowed;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> cached;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> pages[NR_LRU_LISTS];</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取系统信息 */</span></span><br><span class="line">    si_meminfo(&amp;i);</span><br><span class="line">    si_swapinfo(&amp;i);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取 LRU 页面 */</span></span><br><span class="line">    <span class="keyword">for</span> (lru = LRU_INACTIVE_ANON; lru &lt;= LRU_ACTIVE_FILE; lru++)</span><br><span class="line">        pages[lru] = global_node_page_state(NR_LRU_BASE + lru);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 输出信息 */</span></span><br><span class="line">    seq_printf(m,</span><br><span class="line">        <span class="string">&quot;MemTotal:       %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;MemFree:        %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;MemAvailable:   %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Buffers:        %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Cached:         %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;SwapCached:     %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Active:         %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Inactive:       %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Active(anon):   %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Inactive(anon): %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Active(file):   %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Inactive(file): %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Unevictable:    %8lu kB\n&quot;</span></span><br><span class="line">        <span class="string">&quot;Mlocked:        %8lu kB\n&quot;</span></span><br><span class="line">        <span class="comment">/* 更多信息... */</span></span><br><span class="line">        , K(i.totalram)</span><br><span class="line">        , K(i.freeram)</span><br><span class="line">        , K(available)</span><br><span class="line">        , K(i.bufferram)</span><br><span class="line">        , K(cached)</span><br><span class="line">        <span class="comment">/* 更多字段... */</span></span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-4-2-meminfo-字段说明"><a href="#15-4-2-meminfo-字段说明" class="headerlink" title="15.4.2 meminfo 字段说明"></a>15.4.2 meminfo 字段说明</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 主要字段</span></span><br><span class="line">MemTotal:       16384000 kB    <span class="comment"># 总内存</span></span><br><span class="line">MemFree:          512000 kB    <span class="comment"># 空闲内存</span></span><br><span class="line">MemAvailable:    8192000 kB    <span class="comment"># 可用内存 (包含可回收)</span></span><br><span class="line">Buffers:          256000 kB    <span class="comment"># 缓冲区缓存</span></span><br><span class="line">Cached:          5120000 kB    <span class="comment"># 页面缓存</span></span><br><span class="line">SwapCached:       128000 kB    <span class="comment"># Swap 缓存</span></span><br><span class="line">Active:          6144000 kB    <span class="comment"># 活跃页面</span></span><br><span class="line">Inactive:        4096000 kB    <span class="comment"># 非活跃页面</span></span><br><span class="line">Unevictable:       25600 kB    <span class="comment"># 不可驱逐页面</span></span><br><span class="line">Mlocked:           25600 kB    <span class="comment"># 锁定内存</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-5-proc-vmstat"><a href="#15-5-proc-vmstat" class="headerlink" title="15.5 &#x2F;proc&#x2F;vmstat"></a>15.5 &#x2F;proc&#x2F;vmstat</h2><h3 id="15-5-1-vmstat-实现"><a href="#15-5-1-vmstat-实现" class="headerlink" title="15.5.1 vmstat 实现"></a>15.5.1 vmstat 实现</h3><p><strong>位置:</strong> <code>mm/vmstat.c</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">vmstat_show</span><span class="params">(<span class="keyword">struct</span> seq_file *m, <span class="type">void</span> *v)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> *e = v;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> nr = e - (<span class="type">unsigned</span> <span class="type">long</span> *)v;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (nr &lt; NR_VM_ZONE_STAT_ITEMS)</span><br><span class="line">        seq_printf(m, <span class="string">&quot;%s %lu\n&quot;</span>,</span><br><span class="line">                   zone_stat_name(nr),</span><br><span class="line">                   global_zone_page_state(nr));</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (nr &lt; NR_VM_ZONE_STAT_ITEMS + NR_VM_NUMA_EVENT_ITEMS)</span><br><span class="line">        seq_printf(m, <span class="string">&quot;%s %lu\n&quot;</span>,</span><br><span class="line">                   numa_stat_name(nr - NR_VM_ZONE_STAT_ITEMS),</span><br><span class="line">                   global_numa_event_state(nr - NR_VM_ZONE_STAT_ITEMS));</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (nr &lt; NR_VM_ZONE_STAT_ITEMS + NR_VM_NUMA_EVENT_ITEMS +</span><br><span class="line">              NR_VM_NODE_STAT_ITEMS)</span><br><span class="line">        seq_printf(m, <span class="string">&quot;%s %lu\n&quot;</span>,</span><br><span class="line">                   node_stat_name(nr - NR_VM_ZONE_STAT_ITEMS -</span><br><span class="line">                                 NR_VM_NUMA_EVENT_ITEMS),</span><br><span class="line">                   global_node_page_state(nr - NR_VM_ZONE_STAT_ITEMS -</span><br><span class="line">                                         NR_VM_NUMA_EVENT_ITEMS));</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        seq_printf(m, <span class="string">&quot;%s %lu\n&quot;</span>,</span><br><span class="line">                   vm_event_name(nr - NR_VM_ZONE_STAT_ITEMS -</span><br><span class="line">                                NR_VM_NUMA_EVENT_ITEMS - NR_VM_NODE_STAT_ITEMS),</span><br><span class="line">                   vm_events[nr - NR_VM_ZONE_STAT_ITEMS -</span><br><span class="line">                            NR_VM_NUMA_EVENT_ITEMS - NR_VM_NODE_STAT_ITEMS]);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-5-2-vmstat-字段说明"><a href="#15-5-2-vmstat-字段说明" class="headerlink" title="15.5.2 vmstat 字段说明"></a>15.5.2 vmstat 字段说明</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 主要字段</span></span><br><span class="line">nr_free_pages 12345678         <span class="comment"># 空闲页面</span></span><br><span class="line">nr_inactive_anon 1234567       <span class="comment"># 非活跃匿名页</span></span><br><span class="line">nr_active_anon 1234567         <span class="comment"># 活跃匿名页</span></span><br><span class="line">nr_inactive_file 1234567       <span class="comment"># 非活跃文件页</span></span><br><span class="line">nr_active_file 1234567         <span class="comment"># 活跃文件页</span></span><br><span class="line">nr_unevictable 12345           <span class="comment"># 不可驱逐页</span></span><br><span class="line"></span><br><span class="line">pgpgin 12345678                <span class="comment"># 页面换入</span></span><br><span class="line">pgpgout 12345678               <span class="comment"># 页面换出</span></span><br><span class="line">pswpin 123456                  <span class="comment"># Swap 换入</span></span><br><span class="line">pswpout 123456                 <span class="comment"># Swap 换出</span></span><br><span class="line"></span><br><span class="line">pgfault 123456789              <span class="comment"># 缺页异常</span></span><br><span class="line">pgmajfault 12345               <span class="comment"># 主缺页异常</span></span><br><span class="line"></span><br><span class="line">pgalloc_dma 123                <span class="comment"># DMA 分配</span></span><br><span class="line">pgalloc_normal 12345678        <span class="comment"># Normal 分配</span></span><br><span class="line"></span><br><span class="line">compact_stall 1234             <span class="comment"># 压缩延迟</span></span><br><span class="line">compact_success 12345          <span class="comment"># 压缩成功</span></span><br><span class="line">compact_fail 123               <span class="comment"># 压缩失败</span></span><br><span class="line"></span><br><span class="line">thp_fault_alloc 12345          <span class="comment"># 巨页分配</span></span><br><span class="line">thp_collapse_alloc 1234        <span class="comment"># 巨页折叠</span></span><br><span class="line">thp_split_page 123             <span class="comment"># 巨页分裂</span></span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-6-proc-zoneinfo"><a href="#15-6-proc-zoneinfo" class="headerlink" title="15.6 &#x2F;proc&#x2F;zoneinfo"></a>15.6 &#x2F;proc&#x2F;zoneinfo</h2><h3 id="15-6-1-zoneinfo-实现"><a href="#15-6-1-zoneinfo-实现" class="headerlink" title="15.6.1 zoneinfo 实现"></a>15.6.1 zoneinfo 实现</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">zoneinfo_show</span><span class="params">(<span class="keyword">struct</span> seq_file *m, <span class="type">void</span> *v)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> v;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Zone 基本信息 */</span></span><br><span class="line">    seq_printf(m, <span class="string">&quot;Node %d, zone %s&quot;</span>, zone_to_nid(zone), zone-&gt;name);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 水位信息 */</span></span><br><span class="line">    seq_printf(m,</span><br><span class="line">        <span class="string">&quot;  pages free     %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        min      %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        low      %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        high     %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        scanned  %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        spanned  %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        present  %lu\n&quot;</span></span><br><span class="line">        <span class="string">&quot;        managed  %lu\n&quot;</span>,</span><br><span class="line">        zone_page_state(zone, NR_FREE_PAGES),</span><br><span class="line">        min_wmark_pages(zone),</span><br><span class="line">        low_wmark_pages(zone),</span><br><span class="line">        high_wmark_pages(zone),</span><br><span class="line">        zone_page_state(zone, NR_PAGES_SCANNED),</span><br><span class="line">        zone-&gt;spanned_pages,</span><br><span class="line">        zone-&gt;present_pages,</span><br><span class="line">        zone-&gt;managed_pages);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 保护信息 */</span></span><br><span class="line">    seq_printf(m,</span><br><span class="line">        <span class="string">&quot;    protection: (%ld&quot;</span>,</span><br><span class="line">        zone-&gt;lowmem_reserve[<span class="number">0</span>]);</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">1</span>; i &lt; ARRAY_SIZE(zone-&gt;lowmem_reserve); i++)</span><br><span class="line">        seq_printf(m, <span class="string">&quot;, %ld&quot;</span>, zone-&gt;lowmem_reserve[i]);</span><br><span class="line">    seq_printf(m, <span class="string">&quot;)\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 统计信息 */</span></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; NR_VM_ZONE_STAT_ITEMS; i++)</span><br><span class="line">        seq_printf(m, <span class="string">&quot;    %-12s %lu\n&quot;</span>,</span><br><span class="line">                   zone_stat_name(i),</span><br><span class="line">                   zone_page_state(zone, i));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-7-进程内存统计"><a href="#15-7-进程内存统计" class="headerlink" title="15.7 进程内存统计"></a>15.7 进程内存统计</h2><h3 id="15-7-1-proc-pid-smaps"><a href="#15-7-1-proc-pid-smaps" class="headerlink" title="15.7.1 &#x2F;proc&#x2F;pid&#x2F;smaps"></a>15.7.1 &#x2F;proc&#x2F;pid&#x2F;smaps</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看进程内存映射统计</span></span><br><span class="line"><span class="built_in">cat</span> /proc/1234/smaps</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出示例</span></span><br><span class="line"><span class="comment"># 7f8a0000000-7f8a0002000 r-xp 00000000 08:01 12345 /lib/libc.so.6</span></span><br><span class="line"><span class="comment"># Size:                  8 kB</span></span><br><span class="line"><span class="comment"># KernelPageSize:        4 kB</span></span><br><span class="line"><span class="comment"># MMUPageSize:           4 kB</span></span><br><span class="line"><span class="comment"># Rss:                   4 kB</span></span><br><span class="line"><span class="comment"># Pss:                   2 kB</span></span><br><span class="line"><span class="comment"># Shared_Clean:          0 kB</span></span><br><span class="line"><span class="comment"># Shared_Dirty:          0 kB</span></span><br><span class="line"><span class="comment"># Private_Clean:         4 kB</span></span><br><span class="line"><span class="comment"># Private_Dirty:         0 kB</span></span><br><span class="line"><span class="comment"># Referenced:            4 kB</span></span><br><span class="line"><span class="comment"># Anonymous:             0 kB</span></span><br><span class="line"><span class="comment"># LazyFree:              0 kB</span></span><br><span class="line"><span class="comment"># AnonHugePages:         0 kB</span></span><br><span class="line"><span class="comment"># ShmemPmdMapped:        0 kB</span></span><br><span class="line"><span class="comment"># Shared_Hugetlb:        0 kB</span></span><br><span class="line"><span class="comment"># Private_Hugetlb:       0 kB</span></span><br><span class="line"><span class="comment"># Swap:                  0 kB</span></span><br><span class="line"><span class="comment"># SwapPss:               0 kB</span></span><br><span class="line"><span class="comment"># Locked:                0 kB</span></span><br><span class="line"><span class="comment"># THPeligible:           0</span></span><br><span class="line"><span class="comment"># VmFlags: rd ex mr mw me dw</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-7-2-字段说明"><a href="#15-7-2-字段说明" class="headerlink" title="15.7.2 字段说明"></a>15.7.2 字段说明</h3><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Size</td>
+<td>映射大小</td>
+</tr>
+<tr>
+<td>Rss</td>
+<td>驻留集大小 (实际物理内存)</td>
+</tr>
+<tr>
+<td>Pss</td>
+<td>按比例共享内存</td>
+</tr>
+<tr>
+<td>Shared_Clean</td>
+<td>共享干净页面</td>
+</tr>
+<tr>
+<td>Shared_Dirty</td>
+<td>共享脏页面</td>
+</tr>
+<tr>
+<td>Private_Clean</td>
+<td>私有干净页面</td>
+</tr>
+<tr>
+<td>Private_Dirty</td>
+<td>私有脏页面</td>
+</tr>
+<tr>
+<td>Swap</td>
+<td>Swap 使用</td>
+</tr>
+<tr>
+<td>Locked</td>
+<td>锁定内存</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="15-8-调试工具"><a href="#15-8-调试工具" class="headerlink" title="15.8 调试工具"></a>15.8 调试工具</h2><h3 id="15-8-1-用户空间工具"><a href="#15-8-1-用户空间工具" class="headerlink" title="15.8.1 用户空间工具"></a>15.8.1 用户空间工具</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># vmstat - 虚拟内存统计</span></span><br><span class="line">vmstat 1 5        <span class="comment"># 每秒刷新，共 5 次</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出</span></span><br><span class="line"><span class="comment"># procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----</span></span><br><span class="line"><span class="comment">#  r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st</span></span><br><span class="line"><span class="comment">#  1  0      0 123456  12345 123456    0    0   123    45 1234 1234 10  5 85  0  0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># slabtop - Slab 缓存统计</span></span><br><span class="line">slabtop</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出</span></span><br><span class="line"><span class="comment"># Active / Total Objects (% used)    : 123456 / 234567 (52.6%)</span></span><br><span class="line"><span class="comment"># Active / Total Slabs (% used)      : 1234 / 2345 (52.6%)</span></span><br><span class="line"><span class="comment"># Active / Total Caches (% used)     : 123 / 234 (52.6%)</span></span><br><span class="line"><span class="comment"># Active / Total Size (% used)       : 12345 / 23456 (52.6%)</span></span><br><span class="line"><span class="comment"># Minimum / Average / Maximum Object : 0.01 / 0.10 / 1.00</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># pmap - 内存映射</span></span><br><span class="line">pmap 1234          <span class="comment"># 显示进程 1234 的内存映射</span></span><br><span class="line">pmap -x 1234       <span class="comment"># 详细格式</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># smem - 内存使用统计</span></span><br><span class="line">smem -m            <span class="comment"># 按进程显示</span></span><br><span class="line">smem -u            <span class="comment"># 按用户显示</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-8-2-内核调试选项"><a href="#15-8-2-内核调试选项" class="headerlink" title="15.8.2 内核调试选项"></a>15.8.2 内核调试选项</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"># 内存调试选项</span><br><span class="line">CONFIG_DEBUG_KERNEL           # 启用内核调试</span><br><span class="line">CONFIG_DEBUG_INFO             # 调试信息</span><br><span class="line">CONFIG_DEBUG_FS               # debugfs</span><br><span class="line"></span><br><span class="line"># 内存泄漏检测</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK         # kmemleak</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK_EARLY_LOG_SIZE=400</span><br><span class="line"></span><br><span class="line"># 页面调试</span><br><span class="line">CONFIG_DEBUG_PAGEALLOC        # 页面分配调试</span><br><span class="line">CONFIG_PAGE_OWNER             # 页面所有者跟踪</span><br><span class="line">CONFIG_PAGE_POISONING         # 页面投毒</span><br><span class="line"></span><br><span class="line"># Slab 调试</span><br><span class="line">CONFIG_SLUB_DEBUG             # SLUB 调试</span><br><span class="line">CONFIG_SLUB_DEBUG_ON          # 默认启用 SLUB 调试</span><br><span class="line"></span><br><span class="line"># 内存统计</span><br><span class="line">CONFIG_VM_EVENT_COUNTERS      # VM 事件计数器</span><br><span class="line">CONFIG_DEBUG_VM               # VM 调试</span><br><span class="line">CONFIG_DEBUG_VM_PGFLAGS       # 页面标志调试</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-9-kmemleak"><a href="#15-9-kmemleak" class="headerlink" title="15.9 kmemleak"></a>15.9 kmemleak</h2><h3 id="15-9-1-kmemleak-概述"><a href="#15-9-1-kmemleak-概述" class="headerlink" title="15.9.1 kmemleak 概述"></a>15.9.1 kmemleak 概述</h3><p>kmemleak 是内核内存泄漏检测工具，自动检测未释放的内存。</p>
+<h3 id="15-9-2-使用方法"><a href="#15-9-2-使用方法" class="headerlink" title="15.9.2 使用方法"></a>15.9.2 使用方法</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 kmemleak</span></span><br><span class="line"><span class="comment"># 1. 内核配置</span></span><br><span class="line">CONFIG_DEBUG_KMEMLEAK=y</span><br><span class="line">CONFIG_DEBUG_KMEMLEAK_EARLY_LOG_SIZE=400</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 启动参数</span></span><br><span class="line">kmemleak=on</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 挂载 debugfs</span></span><br><span class="line">mount -t debugfs none /sys/kernel/debug</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 扫描内存泄漏</span></span><br><span class="line"><span class="built_in">echo</span> scan &gt; /sys/kernel/debug/kmemleak</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 查看结果</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/kmemleak</span><br><span class="line"></span><br><span class="line"><span class="comment"># 6. 清除标记</span></span><br><span class="line"><span class="built_in">echo</span> clear &gt; /sys/kernel/debug/kmemleak</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-9-3-kmemleak-输出"><a href="#15-9-3-kmemleak-输出" class="headerlink" title="15.9.3 kmemleak 输出"></a>15.9.3 kmemleak 输出</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">unreferenced object 0xffff888123456789 (size 1024):</span><br><span class="line">  comm &quot;systemd&quot;, pid 1, jiffies 4294967295</span><br><span class="line">  hex dump (first 32 bytes):</span><br><span class="line">    01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10  ................</span><br><span class="line">  backtrace:</span><br><span class="line">    [&lt;ffffffff00000000&gt;] kmalloc+0x123/0x456</span><br><span class="line">    [&lt;ffffffff00000000&gt;] some_function+0x789/0xabc</span><br><span class="line">    [&lt;ffffffff00000000&gt;] another_function+0xdef/0x012</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-10-page-owner"><a href="#15-10-page-owner" class="headerlink" title="15.10 page_owner"></a>15.10 page_owner</h2><h3 id="15-10-1-page-owner-概述"><a href="#15-10-1-page-owner-概述" class="headerlink" title="15.10.1 page_owner 概述"></a>15.10.1 page_owner 概述</h3><p>page_owner 跟踪每个页面的分配者，帮助调试页面分配问题。</p>
+<h3 id="15-10-2-使用方法"><a href="#15-10-2-使用方法" class="headerlink" title="15.10.2 使用方法"></a>15.10.2 使用方法</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 page_owner</span></span><br><span class="line"><span class="comment"># 1. 内核配置</span></span><br><span class="line">CONFIG_PAGE_OWNER=y</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 启动参数</span></span><br><span class="line">page_owner=on</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 使用</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/page_owner</span><br><span class="line"></span><br><span class="line"><span class="comment"># 过滤特定函数</span></span><br><span class="line"><span class="built_in">cat</span> /sys/kernel/debug/page_owner | grep <span class="string">&quot;alloc_pages&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-10-3-page-owner-输出"><a href="#15-10-3-page-owner-输出" class="headerlink" title="15.10.3 page_owner 输出"></a>15.10.3 page_owner 输出</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Page allocated via order 0, mask 0x42c0ca(GFP_KERNEL|__GFP_NOWARN|__GFP_COMP|__GFP_RECLAIMABLE),</span><br><span class="line">PFN 0x12345</span><br><span class="line">alloc_pages+0x123/0x456</span><br><span class="line">some_function+0x789/0xabc</span><br><span class="line">another_function+0xdef/0x012</span><br><span class="line"></span><br><span class="line">Page allocated via order 9, mask 0x42c0ca(GFP_KERNEL|__GFP_NOWARN|__GFP_COMP|__GFP_RECLAIMABLE),</span><br><span class="line">PFN 0x67890</span><br><span class="line">alloc_pages+0x123/0x456</span><br><span class="line">huge_page_alloc+0x789/0xabc</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-11-页面投毒"><a href="#15-11-页面投毒" class="headerlink" title="15.11 页面投毒"></a>15.11 页面投毒</h2><h3 id="15-11-1-page-poisoning-概述"><a href="#15-11-1-page-poisoning-概述" class="headerlink" title="15.11.1 page_poisoning 概述"></a>15.11.1 page_poisoning 概述</h3><p>页面投毒用特定模式填充释放的页面，检测 use-after-free 错误。</p>
+<h3 id="15-11-2-配置和使用"><a href="#15-11-2-配置和使用" class="headerlink" title="15.11.2 配置和使用"></a>15.11.2 配置和使用</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_PAGE_POISONING=y</span><br><span class="line">CONFIG_PAGE_POISONING_NO_SANITY=n</span><br><span class="line">CONFIG_PAGE_POISONING_ZERO=n</span><br></pre></td></tr></table></figure></div>
+
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动参数</span></span><br><span class="line">page_poison=on</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查投毒</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/kernel/debug/page_poison/poison</span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /sys/kernel/debug/page_poison/poison_enabled</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-12-内存热点分析"><a href="#15-12-内存热点分析" class="headerlink" title="15.12 内存热点分析"></a>15.12 内存热点分析</h2><h3 id="15-12-1-perf-使用"><a href="#15-12-1-perf-使用" class="headerlink" title="15.12.1 perf 使用"></a>15.12.1 perf 使用</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 内存分配分析</span></span><br><span class="line">perf record -e kmem:kmalloc -a <span class="built_in">sleep</span> 10</span><br><span class="line">perf report</span><br><span class="line"></span><br><span class="line"><span class="comment"># 缺页异常分析</span></span><br><span class="line">perf record -e page-faults -a <span class="built_in">sleep</span> 10</span><br><span class="line">perf report</span><br><span class="line"></span><br><span class="line"><span class="comment"># 内存访问分析</span></span><br><span class="line">perf mem record -a <span class="built_in">sleep</span> 10</span><br><span class="line">perf mem report</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="15-12-2-eBPF-工具"><a href="#15-12-2-eBPF-工具" class="headerlink" title="15.12.2 eBPF 工具"></a>15.12.2 eBPF 工具</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># memleak - BCC 内存泄漏检测</span></span><br><span class="line">memleak -p $(pidof myapp)</span><br><span class="line"></span><br><span class="line"><span class="comment"># bashreadahead - 预读分析</span></span><br><span class="line">bashreadahead</span><br><span class="line"></span><br><span class="line"><span class="comment"># slabratetop - Slab 分配率</span></span><br><span class="line">slabratetop</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="15-13-本章小结"><a href="#15-13-本章小结" class="headerlink" title="15.13 本章小结"></a>15.13 本章小结</h2><p>本章介绍了 Linux 6.12 的内存统计与调试：</p>
+<ol>
+<li><strong>统计接口</strong>: &#x2F;proc&#x2F;meminfo、&#x2F;proc&#x2F;vmstat、&#x2F;proc&#x2F;zoneinfo</li>
+<li><strong>vm_stat</strong>: Zone&#x2F;Node 统计项和操作</li>
+<li><strong>vm_event</strong>: 事件计数器，跟踪内存操作</li>
+<li><strong>进程统计</strong>: &#x2F;proc&#x2F;pid&#x2F;smaps，进程内存映射</li>
+<li><strong>调试工具</strong>: vmstat、slabtop、pmap、smem</li>
+<li><strong>内核调试</strong>: kmemleak、page_owner、page_poisoning</li>
+<li><strong>性能分析</strong>: perf、eBPF 工具</li>
+</ol>
+<p>内存统计和调试工具对于理解和优化内存使用至关重要。</p>
+<hr>
+<h2 id="附录：内存管理完整系列"><a href="#附录：内存管理完整系列" class="headerlink" title="附录：内存管理完整系列"></a>附录：内存管理完整系列</h2><p>本系列 15 章涵盖了 Linux 6.12 内存管理的全部内容：</p>
+<ol>
+<li><strong>概述</strong> - 内存管理架构和设计</li>
+<li><strong>物理内存模型</strong> - Node、Zone、Page、Watermark</li>
+<li><strong>物理内存分配器</strong> - Buddy System</li>
+<li><strong>虚拟地址空间</strong> - 用户&#x2F;内核空间布局</li>
+<li><strong>页表管理</strong> - 多级页表、页表操作</li>
+<li><strong>虚拟内存区域 (VMA)</strong> - VMA 管理</li>
+<li><strong>页面分配</strong> - alloc_pages、kmalloc</li>
+<li><strong>Slab 分配器</strong> - SLUB 实现</li>
+<li><strong>缺页异常处理</strong> - 页面错误处理</li>
+<li><strong>页面回收</strong> - LRU、kswapd、直接回收</li>
+<li><strong>内存映射</strong> - mmap、mprotect、munmap</li>
+<li><strong>匿名内存与页缓存</strong> - 堆、页缓存、回写</li>
+<li><strong>内存压缩与迁移</strong> - Compaction、Migration</li>
+<li><strong>内存控制组</strong> - memcg 限制和统计</li>
+<li><strong>内存统计与调试</strong> - 统计接口和调试工具</li>
+</ol>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之内存管理-15</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-01-20 21:39:55</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-02-24 14:04:51
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/01/20/Linux内核分析之内存管理-15/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-16/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-16</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/01/20/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-14/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之内存管理-14</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        async function loadGiscus() {
+            const giscusConfig = {
+                'src': 'https://giscus.app/client.js',
+                'data-repo': 'jelasin/jelasin.github.io',
+                'data-repo-id': 'R_kgDOKVydDA',
+                'data-category': 'Announcements',
+                'data-category-id': 'DIC_kwDOKVydDM4CZe2W',
+                'data-mapping': 'pathname',
+                'data-strict': '0',
+                'data-reactions-enabled': '1',
+                'data-emit-metadata': '1',
+                'data-theme': 'preferred_color_scheme',
+                'data-lang': 'zh-CN',
+                'data-input-position': 'bottom',
+                'data-loading': 'not-lazy',
+                'crossorigin': 'anonymous',
+                'async': true
+            }
+            const giscusScript = document.createElement('script');
+            for (const key in giscusConfig) {
+                giscusScript.setAttribute(key, giscusConfig[key]);
+            }
+            document.getElementById('giscus-container').appendChild(giscusScript);
+        }
+        if ('true') {
+            let loadGiscusTimeout = setTimeout(() => {
+                loadGiscus();
+                clearTimeout(loadGiscusTimeout);
+            }, 1000);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadGiscus);
+        }
+    </script>
+
+
+        
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之内存管理-15</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC15%E7%AB%A0%EF%BC%9A%E5%86%85%E5%AD%98%E7%BB%9F%E8%AE%A1%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="nav-text">第15章：内存统计与调试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#15-1-%E5%86%85%E5%AD%98%E7%BB%9F%E8%AE%A1%E6%A6%82%E8%BF%B0"><span class="nav-text">15.1 内存统计概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-1-1-%E7%BB%9F%E8%AE%A1%E6%8E%A5%E5%8F%A3"><span class="nav-text">15.1.1 统计接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-1-2-%E7%BB%9F%E8%AE%A1%E6%9E%B6%E6%9E%84"><span class="nav-text">15.1.2 统计架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-2-vm-stat-%E7%BB%93%E6%9E%84"><span class="nav-text">15.2 vm_stat 结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-2-1-%E7%BB%9F%E8%AE%A1%E9%A1%B9%E5%AE%9A%E4%B9%89"><span class="nav-text">15.2.1 统计项定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-2-2-%E7%BB%9F%E8%AE%A1%E6%93%8D%E4%BD%9C"><span class="nav-text">15.2.2 统计操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-3-vm-event-%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="nav-text">15.3 vm_event 计数器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-3-1-%E4%BA%8B%E4%BB%B6%E5%AE%9A%E4%B9%89"><span class="nav-text">15.3.1 事件定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-3-2-%E4%BA%8B%E4%BB%B6%E8%AE%A1%E6%95%B0"><span class="nav-text">15.3.2 事件计数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-4-proc-meminfo"><span class="nav-text">15.4 &#x2F;proc&#x2F;meminfo</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-4-1-meminfo-%E5%AE%9E%E7%8E%B0"><span class="nav-text">15.4.1 meminfo 实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-4-2-meminfo-%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="nav-text">15.4.2 meminfo 字段说明</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-5-proc-vmstat"><span class="nav-text">15.5 &#x2F;proc&#x2F;vmstat</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-5-1-vmstat-%E5%AE%9E%E7%8E%B0"><span class="nav-text">15.5.1 vmstat 实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-5-2-vmstat-%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="nav-text">15.5.2 vmstat 字段说明</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-6-proc-zoneinfo"><span class="nav-text">15.6 &#x2F;proc&#x2F;zoneinfo</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-6-1-zoneinfo-%E5%AE%9E%E7%8E%B0"><span class="nav-text">15.6.1 zoneinfo 实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-7-%E8%BF%9B%E7%A8%8B%E5%86%85%E5%AD%98%E7%BB%9F%E8%AE%A1"><span class="nav-text">15.7 进程内存统计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-7-1-proc-pid-smaps"><span class="nav-text">15.7.1 &#x2F;proc&#x2F;pid&#x2F;smaps</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-7-2-%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="nav-text">15.7.2 字段说明</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-8-%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7"><span class="nav-text">15.8 调试工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-8-1-%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E5%B7%A5%E5%85%B7"><span class="nav-text">15.8.1 用户空间工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-8-2-%E5%86%85%E6%A0%B8%E8%B0%83%E8%AF%95%E9%80%89%E9%A1%B9"><span class="nav-text">15.8.2 内核调试选项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-9-kmemleak"><span class="nav-text">15.9 kmemleak</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-9-1-kmemleak-%E6%A6%82%E8%BF%B0"><span class="nav-text">15.9.1 kmemleak 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-9-2-%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95"><span class="nav-text">15.9.2 使用方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-9-3-kmemleak-%E8%BE%93%E5%87%BA"><span class="nav-text">15.9.3 kmemleak 输出</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-10-page-owner"><span class="nav-text">15.10 page_owner</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-10-1-page-owner-%E6%A6%82%E8%BF%B0"><span class="nav-text">15.10.1 page_owner 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-10-2-%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95"><span class="nav-text">15.10.2 使用方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-10-3-page-owner-%E8%BE%93%E5%87%BA"><span class="nav-text">15.10.3 page_owner 输出</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-11-%E9%A1%B5%E9%9D%A2%E6%8A%95%E6%AF%92"><span class="nav-text">15.11 页面投毒</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-11-1-page-poisoning-%E6%A6%82%E8%BF%B0"><span class="nav-text">15.11.1 page_poisoning 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-11-2-%E9%85%8D%E7%BD%AE%E5%92%8C%E4%BD%BF%E7%94%A8"><span class="nav-text">15.11.2 配置和使用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-12-%E5%86%85%E5%AD%98%E7%83%AD%E7%82%B9%E5%88%86%E6%9E%90"><span class="nav-text">15.12 内存热点分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#15-12-1-perf-%E4%BD%BF%E7%94%A8"><span class="nav-text">15.12.1 perf 使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-12-2-eBPF-%E5%B7%A5%E5%85%B7"><span class="nav-text">15.12.2 eBPF 工具</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#15-13-%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-text">15.13 本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%99%84%E5%BD%95%EF%BC%9A%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%AE%8C%E6%95%B4%E7%B3%BB%E5%88%97"><span class="nav-text">附录：内存管理完整系列</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        172 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.8.5</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container">
+	<img src="">
+</div>
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/imageViewer.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/utils.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/main.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/navbarShrink.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/scrollTopBottom.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/lightDarkSwitch.js" ></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/categoryList.js" ></script>
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/localSearch.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/codeBlock.js" ></script>
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/lazyload.js" ></script>
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/runtime.js" ></script>
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/assets/odometer-theme-minimal.css">
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/Typed.min.js" ></script>
+  <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/typed.js" ></script>
+
+
+
+
+
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/anime.min.js" ></script>
+
+
+
+
+    <script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/tools/tocToggle.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/toc.js" data-swup-reload-script></script><script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/plugins/tabs.js" data-swup-reload-script></script>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.8.5/files/source/js/build/layouts/essays.js" data-swup-reload-script></script>
+
+
+
+
+	
+</body>
+
+</html>
