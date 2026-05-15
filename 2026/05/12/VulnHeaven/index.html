@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/05/12/vulnheaven/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="VulnHeaven">
+<meta property="og:url" content="https://jelasin.github.io/2026/05/12/VulnHeaven/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-05-12T06:08:08.000Z">
+<meta property="article:modified_time" content="2026-05-15T10:56:05.241Z">
+<meta property="article:author" content="Jelasin">
+<meta property="article:tag" content="vuln">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            VulnHeaven | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.json"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-circle-info fa-beat-fade\" style=\"--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;\" ></i>","start":"2023/9/20 11:45:14","statistics":true,"customize":"关山初度尘未洗，策马扬鞭再奋蹄。","icp":{"enable":false,"number":null,"url":null}},"footerStart":"2023/9/20 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">16</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">143</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">VulnHeaven</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-05-12 14:08:08</span>
+        <span class="mobile">2026-05-12 14:08:08</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-05-15 18:56:05</span>
+            <span class="mobile">2026-05-15 18:56:05</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/vuln/">vuln</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="ForitGate"><a href="#ForitGate" class="headerlink" title="ForitGate"></a>ForitGate</h1><h2 id="CVE-2022-42475"><a href="#CVE-2022-42475" class="headerlink" title="CVE-2022-42475"></a>CVE-2022-42475</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-22-398" >FG-IR-22-398<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiOS 7.2</td>
+<td>7.2.0 through 7.2.2</td>
+<td>Upgrade to 7.2.3 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.8</td>
+<td>Upgrade to 7.0.9 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>6.4.0 through 6.4.10</td>
+<td>Upgrade to 6.4.11 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.2</td>
+<td>6.2.0 through 6.2.11</td>
+<td>Upgrade to 6.2.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.0</td>
+<td>6.0.0 through 6.0.15</td>
+<td>Upgrade to 6.0.16 or above</td>
+</tr>
+<tr>
+<td>FortiOS 5.6</td>
+<td>5.6 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.4</td>
+<td>5.4 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.2</td>
+<td>5.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.0</td>
+<td>5.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 7.0</td>
+<td>7.0.0 through 7.0.8</td>
+<td>Upgrade to 7.0.8 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.0 through 6.4.9</td>
+<td>Upgrade to 6.4.10 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.0 through 6.2.11</td>
+<td>Upgrade to 6.2.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.0</td>
+<td>6.0.0 through 6.0.14</td>
+<td>Upgrade to 6.0.15 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.1</td>
+<td>Upgrade to 7.2.2 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.7</td>
+<td>Upgrade to 7.0.8 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>2.0.0 through 2.0.11</td>
+<td>Upgrade to 2.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 1.2</td>
+<td>1.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.1</td>
+<td>1.1 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.0</td>
+<td>1.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2023-25610"><a href="#CVE-2023-25610" class="headerlink" title="CVE-2023-25610"></a>CVE-2023-25610</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-23-001" >FG-IR-23-001<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiAnalyzer 7.2</td>
+<td>7.2.0</td>
+<td>Upgrade to 7.2.1 or above</td>
+</tr>
+<tr>
+<td>FortiAnalyzer 7.0</td>
+<td>7.0.0 through 7.0.4</td>
+<td>Upgrade to 7.0.5 or above</td>
+</tr>
+<tr>
+<td>FortiAnalyzer 6.4</td>
+<td>6.4.0 through 6.4.11</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiAnalyzer 6.2</td>
+<td>6.2.0 through 6.2.10</td>
+<td>Upgrade to 6.2.11 or above</td>
+</tr>
+<tr>
+<td>FortiAnalyzer 6.0</td>
+<td>6.0.0 through 6.0.11</td>
+<td>Upgrade to 6.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiManager 7.2</td>
+<td>7.2.0</td>
+<td>Upgrade to 7.2.1 or above</td>
+</tr>
+<tr>
+<td>FortiManager 7.0</td>
+<td>7.0.0 through 7.0.4</td>
+<td>Upgrade to 7.0.5 or above</td>
+</tr>
+<tr>
+<td>FortiManager 6.4</td>
+<td>6.4.0 through 6.4.11</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiManager 6.2</td>
+<td>6.2.0 through 6.2.10</td>
+<td>Upgrade to 6.2.11 or above</td>
+</tr>
+<tr>
+<td>FortiManager 6.0</td>
+<td>6.0.0 through 6.0.11</td>
+<td>Upgrade to 6.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.2</td>
+<td>7.2.0 through 7.2.3 (Special note for FortiOS in Additional Note section)</td>
+<td>Upgrade to 7.2.4 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.9 (Special note for FortiOS in Additional Note section)</td>
+<td>Upgrade to 7.0.10 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>6.4.0 through 6.4.11 (Special note for FortiOS in Additional Note section)</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.2</td>
+<td>6.2.0 through 6.2.12 (Special note for FortiOS in Additional Note section)</td>
+<td>Upgrade to 6.2.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.0</td>
+<td>6.0 all versions (Special note for FortiOS in Additional Note section)</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.6</td>
+<td>5.6 all versions (Special note for FortiOS in Additional Note section)</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.4</td>
+<td>5.4 all versions (Special note for FortiOS in Additional Note section)</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.2</td>
+<td>5.2 all versions (Special note for FortiOS in Additional Note section)</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS 5.0</td>
+<td>5.0 all versions (Special note for FortiOS in Additional Note section)</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 7.0</td>
+<td>7.0.5</td>
+<td>Upgrade to 7.0.10 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.10</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.8</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.6</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.2</td>
+<td>Upgrade to 6.4.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.9 through 6.2.12</td>
+<td>Upgrade to 6.2.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.6 through 6.2.7</td>
+<td>Upgrade to 6.2.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.4</td>
+<td>Upgrade to 6.2.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.0</td>
+<td>6.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.2</td>
+<td>Upgrade to 7.2.3 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.8</td>
+<td>Upgrade to 7.0.9 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>2.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.2</td>
+<td>1.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.1</td>
+<td>1.1 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiSwitch 7.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiSwitch 7.2</td>
+<td>7.2.0 through 7.2.3</td>
+<td>Upgrade to 7.2.4 or above</td>
+</tr>
+<tr>
+<td>FortiSwitch 7.0</td>
+<td>7.0.0 through 7.0.6</td>
+<td>Upgrade to 7.0.7 or above</td>
+</tr>
+<tr>
+<td>FortiSwitch 6.4</td>
+<td>6.4 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiSwitch 6.2</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiSwitchManager 7.2</td>
+<td>7.2.0 through 7.2.1</td>
+<td>Upgrade to 7.2.2 or above</td>
+</tr>
+<tr>
+<td>FortiSwitchManager 7.0</td>
+<td>7.0.0 through 7.0.1</td>
+<td>Upgrade to 7.0.2 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.2</td>
+<td>7.2.0 through 7.2.1</td>
+<td>Upgrade to 7.2.2 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.0</td>
+<td>7.0.0 through 7.0.6</td>
+<td>Upgrade to 7.0.7 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.4</td>
+<td>6.4.0 through 6.4.2</td>
+<td>Upgrade to 6.4.3 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.3</td>
+<td>6.3.0 through 6.3.22</td>
+<td>Upgrade to 6.3.23 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.2</td>
+<td>6.2.0 through 6.2.7</td>
+<td>Upgrade to 6.2.8 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.1</td>
+<td>6.1.0 through 6.1.3</td>
+<td>Upgrade to 6.1.4 or above</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2023-27997"><a href="#CVE-2023-27997" class="headerlink" title="CVE-2023-27997"></a>CVE-2023-27997</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-23-097" >FG-IR-23-097<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiOS 7.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiOS 7.2</td>
+<td>7.2.0 through 7.2.4</td>
+<td>Upgrade to 7.2.5 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.11</td>
+<td>Upgrade to 7.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>6.4.0 through 6.4.12</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.2</td>
+<td>6.2.0 through 6.2.13</td>
+<td>Upgrade to 6.2.14 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.0</td>
+<td>6.0.0 through 6.0.16</td>
+<td>Upgrade to 6.0.17 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 7.0</td>
+<td>7.0.10</td>
+<td>Upgrade to 7.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 7.0</td>
+<td>7.0.5</td>
+<td>Upgrade to 7.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.12</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.10</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.8</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.6</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.4</td>
+<td>6.4.2</td>
+<td>Upgrade to 6.4.13 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.9 through 6.2.13</td>
+<td>Upgrade to 6.2.15 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.6 through 6.2.7</td>
+<td>Upgrade to 6.2.15 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.2</td>
+<td>6.2.4</td>
+<td>Upgrade to 6.2.15 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.0</td>
+<td>6.0.12 through 6.0.16</td>
+<td>Upgrade to 6.0.17 or above</td>
+</tr>
+<tr>
+<td>FortiOS-6K7K 6.0</td>
+<td>6.0.10</td>
+<td>Upgrade to 6.0.17 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.3</td>
+<td>Upgrade to 7.2.4 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.9</td>
+<td>Upgrade to 7.0.10 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>2.0.0 through 2.0.12</td>
+<td>Upgrade to 2.0.13 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 1.2</td>
+<td>1.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.1</td>
+<td>1.1 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2024-21762"><a href="#CVE-2024-21762" class="headerlink" title="CVE-2024-21762"></a>CVE-2024-21762</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-24-015" >FG-IR-24-015<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiOS 7.4</td>
+<td>7.4.0 through 7.4.2</td>
+<td>Upgrade to 7.4.3 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.2</td>
+<td>7.2.0 through 7.2.6</td>
+<td>Upgrade to 7.2.7 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.13</td>
+<td>Upgrade to 7.0.14 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>6.4.0 through 6.4.14</td>
+<td>Upgrade to 6.4.15 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.2</td>
+<td>6.2.0 through 6.2.15</td>
+<td>Upgrade to 6.2.16 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.0</td>
+<td>6.0.0 through 6.0.17</td>
+<td>Upgrade to 6.0.18 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.4</td>
+<td>7.4.0 through 7.4.2</td>
+<td>Upgrade to 7.4.3 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.8</td>
+<td>Upgrade to 7.2.9 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.14</td>
+<td>Upgrade to 7.0.15 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>2.0.0 through 2.0.13</td>
+<td>Upgrade to 2.0.14 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 1.2</td>
+<td>1.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.1</td>
+<td>1.1 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 1.0</td>
+<td>1.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2024-23113"><a href="#CVE-2024-23113" class="headerlink" title="CVE-2024-23113"></a>CVE-2024-23113</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-24-029" >FG-IR-24-029<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiOS 7.4</td>
+<td>7.4.0 through 7.4.2</td>
+<td>Upgrade to 7.4.3 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.2</td>
+<td>7.2.0 through 7.2.6</td>
+<td>Upgrade to 7.2.7 or above</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.13</td>
+<td>Upgrade to 7.0.14 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiPAM 1.3</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiPAM 1.2</td>
+<td>1.2 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiPAM 1.1</td>
+<td>1.1 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiPAM 1.0</td>
+<td>1.0 all versions</td>
+<td>Migrate to a fixed release</td>
+</tr>
+<tr>
+<td>FortiProxy 7.4</td>
+<td>7.4.0 through 7.4.2</td>
+<td>Upgrade to 7.4.3 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.8</td>
+<td>Upgrade to 7.2.9 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.15</td>
+<td>Upgrade to 7.0.16 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiProxy 1.2</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiSwitchManager 7.2</td>
+<td>7.2.0 through 7.2.3</td>
+<td>Upgrade to 7.2.4 or above</td>
+</tr>
+<tr>
+<td>FortiSwitchManager 7.0</td>
+<td>7.0.0 through 7.0.3</td>
+<td>Upgrade to 7.0.4 or above</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2024-55591-CVE-2025-24472"><a href="#CVE-2024-55591-CVE-2025-24472" class="headerlink" title="CVE-2024-55591|CVE-2025-24472"></a>CVE-2024-55591|CVE-2025-24472</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.fortiguard.com/psirt/FG-IR-24-535" >FG-IR-24-535<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p><strong>影响范围</strong></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiOS 7.6</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiOS 7.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiOS 7.2</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiOS 7.0</td>
+<td>7.0.0 through 7.0.16</td>
+<td>Upgrade to 7.0.17 or above</td>
+</tr>
+<tr>
+<td>FortiOS 6.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiProxy 7.6</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiProxy 7.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+<tr>
+<td>FortiProxy 7.2</td>
+<td>7.2.0 through 7.2.12</td>
+<td>Upgrade to 7.2.13 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 7.0</td>
+<td>7.0.0 through 7.0.19</td>
+<td>Upgrade to 7.0.20 or above</td>
+</tr>
+<tr>
+<td>FortiProxy 2.0</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2025-64446"><a href="#CVE-2025-64446" class="headerlink" title="CVE-2025-64446"></a>CVE-2025-64446</h2><p><a class="link"   target="_blank" rel="noopener" href="https://fortiguard.fortinet.com/psirt/FG-IR-25-910" >FG-IR-25-910<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiWeb 8.0</td>
+<td>8.0.0 through 8.0.1</td>
+<td>Upgrade to 8.0.2 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.6</td>
+<td>7.6.0 through 7.6.4</td>
+<td>Upgrade to 7.6.5 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.4</td>
+<td>7.4.0 through 7.4.9</td>
+<td>Upgrade to 7.4.10 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.2</td>
+<td>7.2.0 through 7.2.11</td>
+<td>Upgrade to 7.2.12 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.0</td>
+<td>7.0.0 through 7.0.11</td>
+<td>Upgrade to 7.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2025-58034"><a href="#CVE-2025-58034" class="headerlink" title="CVE-2025-58034"></a>CVE-2025-58034</h2><p><a class="link"   target="_blank" rel="noopener" href="https://fortiguard.fortinet.com/psirt/FG-IR-25-513" >FG-IR-25-513<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiWeb 8.0</td>
+<td>8.0.0 through 8.0.1</td>
+<td>Upgrade to 8.0.2 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.6</td>
+<td>7.6.0 through 7.6.5</td>
+<td>Upgrade to 7.6.6 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.4</td>
+<td>7.4.0 through 7.4.10</td>
+<td>Upgrade to 7.4.11 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.2</td>
+<td>7.2.0 through 7.2.11</td>
+<td>Upgrade to 7.2.12 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.0</td>
+<td>7.0.0 through 7.0.11</td>
+<td>Upgrade to 7.0.12 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+</tbody></table>
+<h2 id="CVE-2025-25257"><a href="#CVE-2025-25257" class="headerlink" title="CVE-2025-25257"></a>CVE-2025-25257</h2><p><a class="link"   target="_blank" rel="noopener" href="https://fortiguard.fortinet.com/psirt/FG-IR-25-151" >FG-IR-25-151<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Affected</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FortiWeb 7.6</td>
+<td>7.6.0 through 7.6.3</td>
+<td>Upgrade to 7.6.4 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.4</td>
+<td>7.4.0 through 7.4.7</td>
+<td>Upgrade to 7.4.8 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.2</td>
+<td>7.2.0 through 7.2.10</td>
+<td>Upgrade to 7.2.11 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 7.0</td>
+<td>7.0.0 through 7.0.10</td>
+<td>Upgrade to 7.0.11 or above</td>
+</tr>
+<tr>
+<td>FortiWeb 6.4</td>
+<td>Not affected</td>
+<td>Not Applicable</td>
+</tr>
+</tbody></table>
+<h1 id="Ivanti"><a href="#Ivanti" class="headerlink" title="Ivanti"></a>Ivanti</h1><h2 id="CVE-2025-0282"><a href="#CVE-2025-0282" class="headerlink" title="CVE-2025-0282"></a>CVE-2025-0282</h2><h2 id="CVE-2025-22457"><a href="#CVE-2025-22457" class="headerlink" title="CVE-2025-22457"></a>CVE-2025-22457</h2><h1 id="Linux-Privilege"><a href="#Linux-Privilege" class="headerlink" title="Linux Privilege"></a>Linux Privilege</h1><h2 id="CVE-2026-41651-Package-kit"><a href="#CVE-2026-41651-Package-kit" class="headerlink" title="CVE-2026-41651 (Package kit)"></a>CVE-2026-41651 (Package kit)</h2><h2 id="CVE-2026-31431-Copy-Fail"><a href="#CVE-2026-31431-Copy-Fail" class="headerlink" title="CVE-2026-31431 (Copy Fail)"></a>CVE-2026-31431 (Copy Fail)</h2><h2 id="CVE-2026-43284-Dirty-Frag"><a href="#CVE-2026-43284-Dirty-Frag" class="headerlink" title="CVE-2026-43284 (Dirty Frag)"></a>CVE-2026-43284 (Dirty Frag)</h2><h2 id="CVE-2026-43500-Dirty-Frag"><a href="#CVE-2026-43500-Dirty-Frag" class="headerlink" title="CVE-2026-43500 (Dirty Frag)"></a>CVE-2026-43500 (Dirty Frag)</h2><h1 id="WatchGuard"><a href="#WatchGuard" class="headerlink" title="WatchGuard"></a>WatchGuard</h1><h2 id="CVE-2025-9242"><a href="#CVE-2025-9242" class="headerlink" title="CVE-2025-9242"></a>CVE-2025-9242</h2><h1 id="SonicWall"><a href="#SonicWall" class="headerlink" title="SonicWall"></a>SonicWall</h1><h2 id="CVE-2025-40596"><a href="#CVE-2025-40596" class="headerlink" title="CVE-2025-40596"></a>CVE-2025-40596</h2><h2 id="CVE-2025-40597"><a href="#CVE-2025-40597" class="headerlink" title="CVE-2025-40597"></a>CVE-2025-40597</h2><h2 id="CVE-2025-40598"><a href="#CVE-2025-40598" class="headerlink" title="CVE-2025-40598"></a>CVE-2025-40598</h2><h1 id="Palo-Alto"><a href="#Palo-Alto" class="headerlink" title="Palo Alto"></a>Palo Alto</h1><h2 id="CVE-2026-0300"><a href="#CVE-2026-0300" class="headerlink" title="CVE-2026-0300"></a>CVE-2026-0300</h2><h2 id="CVE-2024-0012"><a href="#CVE-2024-0012" class="headerlink" title="CVE-2024-0012"></a>CVE-2024-0012</h2><h2 id="CVE-2024-9474"><a href="#CVE-2024-9474" class="headerlink" title="CVE-2024-9474"></a>CVE-2024-9474</h2><h2 id="CVE-2024-3400"><a href="#CVE-2024-3400" class="headerlink" title="CVE-2024-3400"></a>CVE-2024-3400</h2><h1 id="Check-Point"><a href="#Check-Point" class="headerlink" title="Check Point"></a>Check Point</h1><h2 id="CVE-2024-24919"><a href="#CVE-2024-24919" class="headerlink" title="CVE-2024-24919"></a>CVE-2024-24919</h2><h1 id="Cisco"><a href="#Cisco" class="headerlink" title="Cisco"></a>Cisco</h1><h2 id="CVE-2026-20127"><a href="#CVE-2026-20127" class="headerlink" title="CVE-2026-20127"></a>CVE-2026-20127</h2><h1 id="PHP-UAF-NO-PATCH"><a href="#PHP-UAF-NO-PATCH" class="headerlink" title="PHP_UAF(NO_PATCH)"></a>PHP_UAF(NO_PATCH)</h1><h1 id="Sophos"><a href="#Sophos" class="headerlink" title="Sophos"></a>Sophos</h1>
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> VulnHeaven</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-05-12 14:08:08</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-05-15 18:56:05
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/05/12/VulnHeaven/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+		<ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+			
+			<li class="tag-item mx-0.5">
+				<a href="/tags/vuln/">#vuln</a>&nbsp;
+			</li>
+			
+		</ul>
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/05/12/FT-ST/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">FT-ST</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/05/11/FT-CVE-2022-42475/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">FT-CVE-2022-42475</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "not-lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "jelasin/jelasin.github.io",
+                    "data-repo-id": "R_kgDOKVydDA",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOKVydDM4CZe2W",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">VulnHeaven</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ForitGate"><span class="nav-text">ForitGate</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2022-42475"><span class="nav-text">CVE-2022-42475</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2023-25610"><span class="nav-text">CVE-2023-25610</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2023-27997"><span class="nav-text">CVE-2023-27997</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-21762"><span class="nav-text">CVE-2024-21762</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-23113"><span class="nav-text">CVE-2024-23113</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-55591-CVE-2025-24472"><span class="nav-text">CVE-2024-55591|CVE-2025-24472</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-64446"><span class="nav-text">CVE-2025-64446</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-58034"><span class="nav-text">CVE-2025-58034</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-25257"><span class="nav-text">CVE-2025-25257</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Ivanti"><span class="nav-text">Ivanti</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-0282"><span class="nav-text">CVE-2025-0282</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-22457"><span class="nav-text">CVE-2025-22457</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-Privilege"><span class="nav-text">Linux Privilege</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-41651-Package-kit"><span class="nav-text">CVE-2026-41651 (Package kit)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-31431-Copy-Fail"><span class="nav-text">CVE-2026-31431 (Copy Fail)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-43284-Dirty-Frag"><span class="nav-text">CVE-2026-43284 (Dirty Frag)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-43500-Dirty-Frag"><span class="nav-text">CVE-2026-43500 (Dirty Frag)</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#WatchGuard"><span class="nav-text">WatchGuard</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-9242"><span class="nav-text">CVE-2025-9242</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SonicWall"><span class="nav-text">SonicWall</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-40596"><span class="nav-text">CVE-2025-40596</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-40597"><span class="nav-text">CVE-2025-40597</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2025-40598"><span class="nav-text">CVE-2025-40598</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Palo-Alto"><span class="nav-text">Palo Alto</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-0300"><span class="nav-text">CVE-2026-0300</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-0012"><span class="nav-text">CVE-2024-0012</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-9474"><span class="nav-text">CVE-2024-9474</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-3400"><span class="nav-text">CVE-2024-3400</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Check-Point"><span class="nav-text">Check Point</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2024-24919"><span class="nav-text">CVE-2024-24919</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Cisco"><span class="nav-text">Cisco</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2026-20127"><span class="nav-text">CVE-2026-20127</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#PHP-UAF-NO-PATCH"><span class="nav-text">PHP_UAF(NO_PATCH)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Sophos"><span class="nav-text">Sophos</span></a></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        143 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/main.js" ></script>
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Typed.min.js" ></script>
+
+
+
+
+
+
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+
+
+	
+</body>
+
+</html>
