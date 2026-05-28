@@ -1,0 +1,2770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/05/28/linux内核分析之基础知识-05/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-05">
+<meta property="og:url" content="https://jelasin.github.io/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-05/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-05-28T10:16:20.000Z">
+<meta property="article:modified_time" content="2026-05-28T10:40:02.492Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-05 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.json"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-circle-info fa-beat-fade\" style=\"--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;\" ></i>","start":"2023/9/20 11:45:14","statistics":true,"customize":"关山初度尘未洗，策马扬鞭再奋蹄。","icp":{"enable":false,"number":null,"url":null}},"footerStart":"2023/9/20 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">16</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-05</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-05-28 18:16:20</span>
+        <span class="mobile">2026-05-28 18:16:20</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-05-28 18:40:02</span>
+            <span class="mobile">2026-05-28 18:40:02</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="6-1-RISC-V-架构概述：寄存器、特权级与-CSR"><a href="#6-1-RISC-V-架构概述：寄存器、特权级与-CSR" class="headerlink" title="6.1 RISC-V 架构概述：寄存器、特权级与 CSR"></a>6.1 RISC-V 架构概述：寄存器、特权级与 CSR</h1><p>本节全面介绍 RISC-V 64 位架构的编程模型，包括寄存器组织、特权级别、控制状态寄存器、调用约定以及关键 ISA 扩展。这些知识是理解后续内核启动和运行机制的基石。</p>
+<h2 id="6-1-1-寄存器组织"><a href="#6-1-1-寄存器组织" class="headerlink" title="6.1.1 寄存器组织"></a>6.1.1 寄存器组织</h2><h3 id="通用寄存器（GPR）"><a href="#通用寄存器（GPR）" class="headerlink" title="通用寄存器（GPR）"></a>通用寄存器（GPR）</h3><p>RISC-V 定义了 32 个 64 位通用寄存器 x0-x31，其中 x0 始终为零：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>ABI 名称</th>
+<th>用途</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>x0</td>
+<td>zero</td>
+<td>硬连线为零</td>
+<td>读取返回 0，写入无效</td>
+</tr>
+<tr>
+<td>x1</td>
+<td>ra</td>
+<td>返回地址</td>
+<td>函数调用返回地址</td>
+</tr>
+<tr>
+<td>x2</td>
+<td>sp</td>
+<td>栈指针</td>
+<td>必须 16 字节对齐</td>
+</tr>
+<tr>
+<td>x3</td>
+<td>gp</td>
+<td>全局指针</td>
+<td>指向全局数据区</td>
+</tr>
+<tr>
+<td>x4</td>
+<td>tp</td>
+<td>线程指针</td>
+<td>指向 thread_info &#x2F; TLS</td>
+</tr>
+<tr>
+<td>x5-x7</td>
+<td>t0-t2</td>
+<td>临时寄存器</td>
+<td>调用者保存</td>
+</tr>
+<tr>
+<td>x8</td>
+<td>s0&#x2F;fp</td>
+<td>帧指针 &#x2F; 被调用者保存</td>
+<td>既可做帧指针也可做通用保存寄存器</td>
+</tr>
+<tr>
+<td>x9</td>
+<td>s1</td>
+<td>被调用者保存</td>
+<td>跨函数调用保持</td>
+</tr>
+<tr>
+<td>x10-x17</td>
+<td>a0-a7</td>
+<td>参数 &#x2F; 返回值</td>
+<td>a0-a7 传参，a0-a1 返回值</td>
+</tr>
+<tr>
+<td>x18-x27</td>
+<td>s2-s11</td>
+<td>被调用者保存</td>
+<td>跨函数调用保持</td>
+</tr>
+<tr>
+<td>x28-x31</td>
+<td>t3-t6</td>
+<td>临时寄存器</td>
+<td>调用者保存</td>
+</tr>
+</tbody></table>
+<p><strong>PC（程序计数器）</strong>：RISC-V 中 PC 不是通用寄存器，不能直接读写。PC 通过跳转指令（jal&#x2F;jalr）隐式修改，通过 csrr 读取（mepc&#x2F;sepc 可间接获取）。</p>
+<h3 id="浮点寄存器（FPU）"><a href="#浮点寄存器（FPU）" class="headerlink" title="浮点寄存器（FPU）"></a>浮点寄存器（FPU）</h3><p>如果处理器实现了 F（单精度）和 D（双精度）扩展，则提供 32 个浮点寄存器 f0-f31（每个 64 位宽）。内核在切换浮点上下文时，需要通过 sstatus.FS 位域来跟踪浮点寄存器的状态（Off&#x2F;Initial&#x2F;Clean&#x2F;Dirty），以实现惰性上下文切换。</p>
+<h3 id="向量寄存器（Vector）"><a href="#向量寄存器（Vector）" class="headerlink" title="向量寄存器（Vector）"></a>向量寄存器（Vector）</h3><p>如果处理器实现了 V（向量）扩展，则提供 32 个向量寄存器 v0-v31。RISC-V 向量扩展的独特之处在于采用<strong>可变长度向量</strong>设计：向量寄存器的总宽度由 VLEN（128 到 2048 位甚至更宽）决定，软件通过 vsetvli&#x2F;vsetvl 指令动态配置每条向量指令处理的元素宽度和数量。这种设计使得同一份二进制代码可以在不同向量长度的处理器上高效运行。</p>
+<h3 id="控制状态寄存器（CSR）"><a href="#控制状态寄存器（CSR）" class="headerlink" title="控制状态寄存器（CSR）"></a>控制状态寄存器（CSR）</h3><p>CSR 是 RISC-V 架构中独立于通用寄存器的地址空间，每个特权级都有对应的 CSR 集合。访问 CSR 使用专用指令：</p>
+<ul>
+<li><code>csrr rd, csr</code>：读取 CSR 到通用寄存器</li>
+<li><code>csrw csr, rs</code>：写入通用寄存器到 CSR</li>
+<li><code>csrrw rd, csr, rs</code>：原子读-写</li>
+<li><code>csrrs/csrrc</code>：原子读-置位 &#x2F; 读-清零</li>
+</ul>
+<p>CSR 地址编码中，高两位 [11:10] 表示最低访问特权级（00&#x3D;Unprivileged, 01&#x3D;Supervisor, 10&#x3D;Hypervisor, 11&#x3D;Machine），bit [9:8] 表示读写权限（11&#x3D;只读）。</p>
+<h2 id="6-1-2-特权级别"><a href="#6-1-2-特权级别" class="headerlink" title="6.1.2 特权级别"></a>6.1.2 特权级别</h2><p>RISC-V 定义了以下特权级别：</p>
+<table>
+<thead>
+<tr>
+<th>特权级</th>
+<th>编码</th>
+<th>典型用途</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>U-mode</td>
+<td>00</td>
+<td>用户应用程序</td>
+<td>受限访问，无法执行特权指令</td>
+</tr>
+<tr>
+<td>S-mode</td>
+<td>01</td>
+<td>操作系统内核</td>
+<td>管理虚拟内存、中断、设备</td>
+</tr>
+<tr>
+<td>HS-mode</td>
+<td>10</td>
+<td>Hypervisor</td>
+<td>宿主机内核（需 H 扩展）</td>
+</tr>
+<tr>
+<td>M-mode</td>
+<td>11</td>
+<td>固件 &#x2F; OpenSBI</td>
+<td>最高权限，完全硬件访问</td>
+</tr>
+</tbody></table>
+<p>引入 H 扩展后，S-mode 进一步细分为 HS-mode（Host Supervisor）和 VS-mode（Virtual Supervisor）。VS-mode 运行客户机内核，VU-mode 运行客户机用户态程序。</p>
+<p><strong>与其他架构对比</strong>：</p>
+<ul>
+<li><strong>x86</strong>：Ring 0（内核）到 Ring 3（用户），特权级通过 CS 段选择子低 2 位编码</li>
+<li><strong>ARM64</strong>：EL0（用户）到 EL3（安全监视器），异常级别通过 PSTATE.EL 编码</li>
+<li><strong>RISC-V</strong>：特权级更为简洁，仅 3-4 个级别，且 M-mode 始终为最高权限</li>
+</ul>
+<h2 id="6-1-3-关键-S-mode-CSR"><a href="#6-1-3-关键-S-mode-CSR" class="headerlink" title="6.1.3 关键 S-mode CSR"></a>6.1.3 关键 S-mode CSR</h2><h3 id="sstatus-——-管理者状态寄存器"><a href="#sstatus-——-管理者状态寄存器" class="headerlink" title="sstatus —— 管理者状态寄存器"></a>sstatus —— 管理者状态寄存器</h3><p>sstatus 是 mstatus 的子集，内核最常操作的位域包括：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">sstatus 关键位域：</span><br><span class="line">[63:34] - SD, XS 等状态位</span><br><span class="line">[33:32] - VS[1:0]  向量扩展状态（Off/Initial/Clean/Dirty）</span><br><span class="line">[23:22] - XS[1:0]  用户扩展状态</span><br><span class="line">[14:13] - FS[1:0]  浮点状态</span><br><span class="line">[18]    - SUM       S-mode 允许访问 U-mode 页面</span><br><span class="line">[8]     - SPP       进入异常前的特权级（0=U, 1=S）</span><br><span class="line">[5]     - SPIE      进入异常前 SIE 的值</span><br><span class="line">[1]     - SIE       S-mode 中断使能</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>SUM 位</strong>：置位后允许 S-mode 访问标记为 U 位的页面。内核在执行 copy_to_user&#x2F;copy_from_user 等操作时需要临时设置此位。</li>
+<li><strong>FS&#x2F;VS 位</strong>：跟踪浮点&#x2F;向量寄存器脏状态，用于惰性上下文切换。内核在调度时若发现状态为 Dirty 则需要保存 FPU&#x2F;向量上下文。</li>
+</ul>
+<h3 id="sie-sip-——-中断使能与中断等待"><a href="#sie-sip-——-中断使能与中断等待" class="headerlink" title="sie &#x2F; sip —— 中断使能与中断等待"></a>sie &#x2F; sip —— 中断使能与中断等待</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">sie 位域：</span><br><span class="line">[9]  SEI  - 外部中断使能（PLIC/APLIC）</span><br><span class="line">[5]  STI  - 定时器中断使能</span><br><span class="line">[1]  SSI  - 软件 IPI 中断使能</span><br><span class="line"></span><br><span class="line">sip 位域（对应位，只读或可写取决于实现）：</span><br><span class="line">[9]  SEI  - 外部中断等待</span><br><span class="line">[5]  STI  - 定时器中断等待</span><br><span class="line">[1]  SSI  - 软件 IPI 等待</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="stvec-——-Trap-向量基址"><a href="#stvec-——-Trap-向量基址" class="headerlink" title="stvec —— Trap 向量基址"></a>stvec —— Trap 向量基址</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">stvec 格式：</span><br><span class="line">[MXLEN-1:2]  BASE    Trap 入口地址（4 字节对齐）</span><br><span class="line">[1:0]        MODE    00=Direct, 01=Vectored</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>Direct 模式</strong>：所有 Trap 跳转到 BASE 地址，内核默认使用此模式</li>
+<li><strong>Vectored 模式</strong>：中断根据 cause 值跳转到 BASE + 4*cause，异常仍跳转到 BASE</li>
+</ul>
+<h3 id="sscratch-——-暂存寄存器"><a href="#sscratch-——-暂存寄存器" class="headerlink" title="sscratch —— 暂存寄存器"></a>sscratch —— 暂存寄存器</h3><p>内核巧妙利用 sscratch 实现快速的用户态&#x2F;内核态检测：</p>
+<ul>
+<li>在内核态运行时，sscratch 保存当前 task 的 thread_info 指针（或 tp 值）</li>
+<li>切换到用户态前，将用户态的 tp 写入 sscratch</li>
+<li>Trap 入口通过交换 tp 和 sscratch 来判断来源：如果交换后 tp 指向内核地址，说明来自用户态</li>
+</ul>
+<h3 id="sepc-——-异常程序计数器"><a href="#sepc-——-异常程序计数器" class="headerlink" title="sepc —— 异常程序计数器"></a>sepc —— 异常程序计数器</h3><p>发生 Trap 时，CPU 自动将当前 PC（或触发异常的指令地址）写入 sepc。sret 指令从 sepc 恢复执行。注意：如果异常由 ecall 指令触发，sepc 指向 ecall 本身而非下一条指令，因此内核在处理系统调用返回前需要手动将 sepc 加 4。</p>
+<h3 id="scause-——-异常原因"><a href="#scause-——-异常原因" class="headerlink" title="scause —— 异常原因"></a>scause —— 异常原因</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">scause 格式：</span><br><span class="line">[63]     Interrupt  1=中断, 0=异常</span><br><span class="line">[62:0]   Code       异常/中断编号</span><br></pre></td></tr></table></figure></div>
+
+<p>通过 bit 63 区分中断和异常，低 63 位给出具体原因编码。例如 code&#x3D;8 且 Interrupt&#x3D;0 表示 ecall from U-mode（即系统调用），code&#x3D;5 且 Interrupt&#x3D;1 表示定时器中断。</p>
+<h3 id="stval-——-Trap-值"><a href="#stval-——-Trap-值" class="headerlink" title="stval —— Trap 值"></a>stval —— Trap 值</h3><p>对于访存异常，stval 保存触发异常的虚拟地址。对于非法指令异常，stval 保存触发异常的指令编码。内核利用此信息进行缺页处理和错误诊断。</p>
+<h3 id="satp-——-页表基址"><a href="#satp-——-页表基址" class="headerlink" title="satp —— 页表基址"></a>satp —— 页表基址</h3><p>satp 是 RISC-V 虚拟内存的核心寄存器，将在 6.2 节详细讨论。其格式为 Mode（4 位）+ ASID（16 位）+ PPN（44 位），通过写入 satp 并执行 sfence.vma 指令来切换地址空间。</p>
+<h3 id="senvcfg-——-环境配置"><a href="#senvcfg-——-环境配置" class="headerlink" title="senvcfg —— 环境配置"></a>senvcfg —— 环境配置</h3><p>较新的 RISC-V 特权规范引入 senvcfg，控制多种微架构行为：</p>
+<ul>
+<li><strong>CBZE&#x2F;CBCFE&#x2F;CBIE</strong>：压缩指令行为控制（Cache Block Zero&#x2F;Flush&#x2F;Invalidate）</li>
+<li><strong>FIOM</strong>：Fence of I&#x2F;O implies Memory</li>
+<li><strong>STCE</strong>：Sstc 定时器事件使能</li>
+<li><strong>PBMTE</strong>：基于页的内存类型使能（Svpbmt）</li>
+</ul>
+<h2 id="6-1-4-调用约定"><a href="#6-1-4-调用约定" class="headerlink" title="6.1.4 调用约定"></a>6.1.4 调用约定</h2><p>RISC-V 函数调用约定（遵循标准 ABI）：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器类别</th>
+<th>ABI 名称</th>
+<th>约定</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>参数&#x2F;返回值</td>
+<td>a0-a7 (x10-x17)</td>
+<td>a0-a7 传递参数，a0-a1 返回结果</td>
+</tr>
+<tr>
+<td>返回地址</td>
+<td>ra (x1)</td>
+<td>函数调用由调用者保存</td>
+</tr>
+<tr>
+<td>栈指针</td>
+<td>sp (x2)</td>
+<td>16 字节对齐，被调用者保持</td>
+</tr>
+<tr>
+<td>帧指针</td>
+<td>fp&#x2F;s0 (x8)</td>
+<td>可选，用于栈帧回溯</td>
+</tr>
+<tr>
+<td>被调用者保存</td>
+<td>s0-s11</td>
+<td>被调用函数必须保存并恢复</td>
+</tr>
+<tr>
+<td>临时寄存器</td>
+<td>t0-t6</td>
+<td>调用者保存，被调用函数可自由使用</td>
+</tr>
+<tr>
+<td>全局指针</td>
+<td>gp (x3)</td>
+<td>指向 .sdata &#x2F; .sbss 段附近</td>
+</tr>
+<tr>
+<td>线程指针</td>
+<td>tp (x4)</td>
+<td>指向线程局部存储或 thread_info</td>
+</tr>
+</tbody></table>
+<p><strong>栈对齐要求</strong>：RISC-V 要求栈指针 sp 在函数调用时必须 16 字节对齐（而非 ARM64 的 16 字节或 x86 的 16 字节），这是硬件强制要求的。未对齐的 sp 会导致未定义行为。</p>
+<h2 id="6-1-5-关键-ISA-扩展"><a href="#6-1-5-关键-ISA-扩展" class="headerlink" title="6.1.5 关键 ISA 扩展"></a>6.1.5 关键 ISA 扩展</h2><p>RISC-V 的模块化设计通过扩展实现功能递增。以下是 Linux 7.0 内核相关的重要扩展：</p>
+<h3 id="基础扩展"><a href="#基础扩展" class="headerlink" title="基础扩展"></a>基础扩展</h3><table>
+<thead>
+<tr>
+<th>扩展</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>I</td>
+<td>Base Integer</td>
+<td>47 条基础整数指令，RV64I 支持 32 位和 64 位操作</td>
+</tr>
+<tr>
+<td>M</td>
+<td>Multiply&#x2F;Divide</td>
+<td>整数乘除法和取余指令</td>
+</tr>
+<tr>
+<td>A</td>
+<td>Atomic</td>
+<td>原子内存操作：LR&#x2F;SC 和 AMO（Atomic Memory Operation）</td>
+</tr>
+<tr>
+<td>F</td>
+<td>Single-Precision Float</td>
+<td>单精度浮点运算，引入 f0-f31</td>
+</tr>
+<tr>
+<td>D</td>
+<td>Double-Precision Float</td>
+<td>双精度浮点运算</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Compressed</td>
+<td>16 位压缩指令编码，约 30% 代码体积缩减</td>
+</tr>
+</tbody></table>
+<h3 id="高级扩展"><a href="#高级扩展" class="headerlink" title="高级扩展"></a>高级扩展</h3><table>
+<thead>
+<tr>
+<th>扩展</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>V</td>
+<td>Vector</td>
+<td>可变长度向量，128-2048+ 位，支持多种元素类型</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Bit Manipulation</td>
+<td>Zba（地址生成）、Zbb（基础位操作）、Zbc（carryless 乘法）、Zbs（单比特操作）</td>
+</tr>
+<tr>
+<td>H</td>
+<td>Hypervisor</td>
+<td>二类虚拟化支持，引入 VS&#x2F;VU 模式</td>
+</tr>
+<tr>
+<td>Zicbom&#x2F;Zicboz</td>
+<td>Cache Management</td>
+<td>缓存块维护（清空、无效化、零化）</td>
+</tr>
+<tr>
+<td>Zkr</td>
+<td>Entropy</td>
+<td>硬件随机数源（种子 CSR）</td>
+</tr>
+<tr>
+<td>Zk*</td>
+<td>Cryptography</td>
+<td>Zkn（NIST 算法）、Zks（ShangMi 算法）等密码学加速</td>
+</tr>
+</tbody></table>
+<h3 id="特权扩展"><a href="#特权扩展" class="headerlink" title="特权扩展"></a>特权扩展</h3><table>
+<thead>
+<tr>
+<th>扩展</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Svpbmt</td>
+<td>Page-Based Memory Types</td>
+<td>页表项中编码内存类型（NC&#x2F;IO）</td>
+</tr>
+<tr>
+<td>Svnapot</td>
+<td>NAPOT Huge Pages</td>
+<td>支持自然对齐的连续大页</td>
+</tr>
+<tr>
+<td>Svinval</td>
+<td>Efficient TLB Invalidation</td>
+<td>高效 TLB 无效化操作序列</td>
+</tr>
+<tr>
+<td>Sstc</td>
+<td>Supervisor Timer</td>
+<td>stimecmp CSR，无需 SBI 调用设置定时器</td>
+</tr>
+<tr>
+<td>Zicfilp&#x2F;Zicfiss</td>
+<td>CFI</td>
+<td>前向&#x2F;后向控制流完整性（Landing Pad &#x2F; Shadow Stack）</td>
+</tr>
+</tbody></table>
+<h2 id="6-1-6-指令编码格式"><a href="#6-1-6-指令编码格式" class="headerlink" title="6.1.6 指令编码格式"></a>6.1.6 指令编码格式</h2><p>RISC-V 基础指令采用 32 位固定长度编码，分为以下格式：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">R-type: [funct7(7)] [rs2(5)] [rs1(5)] [funct3(3)] [rd(5)]  [opcode(7)]  — 寄存器-寄存器操作</span><br><span class="line">I-type: [imm(12)]              [rs1(5)] [funct3(3)] [rd(5)]  [opcode(7)]  — 立即数操作</span><br><span class="line">S-type: [imm(7)]    [rs2(5)]   [rs1(5)] [funct3(3)] [imm(5)] [opcode(7)]  — 存储</span><br><span class="line">B-type: [imm(1)][imm(6)] [rs2(5)] [rs1(5)] [funct3(3)] [imm(4)][imm(1)] [opcode(7)] — 分支</span><br><span class="line">U-type: [imm(20)]                                      [rd(5)] [opcode(7)]  — 上层立即数</span><br><span class="line">J-type: [imm(1)][imm(10)][imm(1)][imm(8)]               [rd(5)] [opcode(7)]  — 跳转</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>C 扩展（压缩指令）</strong>：常见操作（如 load&#x2F;store、寄存器-寄存器操作、跳转）可用 16 位编码表示。C 扩展不影响程序员模型，汇编器自动选择最短编码。</p>
+<p><strong>与其他架构对比</strong>：</p>
+<ul>
+<li><strong>x86</strong>：变长编码（1-15 字节），复杂的前缀和 ModRM 字节，向后兼容 40 年历史</li>
+<li><strong>ARM64</strong>：固定 32 位编码（无压缩），通过 T32（ARMv7）提供 16&#x2F;32 位混合编码</li>
+<li><strong>RISC-V</strong>：32 位基础 + 16 位压缩，指令格式规整，rs1&#x2F;rd 字段位置在多种格式中保持一致</li>
+</ul>
+<h1 id="6-2-RISC-V-虚拟内存：Sv39-Sv48-Sv57-与-SATP"><a href="#6-2-RISC-V-虚拟内存：Sv39-Sv48-Sv57-与-SATP" class="headerlink" title="6.2 RISC-V 虚拟内存：Sv39&#x2F;Sv48&#x2F;Sv57 与 SATP"></a>6.2 RISC-V 虚拟内存：Sv39&#x2F;Sv48&#x2F;Sv57 与 SATP</h1><p>本节深入分析 RISC-V 的虚拟内存系统，包括 SATP 寄存器格式、多级页表结构、虚拟地址空间布局、页表项编码以及与其他架构的对比。</p>
+<h2 id="6-2-1-SATP-寄存器格式"><a href="#6-2-1-SATP-寄存器格式" class="headerlink" title="6.2.1 SATP 寄存器格式"></a>6.2.1 SATP 寄存器格式</h2><p>SATP（Supervisor Address Translation and Protection）是 RISC-V 虚拟内存的核心控制寄存器。其 64 位格式如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">SATP 寄存器格式（RV64）：</span><br><span class="line">+--------+----------------+------------------------------------------+</span><br><span class="line">| 63-60  |     59-44      |                 43-0                     |</span><br><span class="line">| Mode   |     ASID       |                 PPN                      |</span><br><span class="line">| (4位)  |   (16位)       |               (44位)                     |</span><br><span class="line">+--------+----------------+------------------------------------------+</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>Mode（4 位）</strong>：选择地址翻译模式</li>
+<li><strong>ASID（16 位）</strong>：地址空间标识符，用于避免上下文切换时的 TLB 冲刷</li>
+<li><strong>PPN（44 位）</strong>：根页表的物理页帧号，指向物理内存中的顶级页表</li>
+</ul>
+<h3 id="地址翻译模式"><a href="#地址翻译模式" class="headerlink" title="地址翻译模式"></a>地址翻译模式</h3><table>
+<thead>
+<tr>
+<th>Mode 值</th>
+<th>名称</th>
+<th>级数</th>
+<th>虚拟地址位数</th>
+<th>用户空间大小</th>
+<th>页表遍历次数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>8</td>
+<td>Sv39</td>
+<td>3 级</td>
+<td>39 位</td>
+<td>512 GB</td>
+<td>3 次</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Sv48</td>
+<td>4 级</td>
+<td>48 位</td>
+<td>128 TB</td>
+<td>4 次</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Sv57</td>
+<td>5 级</td>
+<td>57 位</td>
+<td>64 PB</td>
+<td>5 次</td>
+</tr>
+<tr>
+<td>0</td>
+<td>Bare</td>
+<td>-</td>
+<td>-</td>
+<td>物理地址直通</td>
+<td>无翻译</td>
+</tr>
+</tbody></table>
+<h3 id="启动时的自动检测"><a href="#启动时的自动检测" class="headerlink" title="启动时的自动检测"></a>启动时的自动检测</h3><p>Linux 内核在启动阶段通过 <code>setup_vm()</code> 自动检测处理器支持的最高地址翻译模式。检测逻辑（位于 <code>arch/riscv/mm/init.c</code>）按优先级依次尝试：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">尝试 Sv57 → 如果硬件不支持则尝试 Sv48 → 兜底使用 Sv39</span><br></pre></td></tr></table></figure></div>
+
+<p>具体来说，内核检查 <code>marchid</code> 或通过 SBI 查询硬件能力。一旦确定模式，将其写入 satp 并刷新 TLB。大多数当前硬件仅支持 Sv39，但新一代处理器（如 SiFive Performance 系列）已支持 Sv48。</p>
+<h2 id="6-2-2-虚拟地址空间布局"><a href="#6-2-2-虚拟地址空间布局" class="headerlink" title="6.2.2 虚拟地址空间布局"></a>6.2.2 虚拟地址空间布局</h2><p>以 Linux 7.0 在 Sv48 模式下的典型布局为例（64 位虚拟地址空间）：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">0xFFFFFFFFFFFFFFFF ─────────────────┐</span><br><span class="line">                                    │</span><br><span class="line">0xFFFFE00000000000   Fixmap         │</span><br><span class="line">0xFFFFDFFFFFC00000   PCI I/O        │ 内核空间</span><br><span class="line">0xFFFFC00000000000   VMEMMAP        │ （高半部分）</span><br><span class="line">0xFFFF800000000000   MODULES        │</span><br><span class="line">0xFFFF000000000000   KERNEL_LINK    │</span><br><span class="line">                  (= end - 2GB)     │</span><br><span class="line">                  vmalloc region    │</span><br><span class="line">                  linear mapping    │</span><br><span class="line">                                    │</span><br><span class="line">0xFFFF000000000000 ─────────────────┤ PAGE_OFFSET</span><br><span class="line">                                    │</span><br><span class="line">                  ... 空洞 ...       │ 非寻址区域</span><br><span class="line">                                    │</span><br><span class="line">0x00007FFFFFFFFFFF ─────────────────┤</span><br><span class="line">                                    │</span><br><span class="line">                  用户空间           │ 用户空间</span><br><span class="line">                  (128 TB)          │ （低半部分）</span><br><span class="line">                                    │</span><br><span class="line">0x0000000000000000 ─────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="关键区域说明"><a href="#关键区域说明" class="headerlink" title="关键区域说明"></a>关键区域说明</h3><ul>
+<li><strong>用户空间（0x0 - 0x00007FFFFFFFFFFF）</strong>：128 TB，包含代码段、数据段、堆、栈、mmap 区域、vdso 等</li>
+<li><strong>线性映射（Linear Mapping）</strong>：从 PAGE_OFFSET 开始，将整个物理内存进行 1:1 的偏移映射。内核通过 <code>__pa()</code> &#x2F; <code>__va()</code> 宏在线性映射区和物理地址之间快速转换</li>
+<li><strong>vmalloc 区域</strong>：用于 vmalloc()、ioremap() 等非连续物理页的虚拟地址映射</li>
+<li><strong>VMEMMAP</strong>：struct page 数组的虚拟映射，每个物理页对应一个 struct page 实例</li>
+<li><strong>MODULES 区域</strong>：内核模块的加载地址空间</li>
+<li><strong>KERNEL_LINK_ADDR</strong>：内核映像的链接地址，通常为 <code>end - 2GB</code>，确保内核代码位于虚拟地址空间顶部附近</li>
+<li><strong>Fixmap</strong>：固定映射的虚拟地址区域，用于早期启动阶段和特定硬件映射</li>
+<li><strong>PCI I&#x2F;O</strong>：PCI 设备 I&#x2F;O 端口映射</li>
+</ul>
+<p>在 Sv39 模式下，用户空间缩减为 512 GB，内核空间同样有限，但布局结构类似。</p>
+<h2 id="6-2-3-页表项格式"><a href="#6-2-3-页表项格式" class="headerlink" title="6.2.3 页表项格式"></a>6.2.3 页表项格式</h2><p>RISC-V 的页表项（PTE）为 64 位，格式如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">页表项格式（64 位）：</span><br><span class="line">+------+------+-------+-------+-------+----+----+----+----+----+----+----+----+</span><br><span class="line">| 63   |62-61 |60-54  | 53-10 | 9-8   | 7  | 6  | 5  | 4  | 3  | 2  | 1  | 0  |</span><br><span class="line">| NAPOT| MT   | RSV   | PFN   | SW    | D  | A  | G  | U  | X  | W  | R  | V  |</span><br><span class="line">+------+------+-------+-------+-------+----+----+----+----+----+----+----+----+</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="各字段说明"><a href="#各字段说明" class="headerlink" title="各字段说明"></a>各字段说明</h3><table>
+<thead>
+<tr>
+<th>位域</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>63</td>
+<td>NAPOT</td>
+<td>自然对齐连续页标记（需 Svnapot 扩展）</td>
+</tr>
+<tr>
+<td>62-61</td>
+<td>MT</td>
+<td>内存类型（需 Svpbmt 扩展）</td>
+</tr>
+<tr>
+<td>60-54</td>
+<td>RSV</td>
+<td>保留，必须为零（或由未来扩展定义）</td>
+</tr>
+<tr>
+<td>53-10</td>
+<td>PFN</td>
+<td>物理页帧号，44 位（可寻址 2^56 字节物理内存）</td>
+</tr>
+<tr>
+<td>9-8</td>
+<td>SW</td>
+<td>软件可用位，内核自行定义用途</td>
+</tr>
+<tr>
+<td>7</td>
+<td>D</td>
+<td>脏位（Dirty），该页被写入时由硬件或软件置位</td>
+</tr>
+<tr>
+<td>6</td>
+<td>A</td>
+<td>访问位（Accessed），该页被访问时由硬件或软件置位</td>
+</tr>
+<tr>
+<td>5</td>
+<td>G</td>
+<td>全局映射，不随 ASID 切换而失效</td>
+</tr>
+<tr>
+<td>4</td>
+<td>U</td>
+<td>用户态可访问</td>
+</tr>
+<tr>
+<td>3</td>
+<td>X</td>
+<td>可执行</td>
+</tr>
+<tr>
+<td>2</td>
+<td>W</td>
+<td>可写</td>
+</tr>
+<tr>
+<td>1</td>
+<td>R</td>
+<td>可读</td>
+</tr>
+<tr>
+<td>0</td>
+<td>V</td>
+<td>有效位</td>
+</tr>
+</tbody></table>
+<h3 id="RWX-编码的特殊含义"><a href="#RWX-编码的特殊含义" class="headerlink" title="RWX 编码的特殊含义"></a>RWX 编码的特殊含义</h3><p>RISC-V 页表项通过 V 位和 RWX 组合来区分指针项和叶节点项：</p>
+<table>
+<thead>
+<tr>
+<th>V</th>
+<th>R</th>
+<th>W</th>
+<th>X</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>无效项（not present）</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>非叶节点，指向下一级页表（PFN 是下一级页表的物理地址）</td>
+</tr>
+<tr>
+<td>1</td>
+<td>≠0</td>
+<td>-</td>
+<td>-</td>
+<td>叶节点项，映射一个物理页（权限由 R&#x2F;W&#x2F;X&#x2F;U 编码）</td>
+</tr>
+</tbody></table>
+<p>这种设计非常优雅：不需要像 x86 那样额外的 PS（Page Size）位来区分大页，因为 RWX&#x3D;000 且 V&#x3D;1 天然表示”这不是最终映射，继续遍历”。大页通过在中间级别使用叶节点项实现。</p>
+<p><strong>与 x86 对比</strong>：x86 使用独立的 Present 位和 PS 位，其中 Present&#x3D;1 + PS&#x3D;1 表示大页。RISC-V 则通过 RWX 编码隐式表达，减少了专用控制位的数量。</p>
+<h2 id="6-2-4-Svpbmt-内存类型"><a href="#6-2-4-Svpbmt-内存类型" class="headerlink" title="6.2.4 Svpbmt 内存类型"></a>6.2.4 Svpbmt 内存类型</h2><p>Svpbmt 扩展在页表项的 bit[62:61] 中编码内存类型：</p>
+<table>
+<thead>
+<tr>
+<th>MT 值</th>
+<th>名称</th>
+<th>属性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>00</td>
+<td>PMA</td>
+<td>平台默认（通常为缓存、强序）</td>
+</tr>
+<tr>
+<td>01</td>
+<td>NC</td>
+<td>非缓存、幂等、弱序</td>
+</tr>
+<tr>
+<td>10</td>
+<td>IO</td>
+<td>非缓存、非幂等、强序</td>
+</tr>
+<tr>
+<td>11</td>
+<td>-</td>
+<td>保留</td>
+</tr>
+</tbody></table>
+<p>内核在映射设备寄存器（ioremap）时使用 IO 类型，确保每次访问都精确到达设备而非被缓存。对于帧缓冲等可缓存但不要求强序的区域使用 NC 类型。默认情况下（PMA），普通内存使用平台的缓存策略。</p>
+<p>Linux 内核通过 <code>pgprot_noncached()</code>、<code>pgprot_writecombine()</code> 等宏来设置对应的内存类型位。</p>
+<h2 id="6-2-5-ASID-与-TLB-管理"><a href="#6-2-5-ASID-与-TLB-管理" class="headerlink" title="6.2.5 ASID 与 TLB 管理"></a>6.2.5 ASID 与 TLB 管理</h2><h3 id="ASID（地址空间标识符）"><a href="#ASID（地址空间标识符）" class="headerlink" title="ASID（地址空间标识符）"></a>ASID（地址空间标识符）</h3><p>SATP 中的 16 位 ASID 用于标识不同的地址空间。当内核切换进程时，如果新进程的 ASID 与当前 TLB 中的 ASID 匹配，则无需刷新 TLB。这显著减少了上下文切换的开销。</p>
+<p>内核通过 <code>asm-generic/tlb.h</code> 和 <code>arch/riscv/mm/context.c</code> 中的 <code>get_new_asid()</code> 管理 ASID 分配。当 16 位 ASID 溢出（65536 个进程后）时，内核执行全局 TLB 冲刷并重新分配 ASID。</p>
+<h3 id="sfence-vma-指令"><a href="#sfence-vma-指令" class="headerlink" title="sfence.vma 指令"></a>sfence.vma 指令</h3><p>RISC-V 通过 <code>sfence.vma</code> 指令管理 TLB：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sfence.vma              # 刷新所有 TLB 项</span><br><span class="line">sfence.vma rs1, x0      # 仅刷新虚拟地址 rs1 对应的 TLB 项</span><br><span class="line">sfence.vma x0, rs2      # 仅刷新 ASID=rs2 的 TLB 项</span><br><span class="line">sfence.vma rs1, rs2     # 刷新特定虚拟地址 + 特定 ASID 的 TLB 项</span><br></pre></td></tr></table></figure></div>
+
+<p>在 Linux 内核中，TLB 刷新的核心函数是 <code>flush_tlb_page()</code>、<code>flush_tlb_mm()</code> 等，最终都会调用 <code>sfence.vma</code>。Svinval 扩展提供了更细粒度的 TLB 无效化机制，允许批量操作以减少 sfence.vma 的开销。</p>
+<h2 id="6-2-6-与-ARM64-页表机制对比"><a href="#6-2-6-与-ARM64-页表机制对比" class="headerlink" title="6.2.6 与 ARM64 页表机制对比"></a>6.2.6 与 ARM64 页表机制对比</h2><p>ARM64 和 RISC-V 在虚拟内存设计上采取了不同策略：</p>
+<h3 id="双页表-vs-单页表"><a href="#双页表-vs-单页表" class="headerlink" title="双页表 vs 单页表"></a>双页表 vs 单页表</h3><p><strong>ARM64（TTBR0&#x2F;TTBR1 双页表）</strong>：</p>
+<ul>
+<li>硬件根据虚拟地址的 bit[55] 自动选择使用 TTBR0（用户空间）或 TTBR1（内核空间）</li>
+<li>用户空间和内核空间各自拥有独立的页表基址寄存器</li>
+<li>切换进程时只需更新 TTBR0，TTBR1 保持不变</li>
+<li>内核空间和用户空间天然隔离</li>
+</ul>
+<p><strong>RISC-V（SATP 单页表）</strong>：</p>
+<ul>
+<li>只有一个页表基址寄存器 satp</li>
+<li>内核空间映射在虚拟地址空间的顶部，用户空间在底部</li>
+<li>一次 satp 写入即切换整个地址空间（包含内核映射和用户映射）</li>
+<li>每个进程的页表都包含内核映射的副本（通过共享顶层页表页实现）</li>
+</ul>
+<h3 id="S-mode-访问用户页面"><a href="#S-mode-访问用户页面" class="headerlink" title="S-mode 访问用户页面"></a>S-mode 访问用户页面</h3><p>RISC-V 的 sstatus.SUM 位提供了一种独特机制：</p>
+<ul>
+<li><strong>SUM&#x3D;0（默认）</strong>：S-mode 代码访问 U&#x3D;1 的页面会触发缺页异常</li>
+<li><strong>SUM&#x3D;1</strong>：S-mode 代码可以访问 U&#x3D;1 的页面</li>
+</ul>
+<p>内核在执行 <code>copy_from_user()</code> &#x2F; <code>copy_to_user()</code> 等操作时，通过临时设置 SUM 位来安全地访问用户空间页面。如果用户地址非法，触发的是缺页异常而非通用保护错误，内核可以优雅地返回 -EFAULT。</p>
+<p>ARM64 则通过 PAN（Privileged Access Never）实现类似保护，但默认禁止特权访问用户页面，需要临时禁用 PAN。两种机制的出发点相同，但实现方式不同。</p>
+<h3 id="页表项权限编码"><a href="#页表项权限编码" class="headerlink" title="页表项权限编码"></a>页表项权限编码</h3><p>ARM64 的页表项使用独立的属性位（如 AP[2:1] 控制读写、nG 控制全局、PXN&#x2F;UXN 控制执行），而 RISC-V 使用更紧凑的 R&#x2F;W&#x2F;X 三位组合。RISC-V 的编码方式更节省位空间，但也意味着权限组合更受限——例如不允许”只执行不可读”的页面（R&#x3D;0, X&#x3D;1 在标准规范中无效）。</p>
+<h1 id="6-3-RISC-V-异常与中断处理"><a href="#6-3-RISC-V-异常与中断处理" class="headerlink" title="6.3 RISC-V 异常与中断处理"></a>6.3 RISC-V 异常与中断处理</h1><p>本节深入分析 RISC-V 的 Trap 处理机制，包括异常和中断的分类、内核入口处理流程、系统调用路径、中断控制器架构以及异常返回机制。</p>
+<h2 id="6-3-1-Trap-处理机制"><a href="#6-3-1-Trap-处理机制" class="headerlink" title="6.3.1 Trap 处理机制"></a>6.3.1 Trap 处理机制</h2><h3 id="Trap-入口配置"><a href="#Trap-入口配置" class="headerlink" title="Trap 入口配置"></a>Trap 入口配置</h3><p>RISC-V 的 Trap（陷阱）包括异常（同步事件）和中断（异步事件），它们共享同一套入口机制。stvec 寄存器配置 Trap 入口：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">stvec 格式：</span><br><span class="line">[MXLEN-1:2]  BASE    入口地址（必须 4 字节对齐）</span><br><span class="line">[1:0]        MODE    00 = Direct 模式 / 01 = Vectored 模式</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>Direct 模式</strong>：所有 Trap（异常和中断）都跳转到 BASE 地址。Linux 内核使用此模式，在软件层面完成分发。</p>
+<p><strong>Vectored 模式</strong>：异常仍跳转到 BASE，但中断跳转到 <code>BASE + 4 * cause</code>。此模式在 Linux 中未使用，因为内核需要在中断入口保存更多上下文。</p>
+<h3 id="Trap-发生时的硬件行为"><a href="#Trap-发生时的硬件行为" class="headerlink" title="Trap 发生时的硬件行为"></a>Trap 发生时的硬件行为</h3><p>当 Trap 发生时，CPU 自动执行以下操作（不可分割）：</p>
+<ol>
+<li><strong>sepc &lt;- PC</strong>：将当前 PC 保存到 sepc（如果是 ecall，保存 ecall 指令本身的地址）</li>
+<li><strong>scause &lt;- cause</strong>：写入异常&#x2F;中断原因编码（bit 63 区分中断&#x2F;异常）</li>
+<li><strong>stval &lt;- value</strong>：写入辅助信息（如缺页地址、非法指令编码）</li>
+<li><strong>sstatus.SPP &lt;- previous_privilege</strong>：记录进入前的特权级（0&#x3D;U, 1&#x3D;S）</li>
+<li><strong>sstatus.SPIE &lt;- sstatus.SIE</strong>：保存中断使能状态</li>
+<li><strong>sstatus.SIE &lt;- 0</strong>：关闭 S-mode 中断（进入异常处理期间禁止嵌套中断）</li>
+<li><strong>PC &lt;- stvec.BASE</strong>：跳转到 Trap 入口</li>
+</ol>
+<h3 id="sscratch-与快速来源检测"><a href="#sscratch-与快速来源检测" class="headerlink" title="sscratch 与快速来源检测"></a>sscratch 与快速来源检测</h3><p>内核利用 sscratch 实现 Trap 来源的高效检测：</p>
+<ul>
+<li><strong>内核态运行时</strong>：sscratch &#x3D; 0（或指向当前 task 的 thread_info）</li>
+<li><strong>用户态运行时</strong>：sscratch &#x3D; 用户态 tp 值</li>
+</ul>
+<p>在 Trap 入口（<code>handle_exception</code>），内核执行：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">csrrw  tp, sscratch, tp    # 交换 tp 和 sscratch</span><br><span class="line">bnez   tp, .Ltrap_from_user # 如果 tp != 0，说明来自用户态</span><br><span class="line">                           # 如果 tp == 0，说明来自内核态</span><br></pre></td></tr></table></figure></div>
+
+<p>这种设计避免了访问内存来判断 Trap 来源，仅需一条 CSR 交换指令和一条条件分支。</p>
+<h2 id="6-3-2-handle-exception-流程"><a href="#6-3-2-handle-exception-流程" class="headerlink" title="6.3.2 handle_exception 流程"></a>6.3.2 handle_exception 流程</h2><p>内核的 Trap 入口位于 <code>arch/riscv/kernel/entry.S</code>，核心流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">handle_exception:</span><br><span class="line">  1. 交换 tp 与 sscratch，检测用户态/内核态来源</span><br><span class="line">  2. 分配内核栈（用户态来源）或使用当前栈（内核态来源）</span><br><span class="line">  3. 保存所有 32 个 GPR 到 pt_regs 结构</span><br><span class="line">  4. 读取 sstatus, sepc, scause, stval 到通用寄存器</span><br><span class="line">  5. 将这些 CSR 值存入 pt_regs 对应字段</span><br><span class="line">  6. 根据 scause.bit[63] 分发：</span><br><span class="line">     - 1 (中断) → handle_interrupt()</span><br><span class="line">     - 0 (异常) → excp_vect_table[code]()</span><br><span class="line">  7. 跳转到 ret_from_exception</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="pt-regs-结构"><a href="#pt-regs-结构" class="headerlink" title="pt_regs 结构"></a>pt_regs 结构</h3><p>内核在栈上构造 <code>pt_regs</code> 结构保存完整的异常上下文：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pt_regs</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> epc;        <span class="comment">// sepc，异常返回地址</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ra;         <span class="comment">// x1</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> sp;         <span class="comment">// x2</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> gp;         <span class="comment">// x3</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> tp;         <span class="comment">// x4</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> t0;         <span class="comment">// x5</span></span><br><span class="line">    <span class="comment">// ... t1-t6, a0-a7, s0-s11 共 31 个 GPR ...</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> status;     <span class="comment">// sstatus</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> cause;      <span class="comment">// scause</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> tval;       <span class="comment">// stval</span></span><br><span class="line">    <span class="comment">// 注意：epc 位于栈底（高地址），保证栈顶对齐</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>pt_regs 的布局设计使得系统调用参数（a0-a7）位于固定偏移，方便快速访问。</p>
+<h2 id="6-3-3-异常原因编码"><a href="#6-3-3-异常原因编码" class="headerlink" title="6.3.3 异常原因编码"></a>6.3.3 异常原因编码</h2><p>异常的 scause 编码中 bit[63]&#x3D;0，低 63 位为异常代码：</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>Instruction misaligned</td>
+<td>取指地址未对齐</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Instruction access fault</td>
+<td>取指权限&#x2F;物理错误</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Illegal instruction</td>
+<td>未实现或特权级不足的指令</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Breakpoint</td>
+<td>ebreak 指令或调试断点</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Load misaligned</td>
+<td>加载地址未对齐</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Load access fault</td>
+<td>加载权限&#x2F;物理错误</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Store misaligned</td>
+<td>存储地址未对齐</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Store access fault</td>
+<td>存储权限&#x2F;物理错误</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>ecall from U-mode</strong></td>
+<td><strong>系统调用入口</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td>ecall from S-mode</td>
+<td>S-mode 的 ecall（调试用）</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Instruction page fault</td>
+<td>取指缺页</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Load page fault</td>
+<td>加载缺页（COW、按需分配等）</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Store page fault</td>
+<td>存储缺页（COW、写时复制）</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Software check</td>
+<td>CFI 软件检查失败（Zicfilp&#x2F;Zicfiss）</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Hardware error</td>
+<td>硬件错误</td>
+</tr>
+</tbody></table>
+<p>内核通过 <code>excp_vect_table</code> 数组分发异常，每个表项指向对应的处理函数。例如 code&#x3D;13（Load page fault）对应 <code>do_page_fault()</code>，code&#x3D;8（ecall from U-mode）对应 <code>do_syscall()</code>。</p>
+<h2 id="6-3-4-中断原因编码"><a href="#6-3-4-中断原因编码" class="headerlink" title="6.3.4 中断原因编码"></a>6.3.4 中断原因编码</h2><p>中断的 scause 编码中 bit[63]&#x3D;1：</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>SSI</td>
+<td>Supervisor Software Interrupt（软件 IPI）</td>
+</tr>
+<tr>
+<td>5</td>
+<td>STI</td>
+<td>Supervisor Timer Interrupt（定时器）</td>
+</tr>
+<tr>
+<td>9</td>
+<td>SEI</td>
+<td>Supervisor External Interrupt（外部设备）</td>
+</tr>
+<tr>
+<td>13</td>
+<td>PMU overflow</td>
+<td>性能计数器溢出</td>
+</tr>
+</tbody></table>
+<h3 id="中断控制器架构"><a href="#中断控制器架构" class="headerlink" title="中断控制器架构"></a>中断控制器架构</h3><p>RISC-V 的中断控制器经历了几代演进：</p>
+<p><strong>PLIC（Platform-Level Interrupt Controller）</strong>：</p>
+<ul>
+<li>最早的外部中断控制器，管理来自设备的中断</li>
+<li>为每个 Hart 提供独立的优先级阈值和中断上下文（Context）</li>
+<li>内核通过 <code>irq_chip</code> 驱动（<code>drivers/irqchip/irq-sifive-plic.c</code>）管理 PLIC</li>
+<li>不支持消息信号中断（MSI），需要轮询或额外的软件支持</li>
+</ul>
+<p><strong>APLIC（Advanced PLIC）</strong>：</p>
+<ul>
+<li>新一代外部中断控制器，配合 IMSIC 使用</li>
+<li>支持两种模式：Direct 模式（类似 PLIC）和 MSI 模式（通过 IMSIC 发送 MSI）</li>
+<li>更好的虚拟化支持和可扩展性</li>
+</ul>
+<p><strong>IMSIC（Incoming Message Signal Interrupt Controller）</strong>：</p>
+<ul>
+<li>提供每个 Hart 独立的中断邮箱</li>
+<li>支持 MSI（Message Signaled Interrupt），设备直接写入 MSI 地址触发中断</li>
+<li>每个中断有独立标识，无需共享中断线</li>
+</ul>
+<p><strong>SBI IPI（软件中断）</strong>：</p>
+<ul>
+<li>跨核通知（IPI）通过 SBI ecall 实现</li>
+<li>SBI 固件（OpenSBI）通过触发 SSI（软件中断）通知目标 Hart</li>
+<li>常见用途：TLB 刷新广播、调度器踢核、停止 CPU</li>
+</ul>
+<p><strong>定时器中断</strong>：</p>
+<ul>
+<li>传统方式：通过 SBI TIME 扩展设置定时器（SBI ecall）</li>
+<li>Sstc 扩展：直接写入 stimecmp CSR 设置下次定时器中断，无需陷入 M-mode</li>
+<li>Linux 内核优先使用 Sstc（如果可用），否则回退到 SBI 调用</li>
+</ul>
+<h2 id="6-3-5-系统调用"><a href="#6-3-5-系统调用" class="headerlink" title="6.3.5 系统调用"></a>6.3.5 系统调用</h2><h3 id="系统调用流程"><a href="#系统调用流程" class="headerlink" title="系统调用流程"></a>系统调用流程</h3><p>RISC-V 系统调用使用 <code>ecall</code>（Environment Call）指令触发：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">用户态：</span><br><span class="line">  a7 = 系统调用号</span><br><span class="line">  a0-a5 = 参数（最多 6 个）</span><br><span class="line">  ecall                    ← 触发异常 code=8</span><br><span class="line"></span><br><span class="line">内核态（handle_exception 分发到 do_syscall）：</span><br><span class="line">  1. 从 pt_regs 获取 a7（系统调用号）</span><br><span class="line">  2. 检查 a7 &lt; NR_syscalls</span><br><span class="line">  3. 调用 sys_call_table[a7](a0, a1, a2, a3, a4, a5)</span><br><span class="line">  4. 将返回值写入 pt_regs-&gt;a0</span><br><span class="line">  5. sepc += 4（跳过 ecall 指令）</span><br><span class="line">  6. 跳转到 ret_from_exception</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>与 x86&#x2F;ARM64 对比</strong>：</p>
+<ul>
+<li><strong>x86</strong>：使用 <code>SYSCALL</code> 指令（快速系统调用），通过 MSR 寄存器配置入口，硬件自动保存 RSP 到 MSR</li>
+<li><strong>ARM64</strong>：使用 <code>SVC #0</code> 指令，异常级别从 EL0 切换到 EL1</li>
+<li><strong>RISC-V</strong>：使用 <code>ecall</code> 指令，没有专用的快速系统调用指令。ecall 在所有特权级都可用，通过 scause 区分来源特权级</li>
+</ul>
+<p>RISC-V 的 ecall 机制简洁但稍显原始——没有像 x86 SYSCALL 那样的专用硬件加速。不过，由于 RISC-V 的 Trap 处理路径本身足够轻量（仅交换 sscratch、保存寄存器），实际性能差距并不显著。</p>
+<h2 id="6-3-6-异常返回（ret-from-exception）"><a href="#6-3-6-异常返回（ret-from-exception）" class="headerlink" title="6.3.6 异常返回（ret_from_exception）"></a>6.3.6 异常返回（ret_from_exception）</h2><p>异常返回流程负责恢复上下文并将控制权交还给被中断的代码：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">ret_from_exception:</span><br><span class="line">  1. 检查 sstatus.SPP：</span><br><span class="line">     - SPP=1 → 返回内核态（resume_kernel）</span><br><span class="line">     - SPP=0 → 返回用户态（resume_userspace）</span><br><span class="line"></span><br><span class="line">  resume_userspace:</span><br><span class="line">  2. 检查 _TIF_WORK_MASK 中的线程标志</span><br><span class="line">     - 需要调度 → 调用 schedule()</span><br><span class="line">     - 有信号 → 调用 do_signal() 处理挂起信号</span><br><span class="line">     - 需要通知 → 处理 user mode 返回前的工作</span><br><span class="line">  3. 擦除内核栈内容（安全考虑，防止信息泄漏）</span><br><span class="line">  4. 将当前 tp 值写入 sscratch（为下次 Trap 做准备）</span><br><span class="line">  5. 从 pt_regs 恢复所有 GPR</span><br><span class="line">  6. 执行 sret 指令</span><br><span class="line"></span><br><span class="line">  sret 硬件行为：</span><br><span class="line">  - PC &lt;- sepc（恢复执行位置）</span><br><span class="line">  - 特权级 &lt;- sstatus.SPP（恢复之前的特权级）</span><br><span class="line">  - sstatus.SIE &lt;- sstatus.SPIE（恢复中断使能状态）</span><br><span class="line">  - sstatus.SPP &lt;- 0（复位为 U-mode）</span><br><span class="line">  - sstatus.SPIE &lt;- 1（复位）</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="内核态返回的特殊处理"><a href="#内核态返回的特殊处理" class="headerlink" title="内核态返回的特殊处理"></a>内核态返回的特殊处理</h3><p>如果 Trap 来自内核态（SPP&#x3D;1），返回路径更简单：</p>
+<ul>
+<li>不需要处理信号</li>
+<li>不需要擦除栈内容</li>
+<li>不需要更新 sscratch</li>
+<li>直接恢复寄存器并执行 sret</li>
+</ul>
+<p>但需要检查是否设置了 <code>TIF_NEED_RESCHED</code> 标志，如果设置了则需要调用 <code>schedule()</code> 进行调度。这是内核抢占（Preemption）的核心实现点。</p>
+<h3 id="sret-vs-eret-vs-iret"><a href="#sret-vs-eret-vs-iret" class="headerlink" title="sret vs eret vs iret"></a>sret vs eret vs iret</h3><ul>
+<li><strong>RISC-V sret</strong>：从 S-mode Trap 返回，恢复 sepc 到 PC，恢复特权级和中断使能</li>
+<li><strong>ARM64 eret</strong>：从异常返回，恢复 ELR_EL1 到 PC，恢复 SPSR_EL1 到 PSTATE</li>
+<li><strong>x86 iret</strong>：从中断返回，从栈上弹出 RIP、CS、RFLAGS、RSP、SS</li>
+</ul>
+<p>三者语义相似：恢复 PC、恢复特权级&#x2F;标志、继续执行。RISC-V sret 的硬件行为最为精简——仅修改 PC、特权级和中断使能三个状态。</p>
+<h2 id="6-4-RISC-V-内核启动：从-start-到-start-kernel"><a href="#6-4-RISC-V-内核启动：从-start-到-start-kernel" class="headerlink" title="6.4 RISC-V 内核启动：从 _start 到 start_kernel"></a>6.4 RISC-V 内核启动：从 _start 到 start_kernel</h2><p>RISC-V 架构的内核启动流程是理解整个系统初始化的关键。与 ARM64 类似，RISC-V Linux 内核在进入通用启动代码 <code>start_kernel()</code> 之前，需要完成硬件环境检测、早期页表建立、MMU 使能等一系列底层工作。本节基于 <code>arch/riscv/kernel/head.S</code> 的实际代码，详细分析这一过程。</p>
+<h3 id="6-4-1-启动入口条件"><a href="#6-4-1-启动入口条件" class="headerlink" title="6.4.1 启动入口条件"></a>6.4.1 启动入口条件</h3><p>内核镜像被加载后，固件（通常是 OpenSBI）将控制权转交给内核的入口点 <code>_start</code>。此时系统必须满足以下条件：</p>
+<ul>
+<li><strong>a0 &#x3D; hartid</strong>：当前硬件线程（hart）的 ID，由固件传入</li>
+<li><strong>a1 &#x3D; DTB 物理地址</strong>：设备树 blob（Device Tree Blob）在内存中的物理地址</li>
+<li><strong>MMU 状态</strong>：可以开启也可以关闭，内核代码同时处理这两种情况</li>
+<li><strong>PMP（物理内存保护）</strong>：必须允许内核镜像、DTB 和 initrd 所在内存区域的访问权限</li>
+</ul>
+<p>与 ARM64 固定要求进入 EL1 或 EL2 不同，RISC-V 内核总是在 S 模式（Supervisor mode）下运行，M 模式的工作由 OpenSBI 负责。</p>
+<h3 id="6-4-2-start：镜像头部与初始跳转"><a href="#6-4-2-start：镜像头部与初始跳转" class="headerlink" title="6.4.2 _start：镜像头部与初始跳转"></a>6.4.2 _start：镜像头部与初始跳转</h3><p>内核镜像的开头是一个标准化的头部结构，定义在 <code>head.S</code> 中：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">/* 内核镜像头部 */</span><br><span class="line">.word code0            /* MZ 魔数（EFI 兼容）或跳转指令 */</span><br><span class="line">.word code1            /* 跳转到 _start_kernel */</span><br><span class="line">.quad text_offset      /* 内核加载偏移 */</span><br><span class="line">.quad image_size       /* 内核镜像大小 */</span><br><span class="line">.quad flags            /* 标志位 */</span><br><span class="line">.quad 0                /* 保留 */</span><br><span class="line">.ascii &quot;RISCV\0\0\0&quot;   /* 魔数标识 */</span><br></pre></td></tr></table></figure></div>
+
+<p><code>code0</code> 字段有两个用途：当通过 EFI 启动时，它包含 MZ 签名以兼容 PE&#x2F;COFF 加载器；当直接启动时，它是一条跳转指令。<code>code1</code> 则无条件跳转到 <code>_start_kernel</code>，这是真正的启动逻辑入口。</p>
+<h3 id="6-4-3-start-kernel：核心初始化序列"><a href="#6-4-3-start-kernel：核心初始化序列" class="headerlink" title="6.4.3 _start_kernel：核心初始化序列"></a>6.4.3 _start_kernel：核心初始化序列</h3><p><code>_start_kernel</code> 是内核早期初始化的核心函数，按顺序完成以下工作：</p>
+<p><strong>1. 禁用中断和协处理器</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">csrw    CSR_IE, zero          /* 禁用所有中断 */</span><br><span class="line">csrw    CSR_IP, zero          /* 清除所有挂起中断 */</span><br><span class="line">/* 清除 sstatus 中的 FS 和 VS 位，禁用 FPU 和向量单元 */</span><br><span class="line">li      t0, ~(SR_FS | SR_VS)</span><br><span class="line">and     t0, t0, s_status</span><br><span class="line">csrw    CSR_SSTATUS, t0</span><br></pre></td></tr></table></figure></div>
+
+<p>在 MMU 开启之前，必须确保没有中断或异常会干扰页表设置过程。</p>
+<p><strong>2. 保存 hartid 和 DTB 指针</strong></p>
+<p>将 <code>a0</code>（hartid）和 <code>a1</code>（DTB 地址）保存到全局变量中，供后续代码使用：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mv      s0, a0                /* 保存 hartid */</span><br><span class="line">mv      s1, a1                /* 保存 DTB 指针 */</span><br><span class="line">REG_S   a0, CSVAR(tp, hartid)</span><br><span class="line">REG_S   a1, CSVAR(tp, dtb_pointer)</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>3. SMP 启动：抽签选择引导 hart</strong></p>
+<p>在 spinwait SMP 模式下（<code>CONFIG_RISCV_BOOT_SPINWAIT</code>），所有 hart 同时进入内核。通过原子操作进行”抽签”（lottery）来决定哪个 hart 成为引导 CPU：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">li      t0, 1</span><br><span class="line">amoadd.w t1, t0, (a2)         /* 原子递增 hart_lottery */</span><br><span class="line">bnez    t1, .Lspin_wait       /* 非零表示已有赢家，进入自旋等待 */</span><br></pre></td></tr></table></figure></div>
+
+<p>赢得抽签的 hart 继续执行引导流程，其余 hart 进入自旋等待，直到引导 CPU 为它们设置好栈和任务指针。</p>
+<p><strong>4. 清零 BSS 段</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">    la      t0, __bss_start</span><br><span class="line">    la      t1, __bss_stop</span><br><span class="line">.Lclear_bss:</span><br><span class="line">    sd      zero, (t0)</span><br><span class="line">    addi    t0, t0, 8</span><br><span class="line">    bne     t0, t1, .Lclear_bss</span><br></pre></td></tr></table></figure></div>
+
+<p>BSS 段必须在使用任何全局变量之前清零。</p>
+<p><strong>5. 建立早期页表：setup_vm()</strong></p>
+<p>调用 C 函数 <code>setup_vm()</code> 创建两个早期映射：</p>
+<ul>
+<li><strong>恒等映射（identity mapping）</strong>：虚拟地址等于物理地址，确保 MMU 开启后当前代码仍可执行</li>
+<li><strong>内核映射（kernel mapping）</strong>：将内核镜像映射到其最终的虚拟地址（PAGE_OFFSET + 物理地址偏移）</li>
+</ul>
+<p>这两个映射使用同一张页表 <code>early_pg_dir</code>，其物理地址在 MMU 关闭状态下可以直接使用。</p>
+<p><strong>6. 使能 MMU：relocate_enable_mmu()</strong></p>
+<p>这是启动过程中最关键的一步。详细流程将在下一小节分析。</p>
+<p><strong>7. SoC 早期初始化</strong></p>
+<p>调用 <code>soc_early_init()</code> 执行特定 SoC 的早期设置，例如时钟初始化、电源域配置等。这是一个弱函数（weak），各 SoC 可以提供自己的实现。</p>
+<p><strong>8. 跳转到 start_kernel()</strong></p>
+<p>所有架构特定的早期初始化完成后，跳转到通用的 Linux 内核启动入口：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">call    start_kernel</span><br></pre></td></tr></table></figure></div>
+
+<p>从此开始，RISC-V 的启动流程与所有架构共享同一套通用初始化代码。</p>
+<h3 id="6-4-4-relocate-enable-mmu：使能内存管理单元"><a href="#6-4-4-relocate-enable-mmu：使能内存管理单元" class="headerlink" title="6.4.4 relocate_enable_mmu：使能内存管理单元"></a>6.4.4 relocate_enable_mmu：使能内存管理单元</h3><p><code>relocate_enable_mmu</code> 负责从物理地址模式切换到虚拟地址模式，这是启动过程中最精细的操作之一。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">relocate_enable_mmu:</span><br><span class="line">    /* 计算 SATP 值：模式 | ASID | 页表物理地址 &gt;&gt; 12 */</span><br><span class="line">    li      t0, SATP_MODE        /* Sv39 或 Sv48 模式 */</span><br><span class="line">    or      t0, t0, a1            /* a1 = 页表物理地址 &gt;&gt; 12 */</span><br><span class="line"></span><br><span class="line">    /* 刷新整个 TLB */</span><br><span class="line">    sfence.vma</span><br><span class="line"></span><br><span class="line">    /* 写入 SATP 寄存器，使能 MMU！ */</span><br><span class="line">    csrw    satp, t0</span><br><span class="line"></span><br><span class="line">    /* 再次刷新 TLB，确保旧映射不残留 */</span><br><span class="line">    sfence.vma</span><br></pre></td></tr></table></figure></div>
+
+<p>SATP（Supervisor Address Translation and Protection）寄存器是 RISC-V 页表的核心控制寄存器。写入 SATP 后，MMU 立即生效，所有地址访问都经过页表翻译。</p>
+<p>关键点在于，MMU 开启的瞬间，PC（程序计数器）仍然指向物理地址空间的代码。通过 <code>trampoline_pg_dir</code> 中同时存在的恒等映射和内核映射，确保代码在 MMU 开启前后都能正确执行。随后，代码切换到最终的 <code>swapper_pg_dir</code> 页表。</p>
+<h3 id="6-4-5-完整启动流程"><a href="#6-4-5-完整启动流程" class="headerlink" title="6.4.5 完整启动流程"></a>6.4.5 完整启动流程</h3><p>从上电到进入通用内核初始化，RISC-V 的完整启动链如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">OpenSBI (M 模式固件)</span><br><span class="line">  → SBI ecall 启动 S 模式</span><br><span class="line">  → _start (内核入口)</span><br><span class="line">    → _start_kernel</span><br><span class="line">      → 禁用中断和 FPU/向量单元</span><br><span class="line">      → 保存 hartid 和 DTB 指针</span><br><span class="line">      → SMP 抽签（spinwait 模式）</span><br><span class="line">      → 清零 BSS 段</span><br><span class="line">      → setup_vm()（建立早期页表）</span><br><span class="line">      → relocate_enable_mmu()（使能 MMU）</span><br><span class="line">      → soc_early_init()（SoC 早期初始化）</span><br><span class="line">      → start_kernel()（通用 Linux 初始化）</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="6-4-6-setup-arch-：架构特定初始化"><a href="#6-4-6-setup-arch-：架构特定初始化" class="headerlink" title="6.4.6 setup_arch()：架构特定初始化"></a>6.4.6 setup_arch()：架构特定初始化</h3><p><code>start_kernel()</code> 在早期阶段调用 <code>setup_arch()</code>，这是 RISC-V 架构向通用内核注册自身信息的入口，定义在 <code>arch/riscv/kernel/setup.c</code> 中：</p>
+<ul>
+<li><strong>解析 DTB</strong>：从保存的物理地址读取设备树，解析内存布局、CPU 信息、设备列表</li>
+<li><strong>sbi_init()</strong>：探测 SBI 固件的可用扩展（详见第 6.5 节），设置定时器、IPI、TLB 刷新等功能指针</li>
+<li><strong>paging_init()</strong>：建立完整的内核页表，包括 vmalloc 区域、fixmap、vmemmap 等</li>
+<li><strong>efi_init()</strong>：如果通过 EFI 启动，初始化 EFI 运行时服务</li>
+<li><strong>填充 hwcap</strong>：通过探测 CSR 寄存器和设备树中的 ISA 字符串，确定 CPU 支持的特性（如 FPU、向量扩展等），写入 elf_hwcap</li>
+<li><strong>SMP 初始化</strong>：从设备树的 CPU 节点中发现的每个 hart，注册为可能的 CPU</li>
+</ul>
+<h3 id="6-4-7-与-ARM64-启动流程的对比"><a href="#6-4-7-与-ARM64-启动流程的对比" class="headerlink" title="6.4.7 与 ARM64 启动流程的对比"></a>6.4.7 与 ARM64 启动流程的对比</h3><p>RISC-V 和 ARM64 的内核启动流程有许多相似之处，也有显著差异：</p>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>启动模式</td>
+<td>无实模式，直接进入异常级别</td>
+<td>无实模式，直接进入特权级</td>
+</tr>
+<tr>
+<td>硬件信息传递</td>
+<td>x0 &#x3D; DTB 物理地址</td>
+<td>a1 &#x3D; DTB 物理地址</td>
+</tr>
+<tr>
+<td>特权级检测</td>
+<td><code>init_kernel_el</code> 检测 EL2 并降级到 EL1</td>
+<td>内核始终在 S 模式运行，M 模式由 OpenSBI 管理</td>
+</tr>
+<tr>
+<td>过渡页表</td>
+<td><code>reserved_pg_dir</code></td>
+<td><code>trampoline_pg_dir</code></td>
+</tr>
+<tr>
+<td>启动入口函数</td>
+<td><code>primary_entry</code></td>
+<td><code>_start_kernel</code></td>
+</tr>
+<tr>
+<td>MMU 使能</td>
+<td><code>__cpu_setup</code> + <code>__enable_mmu</code></td>
+<td><code>relocate_enable_mmu</code></td>
+</tr>
+<tr>
+<td>最终跳转</td>
+<td><code>start_kernel()</code></td>
+<td><code>start_kernel()</code></td>
+</tr>
+</tbody></table>
+<p>两者最根本的架构差异在于特权级模型：ARM64 内核可以从 EL2 启动并自行降级到 EL1（以支持虚拟化扩展），而 RISC-V 内核始终运行在 S 模式，M 模式的功能通过 SBI 调用委托给 OpenSBI。这种设计使得 RISC-V 的启动代码更加简洁，但也意味着内核无法直接访问某些底层硬件功能。</p>
+<p>另一个重要区别是 SMP 启动方式：ARM64 使用 PSCI（Power State Coordination Interface）通过 SMC 调用来启动辅助 CPU，而 RISC-V 使用 SBI HSM（Hart State Management）扩展通过 ecall 实现（详见第 6.6 节）。在旧固件不支持 HSM 的情况下，RISC-V 还支持 spinwait 模式，这是 ARM64 所没有的。</p>
+<h2 id="6-5-RISC-V-SBI：Supervisor-Binary-Interface"><a href="#6-5-RISC-V-SBI：Supervisor-Binary-Interface" class="headerlink" title="6.5 RISC-V SBI：Supervisor Binary Interface"></a>6.5 RISC-V SBI：Supervisor Binary Interface</h2><p>SBI（Supervisor Binary Interface）是 RISC-V 架构中 S 模式（Supervisor）内核与 M 模式（Machine）固件之间的标准接口。在 RISC-V 的特权级架构中，内核运行在 S 模式，无法直接访问 M 模式的硬件资源。SBI 提供了一套标准化的调用机制，使内核能够通过受控的方式请求 M 模式固件的服务。目前最广泛使用的 SBI 实现是 OpenSBI。</p>
+<h3 id="6-5-1-SBI-的定位与作用"><a href="#6-5-1-SBI-的定位与作用" class="headerlink" title="6.5.1 SBI 的定位与作用"></a>6.5.1 SBI 的定位与作用</h3><p>SBI 的角色类似于 ARM 架构中的 PSCI（Power State Coordination Interface），但其覆盖范围远不止 CPU 电源管理。SBI 涵盖了以下功能领域：</p>
+<ul>
+<li><strong>定时器</strong>：设置下次定时器中断的时间</li>
+<li><strong>核间中断（IPI）</strong>：向其他 hart 发送中断</li>
+<li><strong>CPU 管理</strong>：启动、停止、挂起 hart</li>
+<li><strong>TLB 刷新</strong>：远程 TLB 无效化操作</li>
+<li><strong>系统复位</strong>：关机、重启</li>
+<li><strong>控制台</strong>：早期调试输出</li>
+<li><strong>性能监控（PMU）</strong>：硬件性能计数器管理</li>
+<li><strong>固件特性</strong>：启用&#x2F;配置安全特性（如影子栈）</li>
+</ul>
+<p>SBI 使得内核不必关心 M 模式的实现细节，实现了固件与内核的解耦。OpenSBI 可以独立更新，而无需重新编译内核。</p>
+<h3 id="6-5-2-SBI-规范版本演进"><a href="#6-5-2-SBI-规范版本演进" class="headerlink" title="6.5.2 SBI 规范版本演进"></a>6.5.2 SBI 规范版本演进</h3><p>SBI 规范经历了多个版本的迭代，功能逐步增强：</p>
+<p><strong>v0.1（legacy）</strong>：最早的 SBI 实现。使用固定的功能 ID 进行调用，不支持扩展探测。每个功能（如定时器、IPI、控制台）都有预定义的调用号。内核无法在运行时查询固件支持哪些功能，只能硬编码假设所有功能都可用。</p>
+<p><strong>v0.2</strong>：引入了基于扩展（extension）的探测机制。内核可以通过 <code>sbi_probe_extension()</code> 查询固件是否支持某个特定扩展。这为固件和内核之间的兼容性提供了灵活的协商方式。v0.2 还定义了 BASE 扩展作为所有其他扩展的基础。</p>
+<p><strong>v0.3</strong>：在 v0.2 基础上新增了三个重要扩展：</p>
+<ul>
+<li><strong>SRST（System Reset）</strong>：统一的系统复位接口，支持关机和不同类型的重启</li>
+<li><strong>PMU（Performance Monitoring Unit）</strong>：硬件性能计数器的配置和读取</li>
+<li><strong>DBCN（Debug Console）</strong>：标准化的调试控制台输出，取代了 legacy 的控制台调用</li>
+</ul>
+<p><strong>v2.0</strong>：最新版本，进一步扩展：</p>
+<ul>
+<li><strong>FWFT（Firmware Features）</strong>：允许内核请求固件启用特定特性，如影子栈（Shadow Stack）和着陆点（Landing Pad）等控制流完整性保护</li>
+<li><strong>NACL（Nested Acceleration）</strong>：为 KVM 虚拟化提供嵌套虚拟化加速，减少 VM exit 开销</li>
+</ul>
+<h3 id="6-5-3-核心-SBI-扩展"><a href="#6-5-3-核心-SBI-扩展" class="headerlink" title="6.5.3 核心 SBI 扩展"></a>6.5.3 核心 SBI 扩展</h3><p>每个 SBI 扩展由一个 32 位 ID 标识，内部包含多个功能（function）。以下是 Linux 内核使用的主要扩展：</p>
+<p><strong>BASE（0x10）</strong>：基础扩展，所有 v0.2+ 固件必须实现。提供：</p>
+<ul>
+<li><code>sbi_get_spec_version()</code>：获取 SBI 规范版本</li>
+<li><code>sbi_probe_extension(ext_id)</code>：探测指定扩展是否可用</li>
+<li><code>sbi_get_firmware_id()</code>：获取固件标识</li>
+</ul>
+<p><strong>TIME（0x54494D45）</strong>：定时器扩展。核心函数 <code>sbi_set_timer(stime)</code> 设置下一次定时器中断的触发时间。内核的时钟事件驱动通过此接口编程定时器。在旧固件上，退回到直接写入 <code>mtimecmp</code> CSR。</p>
+<p><strong>IPI（0x735049）</strong>：核间中断扩展。<code>sbi_send_ipi(hart_mask)</code> 向指定的 hart 集合发送 IPI。内核的 SMP IPI 机制依赖此扩展。较新的硬件可能使用 ACLINT（Advanced Core Local Interruptor）或 IMSIC（Incoming Message Signaled Interrupt Controller）直接发送 IPI，绕过 SBI。</p>
+<p><strong>RFENCE（0x52464E43）</strong>：远程栅栏扩展。提供以下 TLB 操作：</p>
+<ul>
+<li><code>sbi_remote_sfence_vma()</code>：远程 sfence.vma</li>
+<li><code>sbi_remote_hfence_gvma()</code>：远程 hfence.gvma（虚拟化场景）</li>
+<li><code>sbi_remote_hfence_vvma()</code>：远程 hfence.vvma（虚拟化场景）</li>
+</ul>
+<p>这些操作允许一个 hart 请求其他 hart 执行 TLB 刷新，是实现 SMP TLB 一致性的关键。</p>
+<p><strong>HSM（0x48534D）</strong>：Hart 状态管理扩展。提供 CPU 生命周期管理：</p>
+<ul>
+<li><code>sbi_hsm_hart_start(hartid, start_addr, opaque)</code>：启动指定 hart</li>
+<li><code>sbi_hsm_hart_stop()</code>：停止当前 hart</li>
+<li><code>sbi_hsm_hart_status(hartid)</code>：查询 hart 状态</li>
+<li><code>sbi_hsm_hart_suspend(suspend_type, resume_addr, opaque)</code>：挂起 hart</li>
+</ul>
+<p>HSM 是实现 CPU hotplug 和 SMP 启动的基础（详见第 6.6 节）。</p>
+<p><strong>SRST（0x53525354）</strong>：系统复位扩展。<code>sbi_system_reset(reset_type, reset_reason)</code> 支持关机（shutdown）、冷重启（cold reboot）、热重启（warm reboot）等复位类型。</p>
+<p><strong>PMU（0x504D55）</strong>：性能监控扩展。提供：</p>
+<ul>
+<li>计数器数量查询和事件到计数器的映射</li>
+<li>计数器的启动、停止和配置</li>
+<li>计数器值的读取</li>
+</ul>
+<p><strong>DBCN（0x4442434E）</strong>：调试控制台扩展。<code>sbi_debug_console_write(bytes)</code> 和 <code>sbi_debug_console_read(bytes)</code> 提供标准化的控制台 I&#x2F;O，用于早期内核调试输出。</p>
+<h3 id="6-5-4-SBI-调用约定"><a href="#6-5-4-SBI-调用约定" class="headerlink" title="6.5.4 SBI 调用约定"></a>6.5.4 SBI 调用约定</h3><p>SBI 使用 <code>ecall</code>（Environment Call）指令从 S 模式陷阱到 M 模式。调用约定如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">ecall 指令执行后：</span><br><span class="line">  - 触发 S 模式 → M 模式的异常</span><br><span class="line">  - M 模式固件（OpenSBI）处理 ecall</span><br><span class="line">  - 根据 a7 中的扩展 ID 和 a6 中的功能 ID 分发到对应的处理函数</span><br><span class="line">  - 返回值通过 a0 和 a1 传回</span><br><span class="line"></span><br><span class="line">寄存器使用：</span><br><span class="line">  a7 = 扩展 ID（Extension ID）</span><br><span class="line">  a6 = 扩展内功能 ID（Function ID）</span><br><span class="line">  a0 = 返回值 0（错误码，0 表示成功）</span><br><span class="line">  a1 = 返回值 1（输出参数）</span><br><span class="line">  a2-a5 = 输入参数</span><br></pre></td></tr></table></figure></div>
+
+<p>错误码定义：<code>SBI_SUCCESS</code>（0）表示成功，<code>SBI_ERR_FAILED</code>（-1）表示通用失败，<code>SBI_ERR_NOT_SUPPORTED</code>（-2）表示不支持，<code>SBI_ERR_INVALID_PARAM</code>（-3）表示参数无效。</p>
+<h3 id="6-5-5-与-ARM-PSCI-的对比"><a href="#6-5-5-与-ARM-PSCI-的对比" class="headerlink" title="6.5.5 与 ARM PSCI 的对比"></a>6.5.5 与 ARM PSCI 的对比</h3><p>SBI 和 PSCI 都是为操作系统提供固件服务的接口，但设计理念和覆盖范围有显著差异：</p>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>ARM PSCI</th>
+<th>RISC-V SBI</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>覆盖范围</td>
+<td>CPU 电源管理为主</td>
+<td>全面（定时器、IPI、TLB、控制台、PMU、复位等）</td>
+</tr>
+<tr>
+<td>调用机制</td>
+<td>SMC（Secure Monitor Call）</td>
+<td>ecall（Environment Call）</td>
+</tr>
+<tr>
+<td>可扩展性</td>
+<td>通过 PSCI 版本号扩展</td>
+<td>通过扩展探测机制（probe extension）灵活扩展</td>
+</tr>
+<tr>
+<td>CPU 管理</td>
+<td>cpu_on&#x2F;cpu_off&#x2F;cpu_suspend</td>
+<td>HSM：hart_start&#x2F;stop&#x2F;status&#x2F;suspend</td>
+</tr>
+<tr>
+<td>定时器</td>
+<td>不涉及（使用硬件定时器）</td>
+<td>sbi_set_timer（SBI 管理）</td>
+</tr>
+<tr>
+<td>IPI</td>
+<td>不涉及（使用硬件中断控制器）</td>
+<td>sbi_send_ipi（SBI 管理或直接硬件）</td>
+</tr>
+<tr>
+<td>TLB 操作</td>
+<td>不涉及（硬件自动维护或内核直接操作）</td>
+<td>sbi_remote_sfence_vma</td>
+</tr>
+</tbody></table>
+<p>SBI 的设计更加全面和可扩展。PSCI 专注于 CPU 电源状态管理，定时器、IPI、TLB 操作在 ARM 上通常由内核直接操作硬件完成。而 RISC-V 的设计哲学是将更多功能下沉到 M 模式固件，使 S 模式内核更加精简和可移植。这种设计的代价是某些操作多了一次 ecall 的开销，但也带来了更好的隔离性和可维护性。</p>
+<h3 id="6-5-6-sbi-init-：启动时的-SBI-初始化"><a href="#6-5-6-sbi-init-：启动时的-SBI-初始化" class="headerlink" title="6.5.6 sbi_init()：启动时的 SBI 初始化"></a>6.5.6 sbi_init()：启动时的 SBI 初始化</h3><p>内核在 <code>setup_arch()</code> 中调用 <code>sbi_init()</code>，完成 SBI 子系统的初始化：</p>
+<ol>
+<li><strong>获取规范版本</strong>：调用 BASE 扩展的 <code>get_spec_version</code> 确认固件支持的 SBI 版本</li>
+<li><strong>探测扩展</strong>：逐一探测所有已知的扩展（TIME、IPI、RFENCE、HSM、SRST、PMU 等），记录哪些扩展可用</li>
+<li><strong>设置函数指针</strong>：根据探测结果，将定时器、IPI、远程栅栏等操作绑定到具体的实现函数。优先使用 v0.2+ 的新接口，仅在固件不支持时才退回到 v0.1 的 legacy 调用</li>
+<li><strong>打印信息</strong>：输出 SBI 版本和可用扩展列表到内核日志</li>
+</ol>
+<p>这种基于探测的初始化机制确保内核能够在不同版本的 OpenSBI 上正常工作，同时自动利用固件提供的最新功能。</p>
+<h2 id="6-6-RISC-V-多核启动与-HSM"><a href="#6-6-RISC-V-多核启动与-HSM" class="headerlink" title="6.6 RISC-V 多核启动与 HSM"></a>6.6 RISC-V 多核启动与 HSM</h2><p>RISC-V 架构的对称多处理（SMP）支持涉及多个 hart（硬件线程）的发现、启动和协调。与 ARM64 使用 PSCI 进行 CPU 管理不同，RISC-V 提供了两种 SMP 启动机制：基于 SBI HSM 扩展的现代方式和基于 spinwait 的传统方式。本节详细分析这两种机制以及相关的核间通信。</p>
+<h3 id="6-6-1-CPU-发现"><a href="#6-6-1-CPU-发现" class="headerlink" title="6.6.1 CPU 发现"></a>6.6.1 CPU 发现</h3><p>内核通过 <code>setup_smp()</code> 函数发现系统中的所有 CPU。发现方式取决于固件接口：</p>
+<p><strong>设备树（DT）方式</strong>：遍历设备树中的 <code>/cpus</code> 节点，解析每个 <code>cpu@N</code> 子节点，提取 hartid 和 ISA 信息。每个有效的 CPU 节点对应一个 hart。引导 CPU 的 hartid 通过启动时传入的 <code>a0</code> 寄存器值确定。</p>
+<p><strong>ACPI 方式</strong>：通过 RINTC（RISC-V Interrupt Controller）表发现 CPU，每个 RINTC 条目对应一个 hart。</p>
+<p>发现过程会跳过 hartid 为 <code>-1</code>（无效）的条目以及引导 CPU 自身，将所有有效的 hart 注册到内核的 CPU 掩码中。最大支持 CPU 数量受 <code>NR_CPUS</code> 配置项限制，也受 <code>misa</code> CSR 中 hart 数量字段的约束。</p>
+<h3 id="6-6-2-SBI-HSM：Hart-状态管理"><a href="#6-6-2-SBI-HSM：Hart-状态管理" class="headerlink" title="6.6.2 SBI HSM：Hart 状态管理"></a>6.6.2 SBI HSM：Hart 状态管理</h3><p>HSM（Hart State Management）是 SBI 的一个扩展（扩展 ID 0x48534D），专门用于管理 hart 的生命周期。它定义了 hart 的状态机：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">STOPPED ←→ START_PENDING → STARTED</span><br><span class="line">   ↑                         ↓</span><br><span class="line">   ←── STOP_PENDING ←───────</span><br><span class="line">   ↑                         ↓</span><br><span class="line">   ←── SUSPENDED ←── SUSPEND_PENDING ← STARTED</span><br></pre></td></tr></table></figure></div>
+
+<p>核心状态说明：</p>
+<ul>
+<li><strong>STOPPED</strong>：hart 未运行，可以被启动</li>
+<li><strong>STARTED</strong>：hart 正常运行中</li>
+<li><strong>START_PENDING</strong>：hart 正在被启动的过程中（过渡状态）</li>
+<li><strong>STOP_PENDING</strong>：hart 正在被停止的过程中（过渡状态）</li>
+<li><strong>SUSPENDED</strong>：hart 处于低功耗挂起状态，可以通过 <code>sbi_hsm_hart_start()</code> 唤醒</li>
+</ul>
+<p>HSM 提供四个核心操作：</p>
+<ul>
+<li><code>sbi_hsm_hart_start(hartid, start_addr, opaque)</code>：启动一个处于 STOPPED 或 SUSPENDED 状态的 hart，使其从 <code>start_addr</code> 开始执行。<code>opaque</code> 参数传递给目标 hart 的 <code>a0</code> 寄存器</li>
+<li><code>sbi_hsm_hart_stop()</code>：停止当前 hart，使其进入 STOPPED 状态。调用后不会返回</li>
+<li><code>sbi_hsm_hart_status(hartid)</code>：查询指定 hart 的当前状态</li>
+<li><code>sbi_hsm_hart_suspend(suspend_type, resume_addr, opaque)</code>：将当前 hart 挂起。<code>suspend_type</code> 区分保留上下文的挂起（可恢复）和不保留上下文的挂起（类似关机）</li>
+</ul>
+<p>HSM 的功能与 ARM PSCI 的 <code>cpu_on</code>&#x2F;<code>cpu_off</code>&#x2F;<code>cpu_suspend</code> 直接对应，但 RISC-V 的状态机定义更加形式化。</p>
+<h3 id="6-6-3-辅助-CPU-启动流程"><a href="#6-6-3-辅助-CPU-启动流程" class="headerlink" title="6.6.3 辅助 CPU 启动流程"></a>6.6.3 辅助 CPU 启动流程</h3><p>使用 SBI HSM 时，辅助 CPU 的启动流程如下：</p>
+<p><strong>引导 CPU 侧</strong>：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">__cpu_up(cpu)</span><br><span class="line">  → sbi_cpu_start(hartid, start_addr)</span><br><span class="line">    → sbi_hsm_hart_start(hartid, secondary_start_sbi, hartid)</span><br></pre></td></tr></table></figure></div>
+
+<p><code>__cpu_up()</code> 为目标 CPU 准备栈和任务结构体，然后通过 SBI HSM 请求 OpenSBI 启动目标 hart。<code>start_addr</code> 指向 <code>head.S</code> 中的 <code>secondary_start_sbi</code> 标号。</p>
+<p><strong>辅助 CPU 侧</strong>：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">OpenSBI 启动目标 hart，跳转到 secondary_start_sbi</span><br><span class="line">  → 保存 hartid</span><br><span class="line">  → csrw CSR_IE, zero（禁用中断）</span><br><span class="line">  → 清除 sstatus.FS/VS（禁用 FPU/向量）</span><br><span class="line">  → 设置 SP（栈指针）</span><br><span class="line">  → relocate_enable_mmu()（使能 MMU，切换到 swapper_pg_dir）</span><br><span class="line">  → smp_callin()</span><br></pre></td></tr></table></figure></div>
+
+<p><code>smp_callin()</code> 完成以下工作：</p>
+<ol>
+<li>设置当前 CPU 的 per-CPU 数据区域</li>
+<li>通知引导 CPU 自己已上线</li>
+<li>启用本 hart 的 IPI 中断</li>
+<li>进入空闲调度循环，等待调度器分配任务</li>
+</ol>
+<h3 id="6-6-4-Spinwait-启动方式"><a href="#6-6-4-Spinwait-启动方式" class="headerlink" title="6.6.4 Spinwait 启动方式"></a>6.6.4 Spinwait 启动方式</h3><p><code>CONFIG_RISCV_BOOT_SPINWAIT</code> 配置选项启用 spinwait 启动模式，用于不支持 SBI HSM 的旧固件。在这种模式下，所有 hart 同时进入内核入口点 <code>_start</code>。</p>
+<p><strong>抽签机制</strong>：所有 hart 原子递增全局变量 <code>hart_lottery</code>。第一个读到旧值为 0 的 hart 成为引导 CPU（赢家），其余 hart 进入自旋等待：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">li      t0, 1</span><br><span class="line">amoadd.w t1, t0, (hart_lottery)</span><br><span class="line">bnez    t1, .Lsecondary_park</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>辅助 hart 等待</strong>：未赢得抽签的 hart 在 <code>.Lsecondary_park</code> 处自旋，检查自己的 per-CPU 变量（栈指针和任务指针）是否已被引导 CPU 设置。一旦发现这些值非零，辅助 hart 便跳出循环，执行与 HSM 模式类似的 <code>smp_callin()</code> 流程。</p>
+<p>spinwait 模式简单但不优雅：所有 hart 都需要执行内核的早期代码（直到抽签点），浪费了启动时间。现代系统应优先使用 HSM 模式。</p>
+<h3 id="6-6-5-核间中断（IPI）"><a href="#6-6-5-核间中断（IPI）" class="headerlink" title="6.6.5 核间中断（IPI）"></a>6.6.5 核间中断（IPI）</h3><p>核间中断是 SMP 系统中 CPU 之间通信的基本机制。RISC-V 的 IPI 实现有两条路径：</p>
+<p><strong>SBI IPI 扩展</strong>：<code>sbi_send_ipi(cpumask)</code> 通过 ecall 请求 OpenSBI 向目标 hart 集合发送中断。这是最通用的方式，适用于所有硬件平台。OpenSBI 通过 M 模式的软件中断机制触发目标 hart 的 S 模式中断。</p>
+<p><strong>ACLINT&#x2F;IMSIC 直接发送</strong>：较新的硬件提供了 ACLINT（Advanced Core Local Interruptor）的 MSCI（Mode-Selective Interrupt）功能或 IMSIC（Incoming Message Signaled Interrupt Controller）。内核可以直接向这些硬件寄存器写入来发送 IPI，无需经过 SBI，延迟更低。</p>
+<p>IPI 处理流程：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">IPI 中断触发</span><br><span class="line">  → handle_IPI()</span><br><span class="line">    → ipi_mux_process()</span><br><span class="line">      → 检查 IPI 类型位图</span><br><span class="line">      → 分发到具体处理函数：</span><br><span class="line">          - RESCHEDULE：触发调度</span><br><span class="line">          - CALL_FUNC：执行函数调用</span><br><span class="line">          - CPU_STOP：停止 CPU</span><br><span class="line">          - IRQ_WORK：处理中断工作队列</span><br><span class="line">          - TIMER：处理定时器事件</span><br></pre></td></tr></table></figure></div>
+
+<p><code>ipi_mux_process()</code> 使用位图复用机制，多个 IPI 类型共享一个硬件中断号，通过软件位图区分具体类型。</p>
+<h3 id="6-6-6-CPU-热插拔"><a href="#6-6-6-CPU-热插拔" class="headerlink" title="6.6.6 CPU 热插拔"></a>6.6.6 CPU 热插拔</h3><p>RISC-V 的 CPU 热插拔基于 SBI HSM 实现：</p>
+<p><strong>CPU 下线</strong>：内核调用 <code>sbi_hsm_hart_stop()</code>，OpenSBI 将当前 hart 置为 STOPPED 状态。内核在下线前会迁移该 CPU 上的所有中断和任务，并从调度器中移除。</p>
+<p><strong>CPU 上线</strong>：与启动辅助 CPU 流程相同，调用 <code>sbi_hsm_hart_start()</code> 重新启动已停止的 hart。hart 从 <code>secondary_start_sbi</code> 重新开始执行。</p>
+<p>与其他架构的对比：</p>
+<ul>
+<li><strong>x86</strong>：通过 ACPI 定义的热插拔事件通知内核，使用 INIT&#x2F;SIPI 序列启动 CPU</li>
+<li><strong>ARM64</strong>：通过 PSCI 的 <code>cpu_off</code> 下线、<code>cpu_on</code> 上线</li>
+<li><strong>RISC-V</strong>：通过 SBI HSM 的 <code>hart_stop</code>&#x2F;<code>hart_start</code> 实现，机制与 PSCI 最为相似</li>
+</ul>
+<p>三种架构的热插拔实现在内核侧的框架基本相同（都使用 <code>cpuhp</code> 状态机），差异主要体现在固件调用接口上。</p>
+<h1 id="6-7-RISC-V-安全特性-——-CFI、Zkr、Svpbmt-与-KASLR"><a href="#6-7-RISC-V-安全特性-——-CFI、Zkr、Svpbmt-与-KASLR" class="headerlink" title="6.7 RISC-V 安全特性 —— CFI、Zkr、Svpbmt 与 KASLR"></a>6.7 RISC-V 安全特性 —— CFI、Zkr、Svpbmt 与 KASLR</h1><p>RISC-V 架构在 Linux 7.0 中引入了丰富的安全机制，涵盖地址空间随机化、内存权限执行保护、控制流完整性（CFI）、硬件随机数生成器以及页面属性扩展。本节逐一分析这些特性的实现原理，并与 x86_64、ARM64 进行对比。</p>
+<h2 id="6-7-1-KASLR（CONFIG-RANDOMIZE-BASE）"><a href="#6-7-1-KASLR（CONFIG-RANDOMIZE-BASE）" class="headerlink" title="6.7.1 KASLR（CONFIG_RANDOMIZE_BASE）"></a>6.7.1 KASLR（CONFIG_RANDOMIZE_BASE）</h2><p>KASLR（Kernel Address Space Layout Randomization）通过在每次启动时随机化内核的加载地址来增加漏洞利用难度。RISC-V RV64 的 KASLR 实现位于 <code>arch/riscv/kernel/head.S</code>，核心函数 <code>relocate_kernel()</code> 负责将内核重定位到随机偏移地址。</p>
+<p><strong>熵源获取流程：</strong></p>
+<ol>
+<li>优先从设备树（DTB）的 <code>/chosen/kaslr-seed</code> 属性读取随机种子。Bootloader（如 U-Boot）负责在启动前填充此值。</li>
+<li>若 DTB 未提供种子，且硬件支持 Zkr 扩展，则通过读取 CSR_SEED（地址 0x015）获取硬件随机数。</li>
+<li>将随机偏移量应用于内核的虚拟地址映射，<code>relocate_kernel()</code> 修正所有绝对地址引用。</li>
+</ol>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：使用 RDRAND&#x2F;RDSEED 指令或 EFI RNG Protocol 获取熵，通过解析 <code>startup_64</code> 中的物理地址计算偏移。</li>
+<li>ARM64：依赖 EFI RNG Protocol 或 DTB <code>kaslr-seed</code>，在 <code>__primary_entry</code> 阶段完成重定位。</li>
+<li>RISC-V：依赖 DTB <code>kaslr-seed</code> 或 Zkr CSR_SEED，模式与 ARM64 更为接近。</li>
+</ul>
+<h2 id="7-7-2-STRICT-KERNEL-RWX（W-X-强制执行）"><a href="#7-7-2-STRICT-KERNEL-RWX（W-X-强制执行）" class="headerlink" title="7.7.2 STRICT_KERNEL_RWX（W^X 强制执行）"></a>7.7.2 STRICT_KERNEL_RWX（W^X 强制执行）</h2><p>W^X（Write XOR Execute）原则确保内核内存页不可同时可写和可执行。RISC-V 通过 <code>STRICT_KERNEL_RWX</code> 配置项实现这一安全策略。</p>
+<p><strong>实现机制：</strong></p>
+<ul>
+<li>内核代码段（<code>.text</code>）映射为 R+X（可读可执行）</li>
+<li>只读数据段（<code>.rodata</code>）映射为 R（只读）</li>
+<li>普通数据段（<code>.data</code>、<code>.bss</code>）映射为 R+W（可读可写）</li>
+<li><code>pgprot_from_va()</code> 函数根据虚拟地址所属区间返回对应的页表权限属性</li>
+<li><code>free_initmem()</code> 在释放 <code>__init</code> 段内存前，先将其权限设置为 RW+NX（可写不可执行），防止释放后的页面残留可执行权限</li>
+</ul>
+<p>此概念在所有体系结构上完全一致：x86_64 使用 PTE 的 RW&#x2F;NX 位，ARM64 使用 PXN&#x2F;UXN 位，RISC-V 使用 PTE 的 R&#x2F;W&#x2F;X 位组合（RWX&#x3D;000 表示非叶子页表项，叶子页表项至少有一位为 1）。</p>
+<h2 id="6-7-3-用户态控制流完整性（CONFIG-RISCV-USER-CFI）"><a href="#6-7-3-用户态控制流完整性（CONFIG-RISCV-USER-CFI）" class="headerlink" title="6.7.3 用户态控制流完整性（CONFIG_RISCV_USER_CFI）"></a>6.7.3 用户态控制流完整性（CONFIG_RISCV_USER_CFI）</h2><p>RISC-V 通过两个扩展实现完整的控制流完整性保护：</p>
+<h3 id="Zicfilp-——-前向-CFI（间接分支验证）"><a href="#Zicfilp-——-前向-CFI（间接分支验证）" class="headerlink" title="Zicfilp —— 前向 CFI（间接分支验证）"></a>Zicfilp —— 前向 CFI（间接分支验证）</h3><p>前向 CFI 确保间接分支（如函数指针调用）只能跳转到合法的目标地址。实现方式：</p>
+<ul>
+<li>在每个合法的间接分支目标处插入 <code>lpad</code>（landing pad）指令，该指令包含一个标签值（label）</li>
+<li>间接分支指令（如 <code>jalr</code>）携带预期标签，硬件在运行时验证目标处的 <code>lpad</code> 标签是否匹配</li>
+<li>通过 <code>senvcfg.LPE</code> 位在 S-mode 下启用此功能</li>
+<li>不匹配时触发软件检查异常</li>
+</ul>
+<h3 id="Zicfiss-——-后向-CFI（影子栈）"><a href="#Zicfiss-——-后向-CFI（影子栈）" class="headerlink" title="Zicfiss —— 后向 CFI（影子栈）"></a>Zicfiss —— 后向 CFI（影子栈）</h3><p>后向 CFI 保护函数返回地址不被篡改：</p>
+<ul>
+<li><code>CSR_SSP</code> 寄存器持有影子栈指针</li>
+<li>函数调用（<code>call</code>）时，硬件自动将返回地址压入影子栈</li>
+<li>函数返回（<code>ret</code>）时，硬件自动从影子栈弹出返回地址并与栈上的返回地址比对</li>
+<li>不匹配时触发异常</li>
+<li>通过 SBI FWCT（Firmware Feature）接口启用</li>
+<li><code>PAGE_SHADOWSTACK</code> 定义为只写（Write-Only）PTE，确保用户态代码无法读取影子栈内容</li>
+</ul>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：使用 CET（Control-flow Enforcement Technology）影子栈，纯硬件实现，通过 VMCS 支持虚拟化场景。</li>
+<li>ARM64：使用 PAC（Pointer Authentication Code）对返回地址进行密码学签名，思路完全不同——不使用影子栈，而是通过签名验证指针完整性。</li>
+<li>RISC-V：Zicfilp 使用 landing pad 标签验证（类似 ARM64 BTI），Zicfiss 使用影子栈（类似 x86_64 CET），综合了两种思路。</li>
+</ul>
+<h2 id="6-7-4-Zkr-硬件熵源（CSR-SEED）"><a href="#6-7-4-Zkr-硬件熵源（CSR-SEED）" class="headerlink" title="6.7.4 Zkr 硬件熵源（CSR_SEED）"></a>6.7.4 Zkr 硬件熵源（CSR_SEED）</h2><p>Zkr 扩展在 CSR 地址 0x015 处提供 <code>CSR_SEED</code> 寄存器，作为硬件随机数生成器：</p>
+<ul>
+<li>每次读取返回 16 位（bits [15:0]）硬件随机数据</li>
+<li><code>OPS</code> 字段（bits [19:16]）指示熵状态：<code>SEED_OPST_ESSEED</code>（entropy is available）表示可读取，其他值表示需要等待</li>
+<li>软件需轮询 <code>OPS</code> 字段直到熵可用再读取数据</li>
+<li>用于 KASLR 种子、栈金丝雀（stack canary）生成、密钥派生等场景</li>
+<li>比软件伪随机数生成器具有更高的不可预测性</li>
+</ul>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：RDRAND 返回硬件随机数（最多 64 位），RDSEED 提供更高熵源的种子值，通过 <code>rdrand_long()</code> 调用。</li>
+<li>ARM64：TRNG（True Random Number Generator）通过 ARMv8.5 RNG ID 寄存器暴露，或通过 EFI RNG Protocol 获取。</li>
+<li>RISC-V：Zkr CSR_SEED 每次 16 位，需轮询等待，接口最简洁但吞吐量较低。</li>
+</ul>
+<h2 id="6-7-5-Svpbmt（基于页面的内存类型）"><a href="#6-7-5-Svpbmt（基于页面的内存类型）" class="headerlink" title="6.7.5 Svpbmt（基于页面的内存类型）"></a>6.7.5 Svpbmt（基于页面的内存类型）</h2><p>Svpbmt 扩展允许在页表项（PTE）中为单个页面指定缓存行为，使用 PTE 的 bits [62:61]：</p>
+<table>
+<thead>
+<tr>
+<th align="center">Bits [62:61]</th>
+<th align="center">助记符</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">00</td>
+<td align="center">PBMT</td>
+<td>默认（可缓存，按序）</td>
+</tr>
+<tr>
+<td align="center">01</td>
+<td align="center">NC</td>
+<td>非缓存（Non-Cacheable），用于设备 MMIO 区域</td>
+</tr>
+<tr>
+<td align="center">10</td>
+<td align="center">IO</td>
+<td>强序不可缓存（I&#x2F;O），用于寄存器访问，非幂等</td>
+</tr>
+<tr>
+<td align="center">11</td>
+<td align="center">—</td>
+<td>保留</td>
+</tr>
+</tbody></table>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：使用 PAT（Page Attribute Table），PAT MSR 定义 8 种内存类型，PTE 通过 PAT&#x2F;PCD&#x2F;PWT 三位索引选择。</li>
+<li>ARM64：使用 MAIR（Memory Attribute Indirection Register）定义多种内存属性，PTE 的 AttrIndx[2:0] 字段索引 MAIR 条目。</li>
+<li>RISC-V：Svpbmt 仅提供 3 种类型，设计极为精简，满足绝大多数场景需求。</li>
+</ul>
+<h2 id="6-7-6-Svnapot（自然对齐的-2-的幂次页面）"><a href="#6-7-6-Svnapot（自然对齐的-2-的幂次页面）" class="headerlink" title="6.7.6 Svnapot（自然对齐的 2 的幂次页面）"></a>6.7.6 Svnapot（自然对齐的 2 的幂次页面）</h2><p>Svnapot 扩展支持将连续的 4KB 页面合并为一个 TLB 条目：</p>
+<ul>
+<li>PTE bit 63 标记为 NAPOT（Naturally Aligned Power-Of-Two）条目</li>
+<li>最常用的是 64KB 连续页面（16 个 4KB 页面），仅需一个 TLB 条目映射</li>
+<li>相当于透明大页（Transparent Huge Pages）的轻量级实现</li>
+<li>减少 TLB 未命中次数，提升大内存区域访问性能</li>
+</ul>
+<h2 id="6-7-7-影子调用栈（CONFIG-SHADOW-CALL-STACK）"><a href="#6-7-7-影子调用栈（CONFIG-SHADOW-CALL-STACK）" class="headerlink" title="6.7.7 影子调用栈（CONFIG_SHADOW_CALL_STACK）"></a>6.7.7 影子调用栈（CONFIG_SHADOW_CALL_STACK）</h2><p>软件实现的影子调用栈，与 Zicfiss 硬件影子栈不同：</p>
+<ul>
+<li>使用 <code>s0</code>&#x2F;<code>s1</code> 寄存器（由编译器保留）维护独立的返回地址栈</li>
+<li>每次函数调用时，编译器插入代码将返回地址保存到影子调用栈</li>
+<li>函数返回时，从影子调用栈恢复返回地址，覆盖栈上的返回地址</li>
+<li>攻击者即使覆写栈上的返回地址也无法劫持控制流</li>
+</ul>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：CET 硬件影子栈，由 CPU 自动管理，性能开销极低。</li>
+<li>ARM64：使用 <code>x18</code> 寄存器（编译器保留）实现软件影子调用栈，与 RISC-V 方案原理一致。</li>
+<li>RISC-V：使用 <code>s0</code>&#x2F;<code>s1</code> 寄存器，软件方案，与 ARM64 方案高度类似。</li>
+</ul>
+<h2 id="6-7-8-Zk-密码学扩展族"><a href="#6-7-8-Zk-密码学扩展族" class="headerlink" title="6.7.8 Zk* 密码学扩展族"></a>6.7.8 Zk* 密码学扩展族</h2><p>RISC-V 定义了一系列密码学扩展，以模块化方式覆盖不同需求：</p>
+<table>
+<thead>
+<tr>
+<th>扩展</th>
+<th>全称</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Zkn</td>
+<td>NIST 算法套件</td>
+<td>AES、SHA-256、SHA-512、乘法运算等</td>
+</tr>
+<tr>
+<td>Zks</td>
+<td>ShangMi（国密）算法套件</td>
+<td>SM3、SM4 等中国国家标准密码算法</td>
+</tr>
+<tr>
+<td>Zkr</td>
+<td>熵源</td>
+<td>硬件随机数生成（CSR_SEED）</td>
+</tr>
+<tr>
+<td>Zkt</td>
+<td>常数时间执行</td>
+<td>确保密码运算不泄露时序信息</td>
+</tr>
+<tr>
+<td>Zbkb</td>
+<td>位操作（密码学）</td>
+<td>位排列、反转等密码学常用操作</td>
+</tr>
+<tr>
+<td>Zbkc</td>
+<td>进位乘法</td>
+<td>大数乘法加速</td>
+</tr>
+<tr>
+<td>Zbkx</td>
+<td>交叉排列</td>
+<td>用于 AES 等分组密码</td>
+</tr>
+<tr>
+<td>Zknd&#x2F;Zkne&#x2F;Zknh</td>
+<td>AES 解密&#x2F;加密&#x2F;哈希</td>
+<td>NIST AES 和 SHA 加速指令</td>
+</tr>
+<tr>
+<td>ZkSED&#x2F;Zksh</td>
+<td>SM4&#x2F;SM3</td>
+<td>国密算法加速指令</td>
+</tr>
+<tr>
+<td>Zvk*</td>
+<td>向量密码学扩展</td>
+<td>利用 RISC-V Vector Unit 进行高性能加密运算</td>
+</tr>
+</tbody></table>
+<p>Zkn 的组合关系：<code>Zkn = Zbkb + Zbkc + Zbkx + Zknd + Zkne + Zknh</code><br>Zks 的组合关系：<code>Zks = Zbkb + Zbkc + ZkSED + Zksh</code></p>
+<p><strong>架构对比：</strong></p>
+<ul>
+<li>x86_64：AES-NI、SHA-NI、PCLMULQDQ 等独立指令扩展。</li>
+<li>ARM64：ARMv8 Crypto Extension（AES、SHA1、SHA256、PMULL），ARMv9 引入 SVE 密码学扩展。</li>
+<li>RISC-V：模块化密码学扩展，允许按需实现，国密（ShangMi）支持是独特优势。</li>
+</ul>
+<h1 id="6-8-RISC-V-虚拟化-——-H-扩展与-KVM"><a href="#6-8-RISC-V-虚拟化-——-H-扩展与-KVM" class="headerlink" title="6.8 RISC-V 虚拟化 —— H 扩展与 KVM"></a>6.8 RISC-V 虚拟化 —— H 扩展与 KVM</h1><p>RISC-V 通过 H（Hypervisor）扩展实现了完整的硬件虚拟化支持。Linux 7.0 的 KVM&#x2F;RISC-V 利用 H 扩展提供的两级地址翻译、CSR 委托和虚拟中断机制，构建了高效的虚拟机管理器。本节深入分析其架构设计与实现。</p>
+<h2 id="6-8-1-RISC-V-虚拟化架构"><a href="#6-8-1-RISC-V-虚拟化架构" class="headerlink" title="6.8.1 RISC-V 虚拟化架构"></a>6.8.1 RISC-V 虚拟化架构</h2><p>H 扩展在 RISC-V 特权级体系中引入了两个新模式：</p>
+<ul>
+<li><strong>HS-mode（Hypervisor Supervisor）</strong>：宿主机内核运行的模式，拥有对物理硬件的完全控制</li>
+<li><strong>VS-mode（Virtual Supervisor）</strong>：客户机操作系统运行的模式，受限的 S-mode 环境</li>
+<li><strong>VU-mode（Virtual User）</strong>：客户机用户态进程运行的模式</li>
+</ul>
+<p><strong>两级地址翻译</strong>是虚拟化的核心机制：</p>
+<ol>
+<li><strong>VS-stage 翻译</strong>（第一级）：Guest Virtual Address → Guest Physical Address<ul>
+<li>由客户机 OS 管理，通过 <code>VSATP</code> CSR 配置</li>
+<li>客户机 OS 认为自己拥有完整的物理地址空间</li>
+</ul>
+</li>
+<li><strong>G-stage 翻译</strong>（第二级）：Guest Physical Address → Host Physical Address<ul>
+<li>由宿主机内核（KVM）管理，通过 <code>HGATP</code> CSR 配置</li>
+<li>确保客户机只能访问宿主机分配给它的物理内存</li>
+</ul>
+</li>
+</ol>
+<p><strong>G-stage 页表模式</strong>使用 “x4” 变体，客户机物理地址比宿主机宽 2 位：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th align="center">虚拟地址位数</th>
+<th align="center">物理地址位数</th>
+<th align="center">页表层级</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sv32x4</td>
+<td align="center">34</td>
+<td align="center">34</td>
+<td align="center">2</td>
+</tr>
+<tr>
+<td>Sv39x4</td>
+<td align="center">41</td>
+<td align="center">56</td>
+<td align="center">3</td>
+</tr>
+<tr>
+<td>Sv48x4</td>
+<td align="center">50</td>
+<td align="center">56</td>
+<td align="center">4</td>
+</tr>
+<tr>
+<td>Sv57x4</td>
+<td align="center">59</td>
+<td align="center">56</td>
+<td align="center">5</td>
+</tr>
+</tbody></table>
+<p>“x4” 表示客户机虚拟地址空间是标准模式的 4 倍，因为客户机需要映射自身的内核空间和用户空间。</p>
+<h2 id="6-8-2-KVM-初始化（arch-riscv-kvm-main-c）"><a href="#6-8-2-KVM-初始化（arch-riscv-kvm-main-c）" class="headerlink" title="6.8.2 KVM 初始化（arch&#x2F;riscv&#x2F;kvm&#x2F;main.c）"></a>6.8.2 KVM 初始化（arch&#x2F;riscv&#x2F;kvm&#x2F;main.c）</h2><p>KVM 在模块初始化阶段完成以下关键检测和配置：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">kvm_riscv_init()</span><br><span class="line">├── 检测 H 扩展可用性（通过 SBI 接口或 ISA 字符串）</span><br><span class="line">├── 验证 SBI 版本 ≥ 0.2 且支持 RFENCE 扩展</span><br><span class="line">├── 检测 G-stage 页表模式（尝试 Sv57x4 → Sv48x4 → Sv39x4）</span><br><span class="line">├── 初始化 VMID 分配器（用于 G-stage TLB 刷写优化）</span><br><span class="line">├── 初始化 AIA（高级中断架构）虚拟化支持</span><br><span class="line">└── 可选：初始化 NACL（嵌套加速）</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>VMID 机制</strong>：类似于 ASID（Address Space ID），VMID 为每个虚拟机分配唯一标识符，G-stage TLB 条目关联 VMID。切换虚拟机时无需刷写全部 G-stage TLB，只需切换 <code>HGATP</code> 中的 VMID 字段。</p>
+<p><strong>SBI RFENCE 扩展</strong>：KVM 需要通过 SBI 调用执行 TLB 刷写（<code>hfence</code> 指令），因为某些 <code>hfence</code> 变体需要 M-mode 权限。SBI v0.2 的 RFENCE 扩展提供了标准化的远程 TLB 无效化接口。</p>
+<h2 id="6-8-3-VM-执行与世界切换"><a href="#6-8-3-VM-执行与世界切换" class="headerlink" title="6.8.3 VM 执行与世界切换"></a>6.8.3 VM 执行与世界切换</h2><p>虚拟机的执行循环由 <code>vcpu_switch.S</code> 汇编代码驱动：</p>
+<p><strong>世界切换流程：</strong></p>
+<ol>
+<li><strong>保存宿主机状态</strong>：将当前 CPU 的全部 GPR（通用寄存器）和关键 CSR 保存到 <code>kvm_vcpu_arch</code> 结构体</li>
+<li><strong>加载客户机状态</strong>：从 <code>kvm_vcpu_arch</code> 恢复客户机的 GPR 和 CSR（包括 <code>VSATP</code>、<code>VSTVAL</code>、<code>VSCAUSE</code> 等）</li>
+<li><strong>进入 VS-mode</strong>：执行 <code>sret</code> 指令，CPU 切换到 VS-mode，开始执行客户机代码</li>
+<li><strong>VM Exit</strong>：客户机执行触发 trap 的操作（如 I&#x2F;O 访问、异常、外部中断），CPU 自动切换回 HS-mode</li>
+<li><strong>处理退出原因</strong>：KVM 分析退出原因，模拟虚拟设备、注入中断或处理异常</li>
+<li><strong>重新进入客户机</strong>：更新客户机状态后再次执行世界切换</li>
+</ol>
+<p>关键 CSR 包括：<code>HSTATUS</code>（控制 VS-mode 行为）、<code>HCOUNTEREN</code>（控制客户机可访问的性能计数器）、<code>HTVAL</code>、<code>HTINST</code>（提供触发 trap 的指令编码，用于指令模拟）。</p>
+<h2 id="6-8-4-CSR-委托机制"><a href="#6-8-4-CSR-委托机制" class="headerlink" title="6.8.4 CSR 委托机制"></a>6.8.4 CSR 委托机制</h2><p>H 扩展允许将特定的 trap 直接委托给客户机处理，避免不必要的 VM Exit：</p>
+<p><strong>hedeleg（异常委托）：</strong></p>
+<p>委托给客户机的异常包括：指令地址不对齐、断点、环境调用（ecall from VS-mode）、指令&#x2F;数据页错误等。客户机 OS 可以像在真实硬件上一样处理这些异常。</p>
+<p><strong>hideleg（中断委托）：</strong></p>
+<p>委托给客户机的中断包括：VS-mode 的软件中断（VSSI）、定时器中断（VSTI）、外部中断（VSEI）。这些中断通过虚拟中断机制注入到客户机。</p>
+<h2 id="6-8-5-中断虚拟化"><a href="#6-8-5-中断虚拟化" class="headerlink" title="6.8.5 中断虚拟化"></a>6.8.5 中断虚拟化</h2><p>RISC-V 的高级中断架构（AIA，Advanced Interrupt Architecture）为虚拟化提供了高效的中断管理：</p>
+<p><strong>APLIC（Advanced Platform-Level Interrupt Controller）：</strong></p>
+<ul>
+<li>平台级中断控制器，支持将物理中断路由到特定 hart</li>
+<li>支持虚拟化：可以为每个虚拟 CPU 维护虚拟中断状态</li>
+<li>中断优先级管理和中断域（domain）隔离</li>
+</ul>
+<p><strong>IMSIC（Incoming Message-S signaled Interrupt Controller）：</strong></p>
+<ul>
+<li>消息信号中断控制器，为每个 CPU 核心提供独立的 MSI 中断接口</li>
+<li>支持虚拟化：每个虚拟 CPU 可以拥有独立的虚拟 IMSIC</li>
+<li>中断直接注入：物理中断可以由硬件直接路由到虚拟 IMSIC，无需 KVM 介入</li>
+<li>支持中断优先级和中断阈值</li>
+</ul>
+<p>通过 AIA，高频中断（如网络、存储）可以直接注入客户机，大幅减少 VM Exit 次数。</p>
+<h2 id="6-8-6-NACL（嵌套加速）"><a href="#6-8-6-NACL（嵌套加速）" class="headerlink" title="6.8.6 NACL（嵌套加速）"></a>6.8.6 NACL（嵌套加速）</h2><p>NACL（Nested Acceleration）是 RISC-V KVM 的独特优化机制：</p>
+<p><strong>核心思想</strong>：在 KVM（HS-mode）和 SBI 固件（M-mode）之间建立共享内存区域，批量处理 CSR 同步和特权操作。</p>
+<p><strong>加速的操作：</strong></p>
+<ul>
+<li><strong>CSR 批量同步</strong>：将多个 CSR 的读写操作合并为一次共享内存操作，减少 SBI 调用次数</li>
+<li><strong>hfence 加速</strong>：TLB 刷写指令通过共享内存批量下发，固件一次性执行</li>
+<li><strong>sret 加速</strong>：客户机返回指令的模拟可以通过共享内存状态直接完成</li>
+</ul>
+<p><strong>性能影响</strong>：NACL 显著降低了 VM Exit 的处理延迟，特别是对于需要频繁切换 CSR 的场景（如中断密集型工作负载）。这是 RISC-V 虚拟化的独特优势——利用 SBI 固件作为可编程的”微管理器”，实现 x86&#x2F;ARM64 无法直接复制的优化路径。</p>
+<h2 id="6-8-7-架构对比"><a href="#6-8-7-架构对比" class="headerlink" title="6.8.7 架构对比"></a>6.8.7 架构对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>虚拟化扩展</td>
+<td>VT-x&#x2F;VT-d</td>
+<td>VHE&#x2F;nVHE</td>
+<td>H 扩展</td>
+</tr>
+<tr>
+<td>客户机模式</td>
+<td>VMX non-root</td>
+<td>EL1（virtual）</td>
+<td>VS-mode &#x2F; VU-mode</td>
+</tr>
+<tr>
+<td>嵌套页表</td>
+<td>EPT（Extended Page Table）</td>
+<td>Stage-2 页表</td>
+<td>G-stage（Sv39x4&#x2F;Sv48x4&#x2F;Sv57x4）</td>
+</tr>
+<tr>
+<td>状态管理</td>
+<td>VMCS（64KB 内存结构）</td>
+<td>VCPU context（内存结构）</td>
+<td>CSR swap（寄存器直接切换）</td>
+</tr>
+<tr>
+<td>指令模拟</td>
+<td>VMCS 字段 + 位图</td>
+<td>HSR&#x2F;ESR syndrome</td>
+<td>HTVAL&#x2F;HTINST（指令编码）</td>
+</tr>
+<tr>
+<td>I&#x2F;O 虚拟化</td>
+<td>VT-d &#x2F; IOMMU</td>
+<td>SMMU</td>
+<td>IOMMU（开发中）</td>
+</tr>
+<tr>
+<td>加速机制</td>
+<td>VPIDs（Virtual Processor IDs）</td>
+<td>不需要额外机制</td>
+<td>NACL（共享内存批处理）</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异分析：</strong></p>
+<ul>
+<li>x86_64 的 VMCS 是一个巨大的状态结构，保存了数百个字段，VM Entry&#x2F;Exit 开销大。EPT 是成熟的嵌套页表方案，配合 VPID 减少 TLB 刷写。</li>
+<li>ARM64 的虚拟化设计较为简洁，Stage-2 页表与普通页表结构一致，利用 EL2 的系统寄存器实现 trap 控制。</li>
+<li>RISC-V 的 H 扩展设计最为轻量：CSR 直接用于状态管理，世界切换仅需保存&#x2F;恢复有限数量的寄存器。NACL 机制利用 SBI 固件的可编程性实现批量操作加速，是独到的设计。</li>
+</ul>
+<h1 id="6-9-三大体系结构对比-——-x86-64-vs-ARM64-vs-RISC-V"><a href="#6-9-三大体系结构对比-——-x86-64-vs-ARM64-vs-RISC-V" class="headerlink" title="6.9 三大体系结构对比 —— x86_64 vs ARM64 vs RISC-V"></a>6.9 三大体系结构对比 —— x86_64 vs ARM64 vs RISC-V</h1><p>Linux 内核同时支持数十种体系结构，其中 x86_64、ARM64 和 RISC-V（64 位）代表了三种截然不同的设计哲学。本节从架构基础、启动流程、内存管理、安全机制和虚拟化五个维度进行全面对比，帮助读者理解不同架构的设计取舍及其对内核实现的影响。</p>
+<h2 id="6-9-1-体系结构基础对比"><a href="#6-9-1-体系结构基础对比" class="headerlink" title="6.9.1 体系结构基础对比"></a>6.9.1 体系结构基础对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64 (AArch64)</th>
+<th>RISC-V 64 (RV64)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ISA 类型</td>
+<td>CISC（复杂指令集）</td>
+<td>RISC（精简指令集）</td>
+<td>RISC（精简指令集）</td>
+</tr>
+<tr>
+<td>指令长度</td>
+<td>1-15 字节，变长</td>
+<td>4 字节定长（+ 可选 2&#x2F;4 字节 Thumb）</td>
+<td>4 字节定长（+ 可选 2 字节压缩）</td>
+</tr>
+<tr>
+<td>通用寄存器数量</td>
+<td>16（rax-r15）</td>
+<td>31（x0-x30）</td>
+<td>31（x0-x30）</td>
+</tr>
+<tr>
+<td>特权级模型</td>
+<td>Ring 0-3（4 级）</td>
+<td>EL0-EL3（4 级）</td>
+<td>U&#x2F;S&#x2F;M + VS&#x2F;VU（基础 3 级 + 虚拟化 2 级）</td>
+</tr>
+<tr>
+<td>页表基址寄存器</td>
+<td>CR3（单一，共享用户&#x2F;内核）</td>
+<td>TTBR0 + TTBR1（双份，分离用户&#x2F;内核）</td>
+<td>SATP（单一，内核在高地址，用户在低地址）</td>
+</tr>
+<tr>
+<td>系统调用指令</td>
+<td>SYSCALL &#x2F; SYSRET</td>
+<td>SVC &#x2F; ERET</td>
+<td>ecall &#x2F; sret</td>
+</tr>
+<tr>
+<td>ISA 授权模式</td>
+<td>Intel 专有，封闭</td>
+<td>ARM 授权许可，需付费</td>
+<td>开放标准，免授权费</td>
+</tr>
+<tr>
+<td>中断控制器</td>
+<td>APIC &#x2F; IOAPIC（局部 + I&#x2F;O）</td>
+<td>GIC（Generic Interrupt Controller）</td>
+<td>PLIC &#x2F; APLIC + SBI IPI</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异解读：</strong></p>
+<ul>
+<li><strong>特权级</strong>：x86_64 的 Ring 1-2 在 Linux 中未使用，实际只使用 Ring 0（内核）和 Ring 3（用户）。ARM64 的 EL2 用于虚拟化&#x2F;hypervisor，EL3 用于 Secure Monitor。RISC-V 的 M-mode 专用于固件（OpenSBI），S-mode 运行内核，U-mode 运行用户态，H 扩展增加 VS&#x2F;VU-mode。</li>
+<li><strong>页表基址</strong>：ARM64 的双 TTBR 设计天然隔离用户态和内核态地址空间，切换时无需刷写整个 TLB。x86_64 和 RISC-V 使用单一页表基址寄存器，依赖 KPTI 等机制实现隔离。</li>
+<li><strong>ISA 开放性</strong>：RISC-V 是三大架构中唯一完全开放的 ISA，任何人可免费实现，这是其在嵌入式和定制芯片领域快速发展的关键动力。</li>
+</ul>
+<h2 id="6-9-2-启动流程对比"><a href="#6-9-2-启动流程对比" class="headerlink" title="6.9.2 启动流程对比"></a>6.9.2 启动流程对比</h2><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>固件</td>
+<td>BIOS &#x2F; UEFI</td>
+<td>UEFI（+ TF-A&#x2F;OP-TEE）</td>
+<td>OpenSBI（M-mode 固件）</td>
+</tr>
+<tr>
+<td>引导加载器</td>
+<td>GRUB2</td>
+<td>U-Boot &#x2F; GRUB2</td>
+<td>U-Boot</td>
+</tr>
+<tr>
+<td>模式转换</td>
+<td>Real → Protected → Long mode</td>
+<td>EL2 → EL1</td>
+<td>M-mode → S-mode（固件 → 内核）</td>
+</tr>
+<tr>
+<td>内核解压</td>
+<td>自解压（内嵌解压代码）</td>
+<td>引导加载器解压</td>
+<td>引导加载器解压</td>
+</tr>
+<tr>
+<td>硬件描述</td>
+<td>E820 表（BIOS）&#x2F; EFI 内存映射</td>
+<td>DTB &#x2F; ACPI</td>
+<td>DTB &#x2F; ACPI</td>
+</tr>
+<tr>
+<td>内核入口点</td>
+<td><code>startup_64</code></td>
+<td><code>primary_entry</code></td>
+<td><code>_start</code></td>
+</tr>
+<tr>
+<td>内核参数传递</td>
+<td>RSI &#x3D; <code>boot_params</code> 指针</td>
+<td>X0 &#x3D; FDT 指针</td>
+<td>a0 &#x3D; hartid, a1 &#x3D; FDT 指针</td>
+</tr>
+<tr>
+<td>SMP 启动</td>
+<td>SIPI（Startup IPI）唤醒 AP</td>
+<td>PSCI（Power State Coordination）</td>
+<td>SBI HSM（Hart State Management）</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异解读：</strong></p>
+<ul>
+<li>x86_64 启动最为复杂，需要从 16 位实模式逐步过渡到 64 位长模式，承载了 40 余年的历史包袱。</li>
+<li>ARM64 通过 PSCI 标准化了 CPU 电源管理接口，多核启动相对简洁。</li>
+<li>RISC-V 的 M-mode 固件（OpenSBI）承担了硬件初始化和 SBI 接口实现，内核仅运行在 S-mode，职责划分最为清晰。SBI HSM 接口让多核启动逻辑统一且简洁。</li>
+</ul>
+<h2 id="6-9-3-内存管理对比"><a href="#6-9-3-内存管理对比" class="headerlink" title="6.9.3 内存管理对比"></a>6.9.3 内存管理对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>虚拟地址位数</td>
+<td>48（默认）&#x2F; 57（5 级页表）</td>
+<td>39-52（可配置）</td>
+<td>39（Sv39）&#x2F; 48（Sv48）&#x2F; 57（Sv57）</td>
+</tr>
+<tr>
+<td>页面大小</td>
+<td>4KB &#x2F; 2MB &#x2F; 1GB</td>
+<td>4KB &#x2F; 16KB &#x2F; 64KB</td>
+<td>4KB（2MB&#x2F;1GB 通过 THP）</td>
+</tr>
+<tr>
+<td>页表层级</td>
+<td>4 级（默认）&#x2F; 5 级</td>
+<td>2-5 级（取决于配置）</td>
+<td>3&#x2F;4&#x2F;5 级</td>
+</tr>
+<tr>
+<td>不可执行位</td>
+<td>Bit 63（NX 位）</td>
+<td>UXN &#x2F; PXN 位</td>
+<td>RWX&#x3D;000 为非叶子；叶子至少一位为 1，三位组合编码权限</td>
+</tr>
+<tr>
+<td>脏位（Dirty）</td>
+<td>硬件 D 位</td>
+<td>DBM（可选硬件）</td>
+<td>D 位（软件管理，或 Svdau 扩展硬件自动设置）</td>
+</tr>
+<tr>
+<td>访问位（Accessed）</td>
+<td>A 位（硬件自动设置）</td>
+<td>AF 位（硬件或软件）</td>
+<td>A 位（软件管理，由内核维护）</td>
+</tr>
+<tr>
+<td>内存类型控制</td>
+<td>PAT（Page Attribute Table）</td>
+<td>MAIR + AttrIndx</td>
+<td>Svpbmt bits [62:61]</td>
+</tr>
+<tr>
+<td>地址空间标识</td>
+<td>PCID（在 CR3 中编码）</td>
+<td>ASID（在 TTBR0&#x2F;1 中编码）</td>
+<td>ASID（在 SATP 中编码）</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异解读：</strong></p>
+<ul>
+<li><strong>脏位管理</strong>：x86_64 硬件自动设置脏位，内核无需干预。ARM64 通过 DBM（Dirty Bit Modifier）可选硬件脏位。RISC-V 默认软件管理脏位，内核在写保护时手动设置，Svdau 扩展提供硬件自动脏位。</li>
+<li><strong>访问位管理</strong>：类似地，x86_64 硬件自动管理访问位，RISC-V 默认需要软件管理——内核需要在页错误处理程序中手动设置 A 位。</li>
+<li><strong>内存类型</strong>：x86_64 的 PAT 最为灵活（8 种类型），ARM64 的 MAIR 居中，RISC-V 的 Svpbmt 最精简（3 种类型）。这种差异反映了各架构的设计哲学：x86_64 追求兼容性和灵活性，ARM64 追求平衡，RISC-V 追求极简。</li>
+</ul>
+<h2 id="6-9-4-安全机制对比"><a href="#6-9-4-安全机制对比" class="headerlink" title="6.9.4 安全机制对比"></a>6.9.4 安全机制对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>前向 CFI</td>
+<td>KCFI（编译器插入类型检查）</td>
+<td>BTI（Branch Target Identification，硬件）</td>
+<td>Zicfilp（landing pad 标签，硬件）</td>
+</tr>
+<tr>
+<td>后向 CFI</td>
+<td>CET 影子栈（硬件自动管理）</td>
+<td>PAC（返回地址密码学签名）</td>
+<td>Zicfiss（影子栈，CSR_SSP）</td>
+</tr>
+<tr>
+<td>内存标记</td>
+<td>无</td>
+<td>MTE（Memory Tagging Extension）</td>
+<td>无（尚未标准化）</td>
+</tr>
+<tr>
+<td>KPTI</td>
+<td>CR3 切换（内核页表隔离）</td>
+<td>TTBR0 切换</td>
+<td>SUM 位管理</td>
+</tr>
+<tr>
+<td>特权访问保护</td>
+<td>SMAP&#x2F;SMEP</td>
+<td>SCTLR.PAN &#x2F; SCTLR.SPAN</td>
+<td>sstatus.SUM（语义相反：SUM&#x3D;1 允许内核访问用户）</td>
+</tr>
+<tr>
+<td>硬件随机数</td>
+<td>RDRAND &#x2F; RDSEED</td>
+<td>TRNG（ARMv8.5 RNG）</td>
+<td>Zkr CSR_SEED（16 位&#x2F;次）</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异解读：</strong></p>
+<ul>
+<li><strong>后向 CFI 策略差异最大</strong>：x86_64 和 RISC-V 采用影子栈方案（在独立栈中保存返回地址），ARM64 采用指针签名方案（用密钥对返回地址签名）。影子栈方案安全性高但需要额外内存和栈管理；PAC 方案开销更低但依赖密钥保护。</li>
+<li><strong>PAN 语义差异</strong>：ARM64 的 PAN（Privileged Access Never）&#x3D;1 表示禁止内核访问用户内存。RISC-V 的 SUM（Supervisor User Memory）&#x3D;1 表示允许内核访问用户内存——语义恰好相反，但效果一致。</li>
+<li><strong>内存标记（MTE）</strong>：ARM64 独有的 MTE 功能为每个 16 字节内存块分配 4 位标记，硬件自动检查指针标记与内存标记是否匹配。这是三大架构中唯一的硬件内存安全扩展，对防御内存越界和 UAF 漏洞极为有效。</li>
+</ul>
+<h2 id="6-9-5-虚拟化对比"><a href="#6-9-5-虚拟化对比" class="headerlink" title="6.9.5 虚拟化对比"></a>6.9.5 虚拟化对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+<th>RISC-V</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>虚拟化扩展</td>
+<td>VT-x &#x2F; VT-d</td>
+<td>VHE &#x2F; nVHE</td>
+<td>H 扩展</td>
+</tr>
+<tr>
+<td>客户机模式</td>
+<td>VMX non-root</td>
+<td>VS-mode &#x2F; VU-mode（EL1 virtual）</td>
+<td>VS-mode &#x2F; VU-mode</td>
+</tr>
+<tr>
+<td>嵌套页表</td>
+<td>EPT（Extended Page Table）</td>
+<td>Stage-2 页表</td>
+<td>G-stage（Sv39x4 &#x2F; Sv48x4 &#x2F; Sv57x4）</td>
+</tr>
+<tr>
+<td>状态管理</td>
+<td>VMCS（64KB 内存结构，数百字段）</td>
+<td>VCPU context（内存结构）</td>
+<td>CSR 直接切换（少量寄存器）</td>
+</tr>
+<tr>
+<td>I&#x2F;O 虚拟化</td>
+<td>VT-d &#x2F; IOMMU</td>
+<td>SMMU（System MMU）</td>
+<td>IOMMU（开发中）</td>
+</tr>
+<tr>
+<td>加速优化</td>
+<td>VPID &#x2F; VPET</td>
+<td>不需要额外机制</td>
+<td>NACL（共享内存批量 CSR 同步）</td>
+</tr>
+<tr>
+<td>状态保存&#x2F;恢复</td>
+<td>VMREAD&#x2F;VMWRITE（逐字段）</td>
+<td>直接读写 sysreg</td>
+<td>CSR 读写（与普通寄存器操作一致）</td>
+</tr>
+</tbody></table>
+<p><strong>关键差异解读：</strong></p>
+<ul>
+<li>x86_64 的 VMCS（Virtual Machine Control Structure）是一个约 64KB 的内存结构，包含数百个控制字段。VM Entry&#x2F;Exit 时 CPU 自动保存&#x2F;恢复状态到 VMCS，开销较大。EPT 是成熟的嵌套页表方案，4 级页表支持 4KB 到 1GB 的页面映射。</li>
+<li>ARM64 的虚拟化利用 EL2 提供硬件支持，Stage-2 页表与 Stage-1 结构完全一致，实现简洁。VHE（Virtualization Host Extension）允许宿主机内核运行在 EL2，减少模式切换开销。</li>
+<li>RISC-V 的 H 扩展最为精简：没有庞大的状态描述符，所有虚拟化状态通过少量 CSR 管理。世界切换只需保存&#x2F;恢复十几个 CSR，开销最小。NACL 机制利用 SBI 固件实现批量 CSR 同步，进一步降低 VM Exit 延迟。</li>
+</ul>
+<h2 id="6-9-6-设计哲学与生态"><a href="#6-9-6-设计哲学与生态" class="headerlink" title="6.9.6 设计哲学与生态"></a>6.9.6 设计哲学与生态</h2><p><strong>x86_64 —— 历史包袱下的极致性能</strong></p>
+<p>x86_64 承载了从 8086 至今 40 余年的兼容性要求，导致其指令集极其复杂（指令长度从 1 到 15 字节不等，数千条指令），特权级模型冗余（Ring 1-2 实际未使用），启动流程繁琐。但这种复杂性换来的是极其成熟和优化的微架构实现，在 PC 和服务器市场占据绝对主导地位。Intel 和 AMD 通过持续扩展指令集（AVX-512、AMX、CET 等）保持竞争力。</p>
+<p><strong>ARM64 —— 干净设计下的广泛渗透</strong></p>
+<p>ARM64（AArch64）是 ARM 在 32 位 ARMv7 之后全新设计的 64 位 ISA，摆脱了历史包袱。统一的 4 字节指令编码、清晰的特权级模型（EL0-EL3）、标准化的虚拟化支持使其成为移动和嵌入式领域的绝对霸主。近年来通过 Neoverse 系列在服务器市场持续扩张。ARM 的授权商业模式虽然限制了自由度，但确保了软件生态的高度一致性。</p>
+<p><strong>RISC-V —— 开放标准下的快速增长</strong></p>
+<p>RISC-V 是三大架构中唯一完全开放的 ISA，任何人可以免费实现和扩展。其设计哲学是”最小基础集 + 模块化扩展”：基础的 RV64I 仅包含约 40 条指令，所有高级功能（浮点、向量、密码学、虚拟化等）都作为可选扩展实现。这种设计使得 RISC-V 可以从最低端的微控制器覆盖到最高端的 HPC 处理器，是三大架构中适用范围最广的。国密（ShangMi）扩展 Zks 的标准化支持也体现了 RISC-V 对全球多样化需求的包容性。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-05</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-05-28 18:16:20</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-05-28 18:40:02
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/05/28/Linux内核分析之基础知识-05/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E6%80%BB%E8%A7%88/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之总览</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-04/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-04</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "not-lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "jelasin/jelasin.github.io",
+                    "data-repo-id": "R_kgDOKVydDA",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOKVydDM4CZe2W",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-05</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#6-1-RISC-V-%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0%EF%BC%9A%E5%AF%84%E5%AD%98%E5%99%A8%E3%80%81%E7%89%B9%E6%9D%83%E7%BA%A7%E4%B8%8E-CSR"><span class="nav-text">6.1 RISC-V 架构概述：寄存器、特权级与 CSR</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-1-%E5%AF%84%E5%AD%98%E5%99%A8%E7%BB%84%E7%BB%87"><span class="nav-text">6.1.1 寄存器组织</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88GPR%EF%BC%89"><span class="nav-text">通用寄存器（GPR）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%AE%E7%82%B9%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88FPU%EF%BC%89"><span class="nav-text">浮点寄存器（FPU）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%91%E9%87%8F%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88Vector%EF%BC%89"><span class="nav-text">向量寄存器（Vector）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A7%E5%88%B6%E7%8A%B6%E6%80%81%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88CSR%EF%BC%89"><span class="nav-text">控制状态寄存器（CSR）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-2-%E7%89%B9%E6%9D%83%E7%BA%A7%E5%88%AB"><span class="nav-text">6.1.2 特权级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-3-%E5%85%B3%E9%94%AE-S-mode-CSR"><span class="nav-text">6.1.3 关键 S-mode CSR</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sstatus-%E2%80%94%E2%80%94-%E7%AE%A1%E7%90%86%E8%80%85%E7%8A%B6%E6%80%81%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">sstatus —— 管理者状态寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sie-sip-%E2%80%94%E2%80%94-%E4%B8%AD%E6%96%AD%E4%BD%BF%E8%83%BD%E4%B8%8E%E4%B8%AD%E6%96%AD%E7%AD%89%E5%BE%85"><span class="nav-text">sie &#x2F; sip —— 中断使能与中断等待</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stvec-%E2%80%94%E2%80%94-Trap-%E5%90%91%E9%87%8F%E5%9F%BA%E5%9D%80"><span class="nav-text">stvec —— Trap 向量基址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sscratch-%E2%80%94%E2%80%94-%E6%9A%82%E5%AD%98%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">sscratch —— 暂存寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sepc-%E2%80%94%E2%80%94-%E5%BC%82%E5%B8%B8%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="nav-text">sepc —— 异常程序计数器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scause-%E2%80%94%E2%80%94-%E5%BC%82%E5%B8%B8%E5%8E%9F%E5%9B%A0"><span class="nav-text">scause —— 异常原因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stval-%E2%80%94%E2%80%94-Trap-%E5%80%BC"><span class="nav-text">stval —— Trap 值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#satp-%E2%80%94%E2%80%94-%E9%A1%B5%E8%A1%A8%E5%9F%BA%E5%9D%80"><span class="nav-text">satp —— 页表基址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#senvcfg-%E2%80%94%E2%80%94-%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE"><span class="nav-text">senvcfg —— 环境配置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-4-%E8%B0%83%E7%94%A8%E7%BA%A6%E5%AE%9A"><span class="nav-text">6.1.4 调用约定</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-5-%E5%85%B3%E9%94%AE-ISA-%E6%89%A9%E5%B1%95"><span class="nav-text">6.1.5 关键 ISA 扩展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E6%89%A9%E5%B1%95"><span class="nav-text">基础扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AB%98%E7%BA%A7%E6%89%A9%E5%B1%95"><span class="nav-text">高级扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%89%B9%E6%9D%83%E6%89%A9%E5%B1%95"><span class="nav-text">特权扩展</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1-6-%E6%8C%87%E4%BB%A4%E7%BC%96%E7%A0%81%E6%A0%BC%E5%BC%8F"><span class="nav-text">6.1.6 指令编码格式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-2-RISC-V-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%EF%BC%9ASv39-Sv48-Sv57-%E4%B8%8E-SATP"><span class="nav-text">6.2 RISC-V 虚拟内存：Sv39&#x2F;Sv48&#x2F;Sv57 与 SATP</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-1-SATP-%E5%AF%84%E5%AD%98%E5%99%A8%E6%A0%BC%E5%BC%8F"><span class="nav-text">6.2.1 SATP 寄存器格式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E6%A8%A1%E5%BC%8F"><span class="nav-text">地址翻译模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%97%B6%E7%9A%84%E8%87%AA%E5%8A%A8%E6%A3%80%E6%B5%8B"><span class="nav-text">启动时的自动检测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-2-%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E5%B8%83%E5%B1%80"><span class="nav-text">6.2.2 虚拟地址空间布局</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E5%8C%BA%E5%9F%9F%E8%AF%B4%E6%98%8E"><span class="nav-text">关键区域说明</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-3-%E9%A1%B5%E8%A1%A8%E9%A1%B9%E6%A0%BC%E5%BC%8F"><span class="nav-text">6.2.3 页表项格式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%84%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="nav-text">各字段说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RWX-%E7%BC%96%E7%A0%81%E7%9A%84%E7%89%B9%E6%AE%8A%E5%90%AB%E4%B9%89"><span class="nav-text">RWX 编码的特殊含义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-4-Svpbmt-%E5%86%85%E5%AD%98%E7%B1%BB%E5%9E%8B"><span class="nav-text">6.2.4 Svpbmt 内存类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-5-ASID-%E4%B8%8E-TLB-%E7%AE%A1%E7%90%86"><span class="nav-text">6.2.5 ASID 与 TLB 管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ASID%EF%BC%88%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E6%A0%87%E8%AF%86%E7%AC%A6%EF%BC%89"><span class="nav-text">ASID（地址空间标识符）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sfence-vma-%E6%8C%87%E4%BB%A4"><span class="nav-text">sfence.vma 指令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2-6-%E4%B8%8E-ARM64-%E9%A1%B5%E8%A1%A8%E6%9C%BA%E5%88%B6%E5%AF%B9%E6%AF%94"><span class="nav-text">6.2.6 与 ARM64 页表机制对比</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8C%E9%A1%B5%E8%A1%A8-vs-%E5%8D%95%E9%A1%B5%E8%A1%A8"><span class="nav-text">双页表 vs 单页表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#S-mode-%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E9%A1%B5%E9%9D%A2"><span class="nav-text">S-mode 访问用户页面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A1%B5%E8%A1%A8%E9%A1%B9%E6%9D%83%E9%99%90%E7%BC%96%E7%A0%81"><span class="nav-text">页表项权限编码</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-3-RISC-V-%E5%BC%82%E5%B8%B8%E4%B8%8E%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="nav-text">6.3 RISC-V 异常与中断处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-1-Trap-%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6"><span class="nav-text">6.3.1 Trap 处理机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Trap-%E5%85%A5%E5%8F%A3%E9%85%8D%E7%BD%AE"><span class="nav-text">Trap 入口配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Trap-%E5%8F%91%E7%94%9F%E6%97%B6%E7%9A%84%E7%A1%AC%E4%BB%B6%E8%A1%8C%E4%B8%BA"><span class="nav-text">Trap 发生时的硬件行为</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sscratch-%E4%B8%8E%E5%BF%AB%E9%80%9F%E6%9D%A5%E6%BA%90%E6%A3%80%E6%B5%8B"><span class="nav-text">sscratch 与快速来源检测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-2-handle-exception-%E6%B5%81%E7%A8%8B"><span class="nav-text">6.3.2 handle_exception 流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#pt-regs-%E7%BB%93%E6%9E%84"><span class="nav-text">pt_regs 结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-3-%E5%BC%82%E5%B8%B8%E5%8E%9F%E5%9B%A0%E7%BC%96%E7%A0%81"><span class="nav-text">6.3.3 异常原因编码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-4-%E4%B8%AD%E6%96%AD%E5%8E%9F%E5%9B%A0%E7%BC%96%E7%A0%81"><span class="nav-text">6.3.4 中断原因编码</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%9E%B6%E6%9E%84"><span class="nav-text">中断控制器架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-5-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">6.3.5 系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">系统调用流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3-6-%E5%BC%82%E5%B8%B8%E8%BF%94%E5%9B%9E%EF%BC%88ret-from-exception%EF%BC%89"><span class="nav-text">6.3.6 异常返回（ret_from_exception）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E6%80%81%E8%BF%94%E5%9B%9E%E7%9A%84%E7%89%B9%E6%AE%8A%E5%A4%84%E7%90%86"><span class="nav-text">内核态返回的特殊处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sret-vs-eret-vs-iret"><span class="nav-text">sret vs eret vs iret</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-4-RISC-V-%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%EF%BC%9A%E4%BB%8E-start-%E5%88%B0-start-kernel"><span class="nav-text">6.4 RISC-V 内核启动：从 _start 到 start_kernel</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-1-%E5%90%AF%E5%8A%A8%E5%85%A5%E5%8F%A3%E6%9D%A1%E4%BB%B6"><span class="nav-text">6.4.1 启动入口条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-2-start%EF%BC%9A%E9%95%9C%E5%83%8F%E5%A4%B4%E9%83%A8%E4%B8%8E%E5%88%9D%E5%A7%8B%E8%B7%B3%E8%BD%AC"><span class="nav-text">6.4.2 _start：镜像头部与初始跳转</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-3-start-kernel%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%88%9D%E5%A7%8B%E5%8C%96%E5%BA%8F%E5%88%97"><span class="nav-text">6.4.3 _start_kernel：核心初始化序列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-4-relocate-enable-mmu%EF%BC%9A%E4%BD%BF%E8%83%BD%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%8D%95%E5%85%83"><span class="nav-text">6.4.4 relocate_enable_mmu：使能内存管理单元</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-5-%E5%AE%8C%E6%95%B4%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">6.4.5 完整启动流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-6-setup-arch-%EF%BC%9A%E6%9E%B6%E6%9E%84%E7%89%B9%E5%AE%9A%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">6.4.6 setup_arch()：架构特定初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-7-%E4%B8%8E-ARM64-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="nav-text">6.4.7 与 ARM64 启动流程的对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-5-RISC-V-SBI%EF%BC%9ASupervisor-Binary-Interface"><span class="nav-text">6.5 RISC-V SBI：Supervisor Binary Interface</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-1-SBI-%E7%9A%84%E5%AE%9A%E4%BD%8D%E4%B8%8E%E4%BD%9C%E7%94%A8"><span class="nav-text">6.5.1 SBI 的定位与作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-2-SBI-%E8%A7%84%E8%8C%83%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B"><span class="nav-text">6.5.2 SBI 规范版本演进</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-3-%E6%A0%B8%E5%BF%83-SBI-%E6%89%A9%E5%B1%95"><span class="nav-text">6.5.3 核心 SBI 扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-4-SBI-%E8%B0%83%E7%94%A8%E7%BA%A6%E5%AE%9A"><span class="nav-text">6.5.4 SBI 调用约定</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-5-%E4%B8%8E-ARM-PSCI-%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="nav-text">6.5.5 与 ARM PSCI 的对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-6-sbi-init-%EF%BC%9A%E5%90%AF%E5%8A%A8%E6%97%B6%E7%9A%84-SBI-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">6.5.6 sbi_init()：启动时的 SBI 初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-6-RISC-V-%E5%A4%9A%E6%A0%B8%E5%90%AF%E5%8A%A8%E4%B8%8E-HSM"><span class="nav-text">6.6 RISC-V 多核启动与 HSM</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-1-CPU-%E5%8F%91%E7%8E%B0"><span class="nav-text">6.6.1 CPU 发现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-2-SBI-HSM%EF%BC%9AHart-%E7%8A%B6%E6%80%81%E7%AE%A1%E7%90%86"><span class="nav-text">6.6.2 SBI HSM：Hart 状态管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-3-%E8%BE%85%E5%8A%A9-CPU-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">6.6.3 辅助 CPU 启动流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-4-Spinwait-%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F"><span class="nav-text">6.6.4 Spinwait 启动方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-5-%E6%A0%B8%E9%97%B4%E4%B8%AD%E6%96%AD%EF%BC%88IPI%EF%BC%89"><span class="nav-text">6.6.5 核间中断（IPI）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-6-6-CPU-%E7%83%AD%E6%8F%92%E6%8B%94"><span class="nav-text">6.6.6 CPU 热插拔</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-7-RISC-V-%E5%AE%89%E5%85%A8%E7%89%B9%E6%80%A7-%E2%80%94%E2%80%94-CFI%E3%80%81Zkr%E3%80%81Svpbmt-%E4%B8%8E-KASLR"><span class="nav-text">6.7 RISC-V 安全特性 —— CFI、Zkr、Svpbmt 与 KASLR</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-1-KASLR%EF%BC%88CONFIG-RANDOMIZE-BASE%EF%BC%89"><span class="nav-text">6.7.1 KASLR（CONFIG_RANDOMIZE_BASE）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-7-2-STRICT-KERNEL-RWX%EF%BC%88W-X-%E5%BC%BA%E5%88%B6%E6%89%A7%E8%A1%8C%EF%BC%89"><span class="nav-text">7.7.2 STRICT_KERNEL_RWX（W^X 强制执行）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-3-%E7%94%A8%E6%88%B7%E6%80%81%E6%8E%A7%E5%88%B6%E6%B5%81%E5%AE%8C%E6%95%B4%E6%80%A7%EF%BC%88CONFIG-RISCV-USER-CFI%EF%BC%89"><span class="nav-text">6.7.3 用户态控制流完整性（CONFIG_RISCV_USER_CFI）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Zicfilp-%E2%80%94%E2%80%94-%E5%89%8D%E5%90%91-CFI%EF%BC%88%E9%97%B4%E6%8E%A5%E5%88%86%E6%94%AF%E9%AA%8C%E8%AF%81%EF%BC%89"><span class="nav-text">Zicfilp —— 前向 CFI（间接分支验证）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Zicfiss-%E2%80%94%E2%80%94-%E5%90%8E%E5%90%91-CFI%EF%BC%88%E5%BD%B1%E5%AD%90%E6%A0%88%EF%BC%89"><span class="nav-text">Zicfiss —— 后向 CFI（影子栈）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-4-Zkr-%E7%A1%AC%E4%BB%B6%E7%86%B5%E6%BA%90%EF%BC%88CSR-SEED%EF%BC%89"><span class="nav-text">6.7.4 Zkr 硬件熵源（CSR_SEED）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-5-Svpbmt%EF%BC%88%E5%9F%BA%E4%BA%8E%E9%A1%B5%E9%9D%A2%E7%9A%84%E5%86%85%E5%AD%98%E7%B1%BB%E5%9E%8B%EF%BC%89"><span class="nav-text">6.7.5 Svpbmt（基于页面的内存类型）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-6-Svnapot%EF%BC%88%E8%87%AA%E7%84%B6%E5%AF%B9%E9%BD%90%E7%9A%84-2-%E7%9A%84%E5%B9%82%E6%AC%A1%E9%A1%B5%E9%9D%A2%EF%BC%89"><span class="nav-text">6.7.6 Svnapot（自然对齐的 2 的幂次页面）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-7-%E5%BD%B1%E5%AD%90%E8%B0%83%E7%94%A8%E6%A0%88%EF%BC%88CONFIG-SHADOW-CALL-STACK%EF%BC%89"><span class="nav-text">6.7.7 影子调用栈（CONFIG_SHADOW_CALL_STACK）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-7-8-Zk-%E5%AF%86%E7%A0%81%E5%AD%A6%E6%89%A9%E5%B1%95%E6%97%8F"><span class="nav-text">6.7.8 Zk* 密码学扩展族</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-8-RISC-V-%E8%99%9A%E6%8B%9F%E5%8C%96-%E2%80%94%E2%80%94-H-%E6%89%A9%E5%B1%95%E4%B8%8E-KVM"><span class="nav-text">6.8 RISC-V 虚拟化 —— H 扩展与 KVM</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-1-RISC-V-%E8%99%9A%E6%8B%9F%E5%8C%96%E6%9E%B6%E6%9E%84"><span class="nav-text">6.8.1 RISC-V 虚拟化架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-2-KVM-%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%88arch-riscv-kvm-main-c%EF%BC%89"><span class="nav-text">6.8.2 KVM 初始化（arch&#x2F;riscv&#x2F;kvm&#x2F;main.c）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-3-VM-%E6%89%A7%E8%A1%8C%E4%B8%8E%E4%B8%96%E7%95%8C%E5%88%87%E6%8D%A2"><span class="nav-text">6.8.3 VM 执行与世界切换</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-4-CSR-%E5%A7%94%E6%89%98%E6%9C%BA%E5%88%B6"><span class="nav-text">6.8.4 CSR 委托机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-5-%E4%B8%AD%E6%96%AD%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="nav-text">6.8.5 中断虚拟化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-6-NACL%EF%BC%88%E5%B5%8C%E5%A5%97%E5%8A%A0%E9%80%9F%EF%BC%89"><span class="nav-text">6.8.6 NACL（嵌套加速）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-8-7-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94"><span class="nav-text">6.8.7 架构对比</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-9-%E4%B8%89%E5%A4%A7%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84%E5%AF%B9%E6%AF%94-%E2%80%94%E2%80%94-x86-64-vs-ARM64-vs-RISC-V"><span class="nav-text">6.9 三大体系结构对比 —— x86_64 vs ARM64 vs RISC-V</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-1-%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84%E5%9F%BA%E7%A1%80%E5%AF%B9%E6%AF%94"><span class="nav-text">6.9.1 体系结构基础对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-2-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="nav-text">6.9.2 启动流程对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%AF%B9%E6%AF%94"><span class="nav-text">6.9.3 内存管理对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-4-%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E5%AF%B9%E6%AF%94"><span class="nav-text">6.9.4 安全机制对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-5-%E8%99%9A%E6%8B%9F%E5%8C%96%E5%AF%B9%E6%AF%94"><span class="nav-text">6.9.5 虚拟化对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-9-6-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6%E4%B8%8E%E7%94%9F%E6%80%81"><span class="nav-text">6.9.6 设计哲学与生态</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/main.js" ></script>
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Typed.min.js" ></script>
+
+
+
+
+
+
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+
+
+	
+</body>
+
+</html>

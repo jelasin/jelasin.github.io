@@ -98,7 +98,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
 <meta property="article:published_time" content="2026-01-07T17:17:49.000Z">
-<meta property="article:modified_time" content="2026-04-21T06:32:09.028Z">
+<meta property="article:modified_time" content="2026-05-28T10:40:03.989Z">
 <meta property="article:author" content="Jelasin">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
@@ -473,7 +473,7 @@
         <div class="label text-third-text-color text-sm">Categories</div>
     </a>
     <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
-        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">143</div>
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
         <div class="label text-third-text-color text-sm">Posts</div>
     </a>
 </div>
@@ -522,8 +522,8 @@
     
         <span class="article-date article-meta-item">
             <i class="fa-regular fa-wrench"></i>&nbsp;
-            <span class="desktop">2026-04-21 14:32:09</span>
-            <span class="mobile">2026-04-21 14:32:09</span>
+            <span class="desktop">2026-05-28 18:40:03</span>
+            <span class="mobile">2026-05-28 18:40:03</span>
             <span class="hover-info">Updated</span>
         </span>
     
@@ -566,7 +566,2045 @@
 
 
 		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
-			
+			<h1 id="1-1-寄存器与数据类型"><a href="#1-1-寄存器与数据类型" class="headerlink" title="1.1 寄存器与数据类型"></a>1.1 寄存器与数据类型</h1><p>x86_64 架构在传统 x86 的基础上将通用寄存器从 32 位扩展到 64 位，并新增了八个通用寄存器（R8–R15）。本节系统性地介绍 Linux 7.0 内核在 x86_64 模式下所使用的各类寄存器，包括通用寄存器、指令指针、标志寄存器、段寄存器、控制寄存器、模型专用寄存器（MSR）、调试寄存器以及 SIMD 扩展寄存器，最后给出内核中常用的数据类型定义。</p>
+<hr>
+<h2 id="1-1-1-通用寄存器（General-Purpose-Registers-GPRs）"><a href="#1-1-1-通用寄存器（General-Purpose-Registers-GPRs）" class="headerlink" title="1.1.1 通用寄存器（General-Purpose Registers, GPRs）"></a>1.1.1 通用寄存器（General-Purpose Registers, GPRs）</h2><h3 id="寄存器层级命名"><a href="#寄存器层级命名" class="headerlink" title="寄存器层级命名"></a>寄存器层级命名</h3><p>x86_64 的每个通用寄存器都可以按不同位宽寻址。以 RAX 为例，其层级关系如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    RAX (64 位)                          │</span><br><span class="line">├────────────────────────┬────────────────────────────────┤</span><br><span class="line">│        高 32 位        │           EAX (32 位)           │</span><br><span class="line">├───────────┬────────────┼───────────┬────────────────────┤</span><br><span class="line">│  高 16 位 │    AX (16 位)          │                    │</span><br><span class="line">│           ├──────────┬─────────────┤                    │</span><br><span class="line">│           │ AH (8位) │ AL (8位)    │                    │</span><br><span class="line">└───────────┴──────────┴─────────────┴────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p>下表列出了全部 16 个通用寄存器及其不同位宽的名称：</p>
+<table>
+<thead>
+<tr>
+<th>64 位</th>
+<th>32 位</th>
+<th>16 位</th>
+<th>高 8 位</th>
+<th>低 8 位</th>
+<th>传统用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RAX</td>
+<td>EAX</td>
+<td>AX</td>
+<td>AH</td>
+<td>AL</td>
+<td>累加器 &#x2F; 系统调用号 &#x2F; 返回值</td>
+</tr>
+<tr>
+<td>RBX</td>
+<td>EBX</td>
+<td>BX</td>
+<td>BH</td>
+<td>BL</td>
+<td>基址寄存器（被调用者保存）</td>
+</tr>
+<tr>
+<td>RCX</td>
+<td>ECX</td>
+<td>CX</td>
+<td>CH</td>
+<td>CL</td>
+<td>计数器（移位、循环、第 4 参数）</td>
+</tr>
+<tr>
+<td>RDX</td>
+<td>EDX</td>
+<td>DX</td>
+<td>DH</td>
+<td>DL</td>
+<td>数据 &#x2F; I&#x2F;O &#x2F; 第 3 参数 &#x2F; 返回值高 64 位</td>
+</tr>
+<tr>
+<td>RSI</td>
+<td>ESI</td>
+<td>SI</td>
+<td>—</td>
+<td>SIL</td>
+<td>源变址 &#x2F; 第 2 参数</td>
+</tr>
+<tr>
+<td>RDI</td>
+<td>EDI</td>
+<td>DI</td>
+<td>—</td>
+<td>DIL</td>
+<td>目的变址 &#x2F; 第 1 参数</td>
+</tr>
+<tr>
+<td>RBP</td>
+<td>EBP</td>
+<td>BP</td>
+<td>—</td>
+<td>BPL</td>
+<td>栈帧指针（被调用者保存）</td>
+</tr>
+<tr>
+<td>RSP</td>
+<td>ESP</td>
+<td>SP</td>
+<td>—</td>
+<td>SPL</td>
+<td>栈指针</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>R8D</td>
+<td>R8W</td>
+<td>—</td>
+<td>R8B</td>
+<td>第 5 参数</td>
+</tr>
+<tr>
+<td>R9</td>
+<td>R9D</td>
+<td>R9W</td>
+<td>—</td>
+<td>R9B</td>
+<td>第 6 参数</td>
+</tr>
+<tr>
+<td>R10</td>
+<td>R10D</td>
+<td>R10W</td>
+<td>—</td>
+<td>R10B</td>
+<td>SYSCALL 指令保存 RFLAGS</td>
+</tr>
+<tr>
+<td>R11</td>
+<td>R11D</td>
+<td>R11W</td>
+<td>—</td>
+<td>R11B</td>
+<td>SYSCALL 指令保存 RIP</td>
+</tr>
+<tr>
+<td>R12</td>
+<td>R12D</td>
+<td>R12W</td>
+<td>—</td>
+<td>R12B</td>
+<td>被调用者保存</td>
+</tr>
+<tr>
+<td>R13</td>
+<td>R13D</td>
+<td>R13W</td>
+<td>—</td>
+<td>R13B</td>
+<td>被调用者保存</td>
+</tr>
+<tr>
+<td>R14</td>
+<td>R14D</td>
+<td>R14W</td>
+<td>—</td>
+<td>R14B</td>
+<td>被调用者保存</td>
+</tr>
+<tr>
+<td>R15</td>
+<td>R15D</td>
+<td>R15W</td>
+<td>—</td>
+<td>R15B</td>
+<td>被调用者保存</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>注意</strong>：对 32 位寄存器（如 EAX）写入时，高 32 位自动清零；而对 16 位或 8 位寄存器写入时，高位保持不变。这是 x86_64 的一条重要规则，内核代码中经常利用此特性进行零扩展。</p>
+</blockquote>
+<h3 id="System-V-AMD64-ABI-函数调用约定"><a href="#System-V-AMD64-ABI-函数调用约定" class="headerlink" title="System V AMD64 ABI 函数调用约定"></a>System V AMD64 ABI 函数调用约定</h3><p>Linux 内核遵循 System V AMD64 ABI 调用约定（内核自身代码也是如此），其核心规则如下：</p>
+<p><strong>参数传递</strong>（按顺序使用）：</p>
+<table>
+<thead>
+<tr>
+<th>参数位置</th>
+<th>整数&#x2F;指针类型</th>
+<th>浮点类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>第 1 个</td>
+<td>RDI</td>
+<td>XMM0</td>
+</tr>
+<tr>
+<td>第 2 个</td>
+<td>RSI</td>
+<td>XMM1</td>
+</tr>
+<tr>
+<td>第 3 个</td>
+<td>RDX</td>
+<td>XMM2</td>
+</tr>
+<tr>
+<td>第 4 个</td>
+<td>RCX</td>
+<td>XMM3</td>
+</tr>
+<tr>
+<td>第 5 个</td>
+<td>R8</td>
+<td>XMM4</td>
+</tr>
+<tr>
+<td>第 6 个</td>
+<td>R9</td>
+<td>XMM5</td>
+</tr>
+<tr>
+<td>第 7 个起</td>
+<td>栈</td>
+<td>XMM6–XMM7 起入栈</td>
+</tr>
+</tbody></table>
+<p><strong>返回值</strong>：整数类型通过 RAX 返回，128 位整数通过 RDX:RAX 返回。浮点值通过 XMM0（或 XMM1:XMM0）返回。</p>
+<p><strong>寄存器分类</strong>：</p>
+<ul>
+<li><strong>调用者保存（Caller-saved）</strong>：RAX, RCX, RDX, RSI, RDI, R8–R11。被调函数可以自由修改这些寄存器，调用者在函数调用前需自行保存。</li>
+<li><strong>被调用者保存（Callee-saved）</strong>：RBX, RBP, R12–R15。被调函数若使用这些寄存器，必须在返回前恢复其原始值。</li>
+<li><strong>栈指针</strong>：RSP 始终指向栈顶，必须 16 字节对齐。</li>
+</ul>
+<h3 id="系统调用中的特殊用途"><a href="#系统调用中的特殊用途" class="headerlink" title="系统调用中的特殊用途"></a>系统调用中的特殊用途</h3><p>在 <code>SYSCALL</code> &#x2F; <code>SYSRET</code> 指令中，部分寄存器承担固定角色：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>系统调用中的用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RAX</td>
+<td>系统调用号（输入）&#x2F; 返回值（输出）</td>
+</tr>
+<tr>
+<td>RDI</td>
+<td>第 1 参数（arg0）</td>
+</tr>
+<tr>
+<td>RSI</td>
+<td>第 2 参数（arg1）</td>
+</tr>
+<tr>
+<td>RDX</td>
+<td>第 3 参数（arg2）</td>
+</tr>
+<tr>
+<td>R10</td>
+<td>第 4 参数（arg3）——注意不是 RCX</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>第 5 参数（arg4）</td>
+</tr>
+<tr>
+<td>R9</td>
+<td>第 6 参数（arg5）</td>
+</tr>
+<tr>
+<td>RCX</td>
+<td>被 SYSCALL 用来保存返回地址 RIP</td>
+</tr>
+<tr>
+<td>R11</td>
+<td>被 SYSCALL 用来保存 RFLAGS</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>关键细节</strong>：<code>SYSCALL</code> 指令不使用 RCX 传第 4 参数，而是使用 R10，因为 RCX 被硬件自动用于保存返回地址。内核入口代码 <code>entry_SYSCALL_64</code> 会将 R10 复制到 RCX，以匹配 C 函数的调用约定。</p>
+</blockquote>
+<hr>
+<h2 id="1-1-2-指令指针寄存器（RIP）"><a href="#1-1-2-指令指针寄存器（RIP）" class="headerlink" title="1.1.2 指令指针寄存器（RIP）"></a>1.1.2 指令指针寄存器（RIP）</h2><p>RIP 是 64 位指令指针寄存器，指向<strong>下一条</strong>将要执行的指令地址。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────┐</span><br><span class="line">│                    RIP (64 位)                            │</span><br><span class="line">│              下一条指令的虚拟地址                           │</span><br><span class="line">└──────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p>RIP 的关键特性：</p>
+<ul>
+<li><p><strong>不可直接读写</strong>：x86 没有提供 <code>MOV RIP, ...</code> 之类的指令。RIP 只能通过控制流指令间接修改：</p>
+<ul>
+<li><code>JMP</code> &#x2F; <code>JE</code> &#x2F; <code>JNE</code> 等：条件与无条件跳转</li>
+<li><code>CALL</code> &#x2F; <code>RET</code>：函数调用与返回（同时操作栈）</li>
+<li><code>SYSCALL</code> &#x2F; <code>SYSRET</code>：系统调用进入与返回</li>
+<li><code>INT n</code> &#x2F; <code>IRET</code>：中断与中断返回</li>
+<li><code>LOOP</code>：循环指令</li>
+</ul>
+</li>
+<li><p><strong>在 64 位模式下的寻址</strong>：RIP-relative 寻址是 64 位模式的默认方式，广泛用于位置无关代码（PIC）。内核中通过 <code>RIP</code> 相对寻址访问全局变量，如：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">movq %gs:current_task(%rip), %rax</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>中断&#x2F;异常保存</strong>：当异常或中断发生时，CPU 自动将当前 RIP 压入内核栈（对于异常还会压入错误码）。<code>pt_regs</code> 结构体中保存了这些值。</p>
+</li>
+</ul>
+<hr>
+<h2 id="1-1-3-标志寄存器（RFLAGS）"><a href="#1-1-3-标志寄存器（RFLAGS）" class="headerlink" title="1.1.3 标志寄存器（RFLAGS）"></a>1.1.3 标志寄存器（RFLAGS）</h2><p>RFLAGS 是 64 位标志寄存器，其中低 32 位称为 EFLAGS。在 64 位模式下，高 32 位保留未使用。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">┌───┬───────────────────────────┬──────────────────────────────────────────┐</span><br><span class="line">│   │       高 32 位（保留）     │              EFLAGS (32 位)              │</span><br><span class="line">└───┴───────────────────────────┴──────────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p>EFLAGS 各标志位分布（位号从右到左）：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">31                                                        0</span><br><span class="line">┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐</span><br><span class="line">│0│0│0│0│0│0│0│0│0│0│I│V│V│A│V│R│0│N│IOPL│O│D│I│T│S│Z│0│A│0│P│1│C│</span><br><span class="line">│ │ │ │ │ │ │ │ │ │ │D│M│I│C│M│F│ │T│    │F│F│F│F│F│F│ │F│ │F│ │F│</span><br><span class="line">└─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘</span><br><span class="line">位:31                                                 0</span><br></pre></td></tr></table></figure></div>
+
+<p>内核中重要的标志位：</p>
+<table>
+<thead>
+<tr>
+<th>标志</th>
+<th>位号</th>
+<th>名称</th>
+<th>内核中的用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CF</td>
+<td>0</td>
+<td>进位标志</td>
+<td>无符号溢出检测；<code>cmpxchg</code> 指令使用</td>
+</tr>
+<tr>
+<td>PF</td>
+<td>2</td>
+<td>奇偶标志</td>
+<td>低 8 位中 1 的个数的奇偶性</td>
+</tr>
+<tr>
+<td>AF</td>
+<td>4</td>
+<td>辅助进位</td>
+<td>BCD 运算辅助</td>
+</tr>
+<tr>
+<td>ZF</td>
+<td>6</td>
+<td>零标志</td>
+<td>比较结果为零；条件跳转 <code>JE</code>&#x2F;<code>JNE</code></td>
+</tr>
+<tr>
+<td>SF</td>
+<td>7</td>
+<td>符号标志</td>
+<td>结果为负；<code>JS</code>&#x2F;<code>JNS</code></td>
+</tr>
+<tr>
+<td>TF</td>
+<td>8</td>
+<td>陷阱标志</td>
+<td>单步调试（ptrace 机制）</td>
+</tr>
+<tr>
+<td>IF</td>
+<td>9</td>
+<td>中断使能</td>
+<td><strong>关键标志</strong>：<code>CLI</code> 禁用中断、<code>STI</code> 启用中断</td>
+</tr>
+<tr>
+<td>DF</td>
+<td>10</td>
+<td>方向标志</td>
+<td>字符串操作方向：<code>CLD</code>（递增）&#x2F; <code>STD</code>（递减）</td>
+</tr>
+<tr>
+<td>OF</td>
+<td>11</td>
+<td>溢出标志</td>
+<td>有符号溢出检测</td>
+</tr>
+<tr>
+<td>IOPL</td>
+<td>12-13</td>
+<td>I&#x2F;O 特权级</td>
+<td>I&#x2F;O 操作的最低特权级要求（Ring 0 为 0）</td>
+</tr>
+<tr>
+<td>NT</td>
+<td>14</td>
+<td>嵌套任务</td>
+<td>任务嵌套标志</td>
+</tr>
+<tr>
+<td>RF</td>
+<td>16</td>
+<td>恢复标志</td>
+<td>禁止调试异常在断点处重复触发</td>
+</tr>
+<tr>
+<td>VM</td>
+<td>17</td>
+<td>虚拟 8086</td>
+<td>64 位模式下忽略</td>
+</tr>
+<tr>
+<td>AC</td>
+<td>18</td>
+<td>对齐检查</td>
+<td>启用非对齐内存访问检测（与 SMAP 配合）</td>
+</tr>
+<tr>
+<td>ID</td>
+<td>21</td>
+<td>CPUID 可用</td>
+<td>可通过翻转此位判断是否支持 CPUID</td>
+</tr>
+</tbody></table>
+<p><strong>IF 标志与中断控制</strong>是内核中最关键的操作之一。Linux 内核使用 <code>CLI</code>&#x2F;<code>STI</code> 指令控制中断：</p>
+<ul>
+<li>进入中断处理程序后，CPU 自动清除 IF（关中断）</li>
+<li><code>spin_lock_irqsave()</code> 在获取自旋锁的同时保存 RFLAGS 并关闭中断</li>
+<li><code>spin_unlock_irqrestore()</code> 恢复 RFLAGS，从而恢复中断状态</li>
+</ul>
+<hr>
+<h2 id="1-1-4-段寄存器"><a href="#1-1-4-段寄存器" class="headerlink" title="1.1.4 段寄存器"></a>1.1.4 段寄存器</h2><p>x86_64 有 6 个 16 位段寄存器：CS, DS, ES, FS, GS, SS。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐</span><br><span class="line">│  CS  │ │  DS  │ │  ES  │ │  FS  │ │  GS  │ │  SS  │</span><br><span class="line">│ 16位 │ │ 16位 │ │ 16位 │ │ 16位 │ │ 16位 │ │ 16位 │</span><br><span class="line">└──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="64-位模式下的段寄存器行为"><a href="#64-位模式下的段寄存器行为" class="headerlink" title="64 位模式下的段寄存器行为"></a>64 位模式下的段寄存器行为</h3><p>在 64 位（长模式）下，分段机制被大幅简化：</p>
+<table>
+<thead>
+<tr>
+<th>段寄存器</th>
+<th>64 位模式下的行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CS</td>
+<td>仍然有效，定义当前代码段特权级（CPL），基址固定为 0</td>
+</tr>
+<tr>
+<td>DS</td>
+<td>基址强制为 0，被忽略</td>
+</tr>
+<tr>
+<td>ES</td>
+<td>基址强制为 0，被忽略</td>
+</tr>
+<tr>
+<td>SS</td>
+<td>基址强制为 0，被忽略</td>
+</tr>
+<tr>
+<td>FS</td>
+<td><strong>有效</strong>：基址通过 MSR 设置，用于用户态 TLS</td>
+</tr>
+<tr>
+<td>GS</td>
+<td><strong>有效</strong>：基址通过 MSR 设置，用于内核态 per-CPU 数据</td>
+</tr>
+</tbody></table>
+<h3 id="CS-段选择子"><a href="#CS-段选择子" class="headerlink" title="CS 段选择子"></a>CS 段选择子</h3><p>Linux 内核定义了两个关键代码段选择子：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __KERNEL_CS   0x10    <span class="comment">// 内核代码段：GDT 第 2 项，DPL=0</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __USER_CS     0x33    <span class="comment">// 用户代码段：GDT 第 6 项，DPL=3</span></span></span><br></pre></td></tr></table></figure></div>
+
+<p>CS 寄存器的低 2 位（CPL）反映当前特权级：内核态为 0，用户态为 3。</p>
+<h3 id="FS-GS-与-per-CPU-数据"><a href="#FS-GS-与-per-CPU-数据" class="headerlink" title="FS&#x2F;GS 与 per-CPU 数据"></a>FS&#x2F;GS 与 per-CPU 数据</h3><p>FS 和 GS 是 64 位模式下最重要的段寄存器，它们各自有一个隐藏的 64 位基址寄存器（不暴露在段描述符中），通过 MSR 读写：</p>
+<table>
+<thead>
+<tr>
+<th>MSR</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MSR_FS_BASE</code> (0xC0000100)</td>
+<td>FS 段基址（用户态 TLS）</td>
+</tr>
+<tr>
+<td><code>MSR_GS_BASE</code> (0xC0000101)</td>
+<td>GS 段基址（当前 GS，内核态指向 per-CPU 数据）</td>
+</tr>
+<tr>
+<td><code>MSR_KERNEL_GS_BASE</code> (0xC0000102)</td>
+<td>备用 GS 基址（用户态 GS）</td>
+</tr>
+</tbody></table>
+<p><strong><code>SWAPGS</code> 指令</strong>是内核进入&#x2F;退出系统调用的关键操作：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">用户态 → 内核态（entry_SYSCALL_64）:</span><br><span class="line">  SWAPGS                    ; 交换 MSR_GS_BASE 与 MSR_KERNEL_GS_BASE</span><br><span class="line">                             ; 此时 GS 基址指向当前 CPU 的 per-CPU 数据区</span><br><span class="line"></span><br><span class="line">内核态 → 用户态（返回前）:</span><br><span class="line">  SWAPGS                    ; 再次交换，恢复用户态 GS 基址</span><br></pre></td></tr></table></figure></div>
+
+<p>内核通过 GS 段寄存器实现 per-CPU 变量的高效访问。例如，<code>current_task</code> 是一个 per-CPU 变量，内核通过 <code>%gs:current_task</code> 快速获取当前进程的 <code>task_struct</code> 指针，无需查表。</p>
+<hr>
+<h2 id="1-1-5-控制寄存器（Control-Registers）"><a href="#1-1-5-控制寄存器（Control-Registers）" class="headerlink" title="1.1.5 控制寄存器（Control Registers）"></a>1.1.5 控制寄存器（Control Registers）</h2><p>控制寄存器用于管理 CPU 的全局运行状态，包括分页、缓存、保护模式等。</p>
+<h3 id="CR0-—-系统控制寄存器"><a href="#CR0-—-系统控制寄存器" class="headerlink" title="CR0 — 系统控制寄存器"></a>CR0 — 系统控制寄存器</h3><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">┌─────┬─────┬────┬─────┬───┬───┬─────┬─────┬──────────────┬─────┬───────┬─────┐</span><br><span class="line">│ PG  │ CD  │ NW │ AM  │   │ WP│     │ NE  │              │ ET  │  TS   │  PE │</span><br><span class="line">│ 31  │ 30  │ 29 │ 18  │   │ 16│     │  5  │              │  4  │  3    │  0  │</span><br><span class="line">└─────┴─────┴────┴─────┴───┴───┴─────┴─────┴──────────────┴─────┴───────┴─────┘</span><br></pre></td></tr></table></figure></div>
+
+<table>
+<thead>
+<tr>
+<th>位</th>
+<th>名称</th>
+<th>内核用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>PE（Protection Enable）</td>
+<td>保护模式使能，开机即设为 1</td>
+</tr>
+<tr>
+<td>3</td>
+<td>TS（Task Switched）</td>
+<td>任务切换延时保存 FPU 状态</td>
+</tr>
+<tr>
+<td>5</td>
+<td>NE（Numeric Error）</td>
+<td>内部 x87 错误报告</td>
+</tr>
+<tr>
+<td>16</td>
+<td>WP（Write Protect）</td>
+<td><strong>关键</strong>：Ring 0 写保护只读页，内核 copy_from_user 依赖此位</td>
+</tr>
+<tr>
+<td>29</td>
+<td>NW（Not Write-through）</td>
+<td>写穿透控制</td>
+</tr>
+<tr>
+<td>30</td>
+<td>CD（Cache Disable）</td>
+<td>禁用 CPU 缓存</td>
+</tr>
+<tr>
+<td>31</td>
+<td>PG（Paging）</td>
+<td><strong>关键</strong>：分页使能，内核启动时设置</td>
+</tr>
+</tbody></table>
+<h3 id="CR2-—-页故障线性地址"><a href="#CR2-—-页故障线性地址" class="headerlink" title="CR2 — 页故障线性地址"></a>CR2 — 页故障线性地址</h3><p>当发生页故障（Page Fault, 异常 #PF）时，CPU 自动将触发故障的线性地址写入 CR2。内核页故障处理程序 <code>do_page_fault()</code> 读取 CR2 以获取故障地址：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/mm/fault.c</span></span><br><span class="line"><span class="type">static</span> noinline <span class="type">void</span> __do_page_fault(<span class="keyword">struct</span> pt_regs *regs, <span class="type">unsigned</span> <span class="type">long</span> hw_error_code,</span><br><span class="line">                                      <span class="type">unsigned</span> <span class="type">long</span> address)  <span class="comment">// address 即从 CR2 读取</span></span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p><strong>注意</strong>：在读取 CR2 之前，如果该地址位于用户空间，内核需要先检查是否可能来自对 <code>user_mode(regs)</code> 的判断，以区分内核态缺页和用户态缺页。</p>
+</blockquote>
+<h3 id="CR3-—-页目录基址"><a href="#CR3-—-页目录基址" class="headerlink" title="CR3 — 页目录基址"></a>CR3 — 页目录基址</h3><p>CR3 保存顶层页表的<strong>物理地址</strong>（即 PML4 表的基地址）。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────┬──────────────────────────────┐</span><br><span class="line">│     PML4 物理基址（高位）     │   低位（标志，如 PCID 等）    │</span><br><span class="line">│          [51:12]             │          [11:0]              │</span><br><span class="line">└──────────────────────────────┴──────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>低 12 位可用于 PCID（Process-Context Identifier，需 CR4.PCIDE&#x3D;1），用于 TLB 刷新优化。</li>
+<li>每次进程切换时，内核通过写入 CR3 切换地址空间。<code>write_cr3()</code> 是一个关键操作。</li>
+<li>内核使用 <code>__flush_tlb_all()</code> 等函数管理 TLB 刷新。</li>
+</ul>
+<h3 id="CR4-—-扩展控制寄存器"><a href="#CR4-—-扩展控制寄存器" class="headerlink" title="CR4 — 扩展控制寄存器"></a>CR4 — 扩展控制寄存器</h3><table>
+<thead>
+<tr>
+<th>位</th>
+<th>名称</th>
+<th>内核用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>5</td>
+<td>PAE</td>
+<td>物理地址扩展（64 位模式必须为 1）</td>
+</tr>
+<tr>
+<td>7</td>
+<td>PGE</td>
+<td>页全局使能，全局页不被刷新（PGE 标志）</td>
+</tr>
+<tr>
+<td>9</td>
+<td>OSFXSR</td>
+<td>操作系统支持 FXSAVE&#x2F;FXRSTOR</td>
+</tr>
+<tr>
+<td>10</td>
+<td>OSXMMEXCPT</td>
+<td>操作系统支持 SIMD 浮点异常</td>
+</tr>
+<tr>
+<td>17</td>
+<td>PCIDE</td>
+<td>PCID 使能（TLB 刷新优化）</td>
+</tr>
+<tr>
+<td>20</td>
+<td>SMEP</td>
+<td><strong>Supervisor Mode Execution Prevention</strong>：内核态禁止执行用户态代码</td>
+</tr>
+<tr>
+<td>21</td>
+<td>SMAP</td>
+<td><strong>Supervisor Mode Access Prevention</strong>：内核态禁止访问用户态数据（需 <code>STAC</code>&#x2F;<code>CLAC</code> 控制）</td>
+</tr>
+<tr>
+<td>57</td>
+<td>LA57</td>
+<td>5 级分页使能（Linux 7.0 支持 57 位虚拟地址）</td>
+</tr>
+</tbody></table>
+<h3 id="CR8-—-任务优先级寄存器（TPR）"><a href="#CR8-—-任务优先级寄存器（TPR）" class="headerlink" title="CR8 — 任务优先级寄存器（TPR）"></a>CR8 — 任务优先级寄存器（TPR）</h3><p>CR8 映射到 Local APIC 的 Task Priority Register（TPR），用于控制中断优先级阈值。内核很少直接操作 CR8，而是通过 APIC 的 MMIO 寄存器操作。</p>
+<hr>
+<h2 id="1-1-6-模型专用寄存器（MSR-Model-Specific-Registers）"><a href="#1-1-6-模型专用寄存器（MSR-Model-Specific-Registers）" class="headerlink" title="1.1.6 模型专用寄存器（MSR, Model-Specific Registers）"></a>1.1.6 模型专用寄存器（MSR, Model-Specific Registers）</h2><p>MSR 通过 <code>RDMSR</code>&#x2F;<code>WRMSR</code> 指令访问（需 ECX 指定 MSR 编号，结果在 EDX:EAX 中）。内核封装了 <code>rdmsrl()</code> 和 <code>wrmsrl()</code> 辅助函数。</p>
+<h3 id="系统调用相关-MSR"><a href="#系统调用相关-MSR" class="headerlink" title="系统调用相关 MSR"></a>系统调用相关 MSR</h3><table>
+<thead>
+<tr>
+<th>MSR</th>
+<th>地址</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MSR_STAR</code></td>
+<td>0xC0000081</td>
+<td>bits [47:32] &#x3D; SYSCALL 目标 CS，bits [63:48] &#x3D; SYSRET 目标 CS</td>
+</tr>
+<tr>
+<td><code>MSR_LSTAR</code></td>
+<td>0xC0000082</td>
+<td>SYSCALL 入口点：<code>entry_SYSCALL_64</code></td>
+</tr>
+<tr>
+<td><code>MSR_CSTAR</code></td>
+<td>0xC0000083</td>
+<td>32 位兼容模式 SYSCALL 入口点</td>
+</tr>
+<tr>
+<td><code>MSR_SYSCALL_MASK</code></td>
+<td>0xC0000084</td>
+<td>SYSCALL 执行时自动清除的 RFLAGS 位</td>
+</tr>
+</tbody></table>
+<p><code>MSR_SYSCALL_MASK</code> 的典型值为 <code>X86_EFLAGS_TF | X86_EFLAGS_DF | X86_EFLAGS_IF | X86_EFLAGS_IOPL</code>，即进入内核时自动关闭中断、清除方向标志和陷阱标志。</p>
+<h3 id="扩展功能使能寄存器"><a href="#扩展功能使能寄存器" class="headerlink" title="扩展功能使能寄存器"></a>扩展功能使能寄存器</h3><table>
+<thead>
+<tr>
+<th>MSR</th>
+<th>地址</th>
+<th>关键位</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MSR_EFER</code></td>
+<td>0xC0000080</td>
+<td>SCE（位 0）：SYSCALL&#x2F;SYSRET 使能</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>LME（位 8）：长模式使能</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>LMA（位 10）：长模式激活（只读）</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>NXE（位 11）：No-Execute 使能</td>
+</tr>
+</tbody></table>
+<p>内核启动时在 <code>startup_64</code> 中设置 EFER.LME 和 EFER.NXE，之后启用分页（CR0.PG&#x3D;1）时，CPU 自动将 EFER.LMA 置 1。</p>
+<h3 id="GS-FS-基址-MSR"><a href="#GS-FS-基址-MSR" class="headerlink" title="GS&#x2F;FS 基址 MSR"></a>GS&#x2F;FS 基址 MSR</h3><p>已在 1.1.4 节中介绍。<code>SWAPGS</code> 指令本质上就是交换 <code>MSR_GS_BASE</code> 和 <code>MSR_KERNEL_GS_BASE</code> 的值。</p>
+<hr>
+<h2 id="1-1-7-调试寄存器（Debug-Registers）"><a href="#1-1-7-调试寄存器（Debug-Registers）" class="headerlink" title="1.1.7 调试寄存器（Debug Registers）"></a>1.1.7 调试寄存器（Debug Registers）</h2><p>x86_64 提供 8 个调试寄存器（DR0–DR7），其中 DR4 和 DR5 在 CR4.DE&#x3D;1 时保留。</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DR0–DR3</td>
+<td>4 个断点线性地址（每个 64 位）</td>
+</tr>
+<tr>
+<td>DR6</td>
+<td>调试状态寄存器：记录触发调试异常的原因</td>
+</tr>
+<tr>
+<td>DR7</td>
+<td>调试控制寄存器：设置断点条件（读&#x2F;写&#x2F;执行、数据长度、使能）</td>
+</tr>
+</tbody></table>
+<p>内核中的 <code>ptrace</code> 子系统利用调试寄存器实现硬件断点：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/kernel/hw_breakpoint.c</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">arch_install_hw_breakpoint</span><span class="params">(<span class="keyword">struct</span> perf_event *bp)</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p>DR7 的控制位布局：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">┌─────────┬───────────┬──────────┬───────────┬──────────────┐</span><br><span class="line">│  全局控制 │  DR3 控制  │  DR2 控制 │  DR1 控制  │   DR0 控制   │</span><br><span class="line">│  [31:16] │  [31:30]  │ [23:22]  │ [15:14]   │   [7:6]      │</span><br><span class="line">└─────────┴───────────┴──────────┴───────────┴──────────────┘</span><br><span class="line">每个断点 2 位：00=执行, 01=写, 10=I/O(不常用), 11=读/写</span><br><span class="line">每个断点 2 位长度：00=1字节, 01=2字节, 10=8字节, 11=4字节</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<h2 id="1-1-8-SIMD-扩展寄存器"><a href="#1-1-8-SIMD-扩展寄存器" class="headerlink" title="1.1.8 SIMD 扩展寄存器"></a>1.1.8 SIMD 扩展寄存器</h2><p>x86_64 支持多级 SIMD（Single Instruction Multiple Data）扩展寄存器：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    ZMM (512 位, AVX-512)                      │</span><br><span class="line">├──────────────────────┬───────────────────────────────────────┤</span><br><span class="line">│    YMM 高 128 位     │          XMM (128 位, SSE)             │</span><br><span class="line">│   (AVX 扩展)         │                                       │</span><br><span class="line">└──────────────────────┴───────────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<table>
+<thead>
+<tr>
+<th>寄存器组</th>
+<th>位宽</th>
+<th>数量</th>
+<th>指令集</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>XMM0–XMM15</td>
+<td>128 位</td>
+<td>16</td>
+<td>SSE&#x2F;SSE2&#x2F;SSE3&#x2F;SSSE3&#x2F;SSE4.x</td>
+</tr>
+<tr>
+<td>YMM0–YMM15</td>
+<td>256 位</td>
+<td>16</td>
+<td>AVX&#x2F;AVX2</td>
+</tr>
+<tr>
+<td>ZMM0–ZMM31</td>
+<td>512 位</td>
+<td>32</td>
+<td>AVX-512</td>
+</tr>
+</tbody></table>
+<p>在 AVX-512 启用后，XMM 和 YMM 寄存器是 ZMM 寄存器的低 128 位和低 256 位别名。</p>
+<h3 id="XSAVE-区域与上下文切换"><a href="#XSAVE-区域与上下文切换" class="headerlink" title="XSAVE 区域与上下文切换"></a>XSAVE 区域与上下文切换</h3><p>这些扩展寄存器状态通过 <code>XSAVE</code> &#x2F; <code>XRSTOR</code> 指令进行批量保存和恢复。内核为每个任务维护一个 XSAVE 区域：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 进程的 FPU 状态</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">fpu</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> initialized;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">fpstate</span>          *<span class="title">fpstate</span>;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">fpstate</span> __<span class="title">user</span>   *<span class="title">fpstate_ptr</span>;</span></span><br><span class="line">    &#125;;</span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>XSAVE 区域的布局由 CPU 攓取的 <code>XSAVE header</code> 决定，可能包含以下组件：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>位号</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>x87 FPU</td>
+<td>0</td>
+<td>传统 FPU 状态</td>
+</tr>
+<tr>
+<td>SSE</td>
+<td>1</td>
+<td>XMM0–XMM15</td>
+</tr>
+<tr>
+<td>AVX</td>
+<td>2</td>
+<td>YMM 高 128 位</td>
+</tr>
+<tr>
+<td>OPMASK</td>
+<td>5</td>
+<td>AVX-512 掩码寄存器 k0–k7</td>
+</tr>
+<tr>
+<td>ZMM_Hi256</td>
+<td>6</td>
+<td>AVX-512 ZMM 高 256 位</td>
+</tr>
+<tr>
+<td>Hi16_ZMM</td>
+<td>7</td>
+<td>AVX-512 ZMM16–ZMM31</td>
+</tr>
+</tbody></table>
+<p>内核在上下文切换时使用 <code>switch_fpu_finish()</code> &#x2F; <code>switch_fpu_prepare()</code> 管理这些状态，并采用 <strong>lazy FPU restore</strong>（延迟恢复）策略：仅在实际使用 FPU&#x2F;SIMD 指令时才触发 <code>#NM</code> 异常来恢复状态。</p>
+<hr>
+<h2 id="1-1-9-内核数据类型"><a href="#1-1-9-内核数据类型" class="headerlink" title="1.1.9 内核数据类型"></a>1.1.9 内核数据类型</h2><h3 id="基本大小与命名"><a href="#基本大小与命名" class="headerlink" title="基本大小与命名"></a>基本大小与命名</h3><table>
+<thead>
+<tr>
+<th>大小（位）</th>
+<th>Intel 术语</th>
+<th>C 类型（内核）</th>
+<th>无符号</th>
+<th>有符号</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>8</td>
+<td>Byte</td>
+<td>char</td>
+<td>u8</td>
+<td>s8</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Word</td>
+<td>short</td>
+<td>u16</td>
+<td>s16</td>
+</tr>
+<tr>
+<td>32</td>
+<td>DWord</td>
+<td>int</td>
+<td>u32</td>
+<td>s32</td>
+</tr>
+<tr>
+<td>64</td>
+<td>QWord</td>
+<td>long long</td>
+<td>u64</td>
+<td>s64</td>
+</tr>
+</tbody></table>
+<p>在 x86_64 上，<code>unsigned long</code> 为 64 位，内核大量使用 <code>unsigned long</code> 表示虚拟地址和物理地址。</p>
+<h3 id="地址类型"><a href="#地址类型" class="headerlink" title="地址类型"></a>地址类型</h3><p>内核对不同类型的地址有专门的类型标注：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>定义</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>unsigned long</code></td>
+<td>纯整数</td>
+<td>虚拟地址、物理地址（转换为整数时）</td>
+</tr>
+<tr>
+<td><code>phys_addr_t</code></td>
+<td><code>u64</code></td>
+<td>物理地址</td>
+</tr>
+<tr>
+<td><code>void __iomem *</code></td>
+<td>指针标注</td>
+<td>I&#x2F;O 映射内存地址（<code>sparse</code> 检查）</td>
+</tr>
+<tr>
+<td><code>void __user *</code></td>
+<td>指针标注</td>
+<td>用户空间地址（<code>sparse</code> 检查）</td>
+</tr>
+<tr>
+<td><code>void *</code></td>
+<td>普通指针</td>
+<td>内核空间虚拟地址</td>
+</tr>
+</tbody></table>
+<p><code>__user</code> 和 <code>__iomem</code> 是通过 <code>__attribute__((noderef, address_space(...)))</code> 实现的稀疏（<code>sparse</code>）静态检查标注，在编译为普通内核时无实际效果，但通过 <code>sparse</code> 工具可以检测内核空间与用户空间指针的混用错误。</p>
+<h3 id="页表相关类型"><a href="#页表相关类型" class="headerlink" title="页表相关类型"></a>页表相关类型</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">long</span>   <span class="type">pteval_t</span>;    <span class="comment">// 页表项值</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">long</span>   <span class="type">pmdval_t</span>;</span><br><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">long</span>   <span class="type">pudval_t</span>;</span><br><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">long</span>   <span class="type">p4dval_t</span>;</span><br><span class="line"><span class="keyword">typedef</span> <span class="type">unsigned</span> <span class="type">long</span>   <span class="type">pgdval_t</span>;</span><br></pre></td></tr></table></figure></div>
+
+<p>在 x86_64 上这些类型均为 64 位无符号整数，与寄存器位宽完全匹配。</p>
+<hr>
+<h1 id="1-2-CPU-运行模式：实模式、保护模式与长模式"><a href="#1-2-CPU-运行模式：实模式、保护模式与长模式" class="headerlink" title="1.2 CPU 运行模式：实模式、保护模式与长模式"></a>1.2 CPU 运行模式：实模式、保护模式与长模式</h1><p>x86_64 架构的处理器在演进过程中积累了三种主要的运行模式：实模式（Real Mode）、保护模式（Protected Mode）和长模式（Long Mode）。这三种模式分别对应 16 位、32 位和 64 位的计算能力，反映了从 Intel 8086 到现代 64 位处理器的历史发展脉络。Linux 内核在启动过程中会依次经历这三种模式，最终进入 64 位长模式运行。理解这些模式的工作机制，是深入分析 x86_64 架构下 Linux 内核启动流程和内存管理的基础。</p>
+<h2 id="1-2-1-实模式（Real-Mode）"><a href="#1-2-1-实模式（Real-Mode）" class="headerlink" title="1.2.1 实模式（Real Mode）"></a>1.2.1 实模式（Real Mode）</h2><p>实模式是 x86 处理器在上电复位（power-on reset）后进入的默认运行模式。这一模式的存在是为了与最早的 Intel 8086 处理器保持向后兼容。</p>
+<p><strong>地址空间与寻址方式</strong></p>
+<p>实模式采用 20 位地址总线，因此可寻址的物理内存空间为 1MB（2^20 字节），地址范围为 0x00000 至 0xFFFFF。然而，实模式下的寄存器仅为 16 位宽，单个寄存器无法直接表示 20 位地址。为了解决这一问题，x86 采用了”段地址:偏移量”（segment:offset）的寻址方案。最终线性地址的计算公式为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">线性地址 = 段寄存器值 × 16 + 偏移量</span><br></pre></td></tr></table></figure></div>
+
+<p>例如，段地址 0x1000 加上偏移量 0x0020，对应的物理地址为 0x10020。这种机制使得 16 位寄存器的组合能够覆盖 20 位地址空间。不过，通过巧妙的段地址与偏移量组合（如 0xFFFF:0xFFFF），最大可寻址到 0x10FFEF，超出 1MB 边界约 64KB，这就是著名的”A20 地址线”问题。</p>
+<p><strong>基本特征</strong></p>
+<p>实模式几乎没有现代处理器所具备的保护机制：没有内存保护、没有特权级划分、没有分页（paging）支持。所有代码都以最高权限运行，任何程序都可以直接读写任意内存地址和硬件端口。中断处理通过位于物理地址 0 处的中断向量表（Interrupt Vector Table，IVT）实现，IVT 包含 256 个中断向量，每个向量占用 4 字节（2 字节段地址 + 2 字节偏移量），总计占用 1KB 空间。</p>
+<p>实模式使用 16 位寄存器（AX、BX、CX、DX 等）和 16 位指令集，功能非常有限。</p>
+<p><strong>Linux 中的实模式代码</strong></p>
+<p>在 Linux 内核中，实模式启动代码位于 <code>arch/x86/boot/</code> 目录下。传统的 BIOS 启动方式会将引导扇区加载到内存地址 0x7C00 处执行，随后进入实模式下的内核设置流程。这些代码负责进行基本的硬件探测、收集 BIOS 提供的系统信息、设置最基本的运行环境，然后尽快切换到保护模式。Linux 内核的设计哲学是：在实模式中停留的时间越短越好。实模式 1MB 的地址空间限制对于现代操作系统来说是不可接受的，因此内核会在完成必要的初始化后立即退出实模式。</p>
+<h2 id="1-2-2-保护模式（Protected-Mode）"><a href="#1-2-2-保护模式（Protected-Mode）" class="headerlink" title="1.2.2 保护模式（Protected Mode）"></a>1.2.2 保护模式（Protected Mode）</h2><p>保护模式是 Intel 从 80286 开始引入的运行模式，在 80386 中得到进一步完善，提供了 32 位寻址能力和一系列硬件保护机制。</p>
+<p><strong>进入保护模式</strong></p>
+<p>从实模式切换到保护模式的关键步骤是设置控制寄存器 CR0 中的 PE（Protection Enable）位：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CR0.PE = 1    ; 设置 PE 位，启用保护模式</span><br></pre></td></tr></table></figure></div>
+
+<p>但在设置此位之前，软件必须先建立好全局描述符表（GDT）并使用 LGDT 指令加载其基地址和界限，否则处理器在切换模式后将无法正确执行后续指令。</p>
+<p><strong>32 位寄存器与寻址</strong></p>
+<p>进入保护模式后，寄存器从 16 位扩展为 32 位（EAX、EBX、ECX、EDX、ESI、EDI、EBP、ESP 等），指令指针也变为 32 位的 EIP。32 位寻址理论上提供了 4GB 的平坦地址空间（flat address space），但在使用分段机制时，实际可访问的地址范围由段描述符中的基地址（base）和界限（limit）决定。</p>
+<p><strong>分段机制与描述符表</strong></p>
+<p>保护模式下的分段机制通过全局描述符表（Global Descriptor Table，GDT）和局部描述符表（Local Descriptor Table，LDT）实现。每个段描述符占 8 字节，包含以下关键信息：</p>
+<ul>
+<li><strong>基地址（Base）</strong>：32 位，指定段在线性地址空间中的起始地址</li>
+<li><strong>界限（Limit）</strong>：20 位，指定段的大小（以字节或 4KB 为粒度）</li>
+<li><strong>特权级（DPL）</strong>：2 位，定义段的特权级别（0-3）</li>
+<li><strong>类型（Type）</strong>：定义段是代码段、数据段、TSS 还是门描述符</li>
+<li><strong>存在位（P）</strong>：标识段是否在物理内存中</li>
+</ul>
+<p>Linux 内核在保护模式下使用平坦内存模型（flat model），即代码段和数据段的基地址都设为 0，界限都设为 4GB-1，从而让分段机制对软件透明，转而依靠分页机制来实现内存保护。</p>
+<p><strong>特权级机制</strong></p>
+<p>保护模式引入了 4 个特权级别（Ring 0 到 Ring 3），Ring 0 为最高特权级，Ring 3 为最低特权级。这一机制被称为”保护环”（protection ring）。然而，Linux 内核只使用了 Ring 0（内核态）和 Ring 3（用户态）两个级别，Ring 1 和 Ring 2 并未使用。这种简化设计也影响了其他操作系统（如 Windows），使得”内核态&#x2F;用户态”的二分模型成为主流。</p>
+<p><strong>分页机制</strong></p>
+<p>在保护模式下，分页是可选功能。启用分页需要：</p>
+<ol>
+<li>设置 CR0.PG &#x3D; 1，启用分页</li>
+<li>CR3 寄存器指向页目录（Page Directory）的物理地址</li>
+</ol>
+<p>启用分页后，32 位线性地址被分为三部分：页目录索引（10 位）、页表索引（10 位）和页内偏移（12 位），形成经典的两级页表结构，每个页的大小为 4KB。在启用了物理地址扩展（PAE，Physical Address Extension）的情况下，还可支持 36 位物理地址，最大寻址 64GB 物理内存。</p>
+<p><strong>中断描述符表</strong></p>
+<p>保护模式使用中断描述符表（Interrupt Descriptor Table，IDT）替代实模式的 IVT。IDT 通过 LIDT 指令加载，其中每个描述符称为”门描述符”（gate descriptor），包括中断门（Interrupt Gate）、陷阱门（Trap Gate）和任务门（Task Gate）。门描述符包含目标代码段选择子、段内偏移量、特权级等信息，处理器在响应中断时会自动进行权限检查和栈切换。</p>
+<p><strong>任务状态段</strong></p>
+<p>任务状态段（Task State Segment，TSS）是 x86 架构中用于硬件级任务切换的机制。TSS 中保存了任务的所有寄存器状态，处理器可通过硬件自动切换 TSS 来实现任务切换。然而，Linux 内核并未使用硬件任务切换，而是采用软件方式管理任务上下文，TSS 在 Linux 中的主要用途仅限于为内核态栈提供入口点（特别是处理权限级别变化时的栈切换）。</p>
+<p><strong>Linux 中的保护模式代码</strong></p>
+<p>在 Linux 启动过程中，保护模式是一个过渡阶段。相关的关键代码位于 <code>arch/x86/boot/compressed/head_64.S</code> 中的 <code>startup_32</code> 函数。这段代码在保护模式下设置好初步的页表（identity mapping 和内核映射），为进入 64 位长模式做准备。Linux 并不在保护模式下进行实质性的内核初始化工作，而是尽快过渡到长模式。</p>
+<h2 id="1-2-3-长模式（Long-Mode）"><a href="#1-2-3-长模式（Long-Mode）" class="headerlink" title="1.2.3 长模式（Long Mode）"></a>1.2.3 长模式（Long Mode）</h2><p>长模式是 AMD 在 AMD64（即 x86-64）架构中引入、随后被 Intel 在 EM64T&#x2F;Intel 64 中采用的 64 位运行模式。这是现代 64 位 Linux 内核的最终运行模式。</p>
+<p><strong>启用长模式的步骤</strong></p>
+<p>从保护模式进入长模式需要严格按照以下顺序执行：</p>
+<ol>
+<li><strong>CR0.PE &#x3D; 1</strong>：确认已在保护模式</li>
+<li><strong>CR4.PAE &#x3D; 1</strong>：启用物理地址扩展（PAE），这是长模式的前提条件</li>
+<li><strong>设置页表</strong>：建立四级页表结构，并将 CR3 指向 PML4（Page Map Level 4）表的基地址</li>
+<li><strong>EFER.LME &#x3D; 1</strong>：在扩展功能使能寄存器（EFER，通过 MSR 0xC0000080 访问）中设置 LME（Long Mode Enable）位</li>
+<li><strong>CR0.PG &#x3D; 1</strong>：启用分页——此步骤将触发从保护模式到长模式的实际切换</li>
+</ol>
+<p>这一过程中，必须在启用分页之前先设置好页表，否则处理器会触发异常。值得注意的是，EFER.LME 的设置必须在 CR0.PG 置位之前完成，否则会触发 #GP（General Protection）异常。</p>
+<p><strong>64 位寄存器与扩展寄存器</strong></p>
+<p>长模式下，所有通用寄存器扩展为 64 位宽度：RAX、RBX、RCX、RDX、RSI、RDI、RBP、RSP，指令指针扩展为 64 位的 RIP。此外，还新增了 8 个通用寄存器 R8 至 R15，使通用寄存器总数达到 16 个。这些额外的寄存器显著减少了函数调用中寄存器保存&#x2F;恢复的开销，也有助于编译器进行更高效的优化。</p>
+<p><strong>平坦内存模型与段寄存器</strong></p>
+<p>长模式在设计上强制采用平坦内存模型。CS、DS、ES、SS 段寄存器的基地址在硬件层面被固定视为 0，界限被忽略，这意味着传统分段机制在 64 位模式下实际上已被废弃。FS 和 GS 是仅有的两个保留可自定义基地址的段寄存器，其基地址通过 MSR（Model-Specific Register）进行设置：</p>
+<ul>
+<li><code>IA32_FS_BASE</code>（MSR 0xC0000100）：设置 FS 段基地址</li>
+<li><code>IA32_GS_BASE</code>（MSR 0xC0000101）：设置 GS 段基地址</li>
+<li><code>IA32_KERNEL_GS_BASE</code>（MSR 0xC0000102）：用于 SWAPGS 指令交换 GS 基地址</li>
+</ul>
+<p>Linux 内核利用 GS 段寄存器来指向当前处理器的 <code>per-CPU</code> 数据区，FS 段寄存器则用于线程局部存储（Thread Local Storage，TLS）。</p>
+<p><strong>虚拟地址空间布局</strong></p>
+<p>长模式支持 48 位虚拟地址空间，理论上可寻址 2^48 &#x3D; 256 TB 的虚拟内存。然而，x86-64 架构要求虚拟地址必须满足”规范形式”（canonical form），即第 47 位至第 63 位必须全部相同（符号扩展）。这导致虚拟地址空间被分为两个不连续的区域：</p>
+<ul>
+<li><strong>用户空间（低半部分）</strong>：<code>0x0000000000000000</code> 至 <code>0x00007FFFFFFFFFFF</code>，大小为 128 TB</li>
+<li><strong>内核空间（高半部分）</strong>：<code>0xFFFF800000000000</code> 至 <code>0xFFFFFFFFFFFFFFFF</code>，大小为 128 TB</li>
+</ul>
+<p>中间的”非规范地址区域”（<code>0x0000800000000000</code> 至 <code>0xFFFF7FFFFFFFFFFF</code>）不可使用，访问该区域会触发 #GP 异常。Linux 内核将内核空间与用户空间以约 2:1 或 1:1 的比例划分（具体取决于 <code>PAGE_OFFSET</code> 的配置），在默认配置下，用户空间占低地址 128 TB，内核空间占高地址 128 TB。</p>
+<p><strong>物理地址空间</strong></p>
+<p>长模式理论上支持 52 位物理地址，可寻址 4 PB（Peta Byte）的物理内存。但实际支持的物理地址位数取决于处理器的具体实现，通常为 46 位或 48 位，可通过 CPUID 指令查询。</p>
+<p><strong>RIP 相对寻址</strong></p>
+<p>长模式引入了 RIP 相对寻址（RIP-relative addressing）机制，允许指令通过相对于当前 RIP 的偏移量来引用数据。这一特性使得位置无关代码（Position-Independent Code，PIC）的生成更加高效，是内核地址空间布局随机化（KASLR）等技术的基础。</p>
+<p><strong>快速系统调用指令</strong></p>
+<p>长模式引入了 SYSCALL 和 SYSRET 指令，取代了传统的 INT 0x80 &#x2F; IRET 中断方式来进行系统调用。SYSCALL&#x2F;SYSRET 避免了中断处理流程中的大量开销（如中断向量查找、权限检查等），直接通过 MSR 中预设的入口地址进行切换，速度显著提升。相关 MSR 包括：</p>
+<ul>
+<li><code>IA32_STAR</code>（MSR 0xC0000081）：存放 SYSCALL 目标代码段选择子和基地址</li>
+<li><code>IA32_LSTAR</code>（MSR 0xC0000082）：存放 SYSCALL 的 64 位目标 RIP</li>
+<li><code>IA32_CSTAR</code>（MSR 0xC0000083）：存放兼容模式下的 SYSCALL 目标 RIP</li>
+<li><code>IA32_FMASK</code>（MSR 0xC0000084）：存放 SYSCALL 执行时需要清除的 RFLAGS 位</li>
+</ul>
+<p><strong>NX 位与页面保护</strong></p>
+<p>长模式的页表项中新增了 NX（No-Execute）位，也称为 XD（Execute Disable）位。该位允许操作系统将特定内存页面标记为不可执行，从而实现数据执行保护（Data Execution Prevention，DEP&#x2F;W^X），有效防御缓冲区溢出等代码注入攻击。Linux 内核通过这个硬件特性实现了严格的内存权限控制。</p>
+<p><strong>四级页表结构</strong></p>
+<p>长模式默认使用四级页表结构进行虚拟地址到物理地址的翻译：</p>
+<ol>
+<li><strong>PML4（Page Map Level 4）</strong>：由虚拟地址的第 39-47 位索引，CR3 指向 PML4 表</li>
+<li><strong>PDPTR（Page Directory Pointer Table）&#x2F; PDPT</strong>：由第 30-39 位索引</li>
+<li><strong>PD（Page Directory）</strong>：由第 21-30 位索引</li>
+<li><strong>PT（Page Table）</strong>：由第 12-20 位索引</li>
+<li><strong>页内偏移</strong>：由第 0-11 位表示</li>
+</ol>
+<p>每级页表包含 512 个 8 字节的表项，每个标准页大小为 4KB。此外还支持 2MB 大页（huge page，在 PD 层直接映射）和 1GB 大页（在 PDPTR 层直接映射）。</p>
+<p><strong>五级页表（可选）</strong></p>
+<p>从较新的处理器开始，x86-64 架构支持可选的五级页表结构，通过设置 CR4.LA57 位启用。五级页表在 PML4 之上新增 PML5（Page Map Level 5）层级，将虚拟地址位数从 48 位扩展到 57 位，虚拟地址空间从 256 TB 扩展到 128 PB。Linux 内核从 4.14 版本开始支持五级页表，通过配置选项 <code>CONFIG_X86_5LEVEL</code> 进行选择。启用五级页表后，虚拟地址空间布局变为：</p>
+<ul>
+<li>用户空间：<code>0x0000000000000000</code> 至 <code>0x00FFFFFFFFFFFFFF</code>（低 56 位地址空间）</li>
+<li>内核空间：<code>0xFF00000000000000</code> 至 <code>0xFFFFFFFFFFFFFFFF</code></li>
+</ul>
+<h2 id="1-2-4-Linux-启动中的模式转换"><a href="#1-2-4-Linux-启动中的模式转换" class="headerlink" title="1.2.4 Linux 启动中的模式转换"></a>1.2.4 Linux 启动中的模式转换</h2><p>Linux 内核在启动过程中依次经历实模式、保护模式，最终进入长模式。整体模式转换流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">实模式  ──(CR0.PE=1)──&gt;  保护模式  ──(EFER.LME=1, CR0.PG=1)──&gt;  长模式</span><br></pre></td></tr></table></figure></div>
+
+<p>具体来说：</p>
+<ol>
+<li><p><strong>实模式 → 保护模式</strong>：这一转换发生在 <code>arch/x86/boot/pmjump.S</code> 中。实模式下的启动代码（<code>arch/x86/boot/</code> 目录下的各个源文件）完成硬件检测和信息收集后，设置好 GDT、IDT 等数据结构，然后设置 CR0.PE 位并执行远跳转指令，正式进入保护模式。</p>
+</li>
+<li><p><strong>保护模式 → 长模式</strong>：这一转换发生在 <code>arch/x86/boot/compressed/head_64.S</code> 的 <code>startup_32</code> 函数中。在保护模式下，代码首先启用 PAE（CR4.PAE&#x3D;1），设置好初步的四级页表（包括身份映射和内核映射），然后通过 wrmsr 指令设置 EFER.LME&#x3D;1，最后通过设置 CR0.PG&#x3D;1 启用分页，触发到长模式的切换。随后执行一条远跳转指令清除流水线中的旧指令，跳转到 64 位代码入口 <code>startup_64</code>。</p>
+</li>
+</ol>
+<p>这种逐步升级的设计确保了内核在每种模式下只停留最短的时间，只在必要的最低限度环境中完成准备工作，然后立即进入更高能力的模式。</p>
+<h2 id="1-2-5-兼容子模式（Compatibility-Mode）"><a href="#1-2-5-兼容子模式（Compatibility-Mode）" class="headerlink" title="1.2.5 兼容子模式（Compatibility Mode）"></a>1.2.5 兼容子模式（Compatibility Mode）</h2><p>长模式还包含一个重要的子模式——兼容模式（Compatibility Mode），它允许 64 位操作系统无缝运行 32 位应用程序。</p>
+<p><strong>工作原理</strong></p>
+<p>在兼容模式下，处理器保持 64 位长模式的内存管理和分段机制（包括 64 位页表和 64 位 IDT），但使用 32 位的寄存器和 32 位寻址方式执行指令。这意味着 32 位应用程序看到的仍然是传统的 4GB 地址空间，但其虚拟地址到物理地址的翻译完全由 64 位页表完成，操作系统也以 64 位模式处理系统调用和中断。</p>
+<p><strong>模式判别</strong></p>
+<p>处理器通过 CS 段寄存器中的描述符属性来区分当前是完整 64 位模式还是兼容模式：</p>
+<ul>
+<li><strong>完整 64 位模式</strong>：CS.L &#x3D; 1，CS.D &#x3D; 0。此时使用 64 位寄存器和 64 位寻址，默认操作数大小为 32 位（需通过 REX 前缀扩展为 64 位）。</li>
+<li><strong>兼容模式</strong>：CS.L &#x3D; 0，CS.D &#x3D; 1。此时使用 32 位寄存器和 32 位寻址，行为类似于保护模式。</li>
+</ul>
+<p><strong>Linux 中的兼容模式支持</strong></p>
+<p>Linux 内核通过 <code>arch/x86/entry/entry_64_compat.S</code> 中的入口代码来处理 32 位系统调用。当 32 位应用程序执行 INT 0x80 或 SYSCALL（兼容模式版本）时，处理器通过兼容模式入口进入内核，内核在处理完毕后通过 SYSRET 或 IRET 返回到 32 位用户态。这一机制是 Linux 能在 64 位系统上运行 32 位 ELF 程序（即 <code>ia32</code> 兼容层）的硬件基础。相关代码涉及 <code>arch/x86/ia32/</code> 目录下的多个源文件，包括系统调用表映射和信号处理等。</p>
+<p>兼容模式的存在使得 x86-64 架构在提供 64 位计算能力的同时，保持了与大量 32 位软件的二进制兼容性，这是该架构能够迅速取代传统 x86 的关键因素之一。</p>
+<h1 id="1-3-分段与分页机制"><a href="#1-3-分段与分页机制" class="headerlink" title="1.3 分段与分页机制"></a>1.3 分段与分页机制</h1><p>x86_64 架构的内存管理经历了从分段（Segmentation）到分页（Paging）的漫长演进。在 64 位长模式（Long Mode）下，分段机制已基本废弃，分页成为虚拟内存管理的核心手段。本章将深入剖析这两套机制在 Linux 7.0 内核中的实际运用。</p>
+<hr>
+<h2 id="1-3-1-分段机制：从主角到配角"><a href="#1-3-1-分段机制：从主角到配角" class="headerlink" title="1.3.1 分段机制：从主角到配角"></a>1.3.1 分段机制：从主角到配角</h2><h3 id="历史背景"><a href="#历史背景" class="headerlink" title="历史背景"></a>历史背景</h3><p>8086 处理器仅有 16 位寄存器，直接寻址空间限制在 64KB。为了将寻址范围扩展到 1MB（20 位地址），Intel 引入了分段机制：段寄存器提供 16 位段基址，左移 4 位后与 16 位偏移量相加，得到 20 位线性地址。这是分段机制的原始动机——用 16 位寄存器访问 20 位地址空间。</p>
+<p>进入 32 位保护模式后，段寄存器中存放的不再是段基址本身，而是段选择子（Segment Selector），用于索引全局描述符表（GDT）中的段描述符。每个描述符包含 32 位基地址（Base）、20 位段限长（Limit）以及特权级（DPL）等访问控制信息。CPU 在每次内存访问时都会进行段限长检查和特权级验证，分段成为内存保护的第一道防线。</p>
+<h3 id="64-位长模式下的分段"><a href="#64-位长模式下的分段" class="headerlink" title="64 位长模式下的分段"></a>64 位长模式下的分段</h3><p>然而在 64 位长模式下，这一曾经举足轻重的机制被大幅削弱。CS、DS、ES、SS 四个段寄存器的基地址被硬件强制设为 0，段限长检查被忽略——分段机制实际上被”绕过”了。线性地址直接等于偏移量。这一设计的目的是简化地址翻译流程，与 RISC 架构的设计哲学靠拢。</p>
+<p>唯一的例外是 FS 和 GS 段寄存器。这两个寄存器在 64 位模式下依然保留了可配置的 64 位基地址，通过模型特定寄存器（MSR）读写：</p>
+<ul>
+<li><strong>IA32_FS_BASE</strong>（MSR 0xC0000100）：FS 段基址</li>
+<li><strong>IA32_GS_BASE</strong>（MSR 0xC0000101）：GS 段基址</li>
+<li><strong>IA32_KERNEL_GS_BASE</strong>（MSR 0xC0000102）：用于 SWAPGS 交换的影子 GS 基址</li>
+</ul>
+<h3 id="Linux-内核对-FS-GS-的使用"><a href="#Linux-内核对-FS-GS-的使用" class="headerlink" title="Linux 内核对 FS&#x2F;GS 的使用"></a>Linux 内核对 FS&#x2F;GS 的使用</h3><p>Linux 内核巧妙地利用了 FS&#x2F;GS 这一特殊机制：</p>
+<p><strong>内核态 GS 基址</strong>指向当前 CPU 的 <code>per-CPU</code> 数据结构（<code>struct pcpu_hot</code>），其中存储了当前任务指针、栈指针、中断栈等频繁访问的热数据。用户态 GS 基址则指向线程局部存储（TLS）区域，供 glibc 等用户态库使用。</p>
+<p><code>SWAPGS</code> 指令是这一机制的关键：它原子性地交换 <code>MSR_GS_BASE</code> 和 <code>MR_KERNEL_GS_BASE</code> 的值。内核的进入与退出流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">用户态 → 内核态（syscall / 中断）:</span><br><span class="line">    SWAPGS                    // 用户 GS 基址保存到 MSR_KERNEL_GS_BASE，</span><br><span class="line">                              // 内核 per-CPU 基址加载到 MSR_GS_BASE</span><br><span class="line"></span><br><span class="line">内核态 → 用户态（sysret / iret）:</span><br><span class="line">    SWAPGS                    // 内核 GS 基址保存回 MSR_KERNEL_GS_BASE，</span><br><span class="line">                              // 用户 GS 基址恢复到 MSR_GS_BASE</span><br></pre></td></tr></table></figure></div>
+
+<p>通过这一对原子交换，内核无需额外的内存访问即可完成 per-CPU 数据区域的切换，极大地提升了系统调用和中断处理的效率。</p>
+<h3 id="GDT-结构"><a href="#GDT-结构" class="headerlink" title="GDT 结构"></a>GDT 结构</h3><p>尽管分段机制已大幅弱化，x86_64 仍要求 GDT 存在。Linux 为每个 CPU 维护独立的 GDT，存放在 per-CPU 区域中。典型的 GDT 布局如下：</p>
+<table>
+<thead>
+<tr>
+<th>条目</th>
+<th>名称</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td><code>NULL</code></td>
+<td>空描述符（必须）</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>__KERNEL_CS</code></td>
+<td>64 位内核代码段，DPL&#x3D;0</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>__KERNEL_DS</code></td>
+<td>64 位内核数据段，DPL&#x3D;0</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>__USER32_CS</code></td>
+<td>32 位兼容模式用户代码段，DPL&#x3D;3</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>__USER_DS</code></td>
+<td>用户数据段（32&#x2F;64 位共用），DPL&#x3D;3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>—</td>
+<td>未使用 &#x2F; 系统保留</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>__USER_CS</code></td>
+<td>64 位用户代码段，DPL&#x3D;3</td>
+</tr>
+</tbody></table>
+<p>在 64 位模式下，这些代码段&#x2F;数据段描述符的基地址和限长字段实际上不起作用，CPU 仅使用其中的代码段属性（如默认操作数大小、L 位指示 64 位模式）和特权级信息。每个 CPU 拥有独立 GDT 的设计，使得内核可以为不同 CPU 设置不同的 FS&#x2F;GS 基址，实现 per-CPU 数据的隔离。</p>
+<hr>
+<h2 id="1-3-2-分页机制——内存管理的核心"><a href="#1-3-2-分页机制——内存管理的核心" class="headerlink" title="1.3.2 分页机制——内存管理的核心"></a>1.3.2 分页机制——内存管理的核心</h2><p>分段在 64 位时代已经名存实亡，分页则是现代操作系统内存管理的绝对核心。分页机制将线性地址空间划分为固定大小的页（Page），通过多级页表将虚拟页映射到物理页帧。</p>
+<h3 id="四级页表（4-Level-Paging）"><a href="#四级页表（4-Level-Paging）" class="headerlink" title="四级页表（4-Level Paging）"></a>四级页表（4-Level Paging）</h3><p>x86_64 的默认分页模式是四级页表，由 CR3 寄存器出发，依次经过四级页表完成地址翻译：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">CR3 ──→ PML4（Page Map Level 4）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">        PDPTR（Page Directory Pointer Table）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">         PD（Page Directory）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">         PT（Page Table）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">       物理页面（Physical Page, 4KB）</span><br></pre></td></tr></table></figure></div>
+
+<p>每一级页表包含 512 个条目（Entry），每个条目占 8 字节，因此一个完整的页表恰好占用一个 4KB 页面。</p>
+<p>48 位规范虚拟地址（Canonical Address）的位域分解如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63        48 47   39 38   30 29   21 20   12 11        0</span><br><span class="line">┌───────────┬───────┬───────┬───────┬───────┬───────────┐</span><br><span class="line">│ 符号扩展  │ PML4  │ PDPTR │  PD   │  PT   │ 页内偏移  │</span><br><span class="line">│ (16 bit)  │ index │ index │ index │ index │ (12 bit)  │</span><br><span class="line">└───────────┴───────┴───────┴───────┴───────┴───────────┘</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>[63:48]</strong>：符号扩展位。若第 47 位为 0，则 [63:48] 必须全为 0（用户空间）；若第 47 位为 1，则 [63:48] 必须全为 1（内核空间）。不满足此规范的地址被称为”非规范地址”，访问将触发 #GP 异常。</li>
+<li><strong>[47:39]</strong>：PML4 表索引（9 位，0-511）</li>
+<li><strong>[38:30]</strong>：PDPTR 表索引（9 位）</li>
+<li><strong>[29:21]</strong>：PD 表索引（9 位）</li>
+<li><strong>[20:12]</strong>：PT 表索引（9 位）</li>
+<li><strong>[11:0]</strong>：页内偏移（12 位，0-4095）</li>
+</ul>
+<p>地址翻译的计算公式为：每级取出索引 <code>i</code>，从对应页表基地址读取第 <code>i</code> 个 8 字节条目，将其中的物理页号（位 [51:12]）作为下一级页表的物理基地址，重复直至最后一级得到最终物理地址，再拼接页内偏移。</p>
+<p>采用 4KB 小页时，四级页表支持的最大虚拟地址空间为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">512 × 512 × 512 × 512 × 4KB = 512^4 × 4KB = 256TB</span><br></pre></td></tr></table></figure></div>
+
+<p>即 128TB 用户空间 + 128TB 内核空间。</p>
+<h3 id="大页（Huge-Pages）"><a href="#大页（Huge-Pages）" class="headerlink" title="大页（Huge Pages）"></a>大页（Huge Pages）</h3><p>四级页表的四级遍历虽然灵活，但对于大内存工作负载而言，页表遍历的开销和 TLB 压力都不容忽视。x86_64 支持两种大页模式：</p>
+<p><strong>2MB 大页</strong>：当 PD 条目中的 PS（Page Size）位为 1 时，该条目不再指向下一级页表，而是直接映射一个 2MB 的物理连续区域。此时虚拟地址的 [20:0] 共 21 位作为页内偏移：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63    48 47  39 38  30 29  21 20                 0</span><br><span class="line">┌───────┬─────┬─────┬─────┬───────────────────────┐</span><br><span class="line">│符号扩展│PML4 │PDPTR│ PD  │     2MB 页内偏移       │</span><br><span class="line">│       │     │     │     │      (21 bit)          │</span><br><span class="line">└───────┴─────┴─────┴─────┴───────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>1GB 大页</strong>：当 PDPTR 条目中的 PS 位为 1 时，直接映射 1GB 物理连续区域。虚拟地址 [29:0] 共 30 位作为页内偏移：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63    48 47  39 38  30 29                         0</span><br><span class="line">┌───────┬─────┬─────┬─────────────────────────────┐</span><br><span class="line">│符号扩展│PML4 │PDPTR│        1GB 页内偏移          │</span><br><span class="line">│       │     │     │         (30 bit)             │</span><br><span class="line">└───────┴─────┴─────┴─────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<p>Linux 内核广泛使用大页：内核正文映射（kernel text）通常使用 2MB 大页以减少 TLB 失效，<code>vmalloc</code> 区域和大型内存分配也倾向于使用大页来降低页表开销。用户态程序可通过 <code>hugetlbfs</code> 或 <code>mmap(MAP_HUGETLB)</code> 接口请求大页。</p>
+<h3 id="五级页表（5-Level-Paging）"><a href="#五级页表（5-Level-Paging）" class="headerlink" title="五级页表（5-Level Paging）"></a>五级页表（5-Level Paging）</h3><p>随着内存容量的持续增长（单台服务器配备数 TB 内存已不罕见），四级页表提供的 256TB 虚拟空间在某些场景下已显不足。Intel 引入了五级页表，通过在 PML4 之上新增一级 PML5（Page Map Level 5），将虚拟地址宽度扩展至 57 位。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">CR3 ──→ PML5（Page Map Level 5）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">         PML4</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">        PDPTR</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">          PD</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">          PT</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">       物理页面（4KB）</span><br></pre></td></tr></table></figure></div>
+
+<p>57 位虚拟地址的位域分解：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63   57 56   48 47  39 38  30 29  21 20  12 11       0</span><br><span class="line">┌──────┬──────┬─────┬─────┬─────┬─────┬─────┬────────┐</span><br><span class="line">│符号  │ PML5 │PML4 │PDPTR│ PD  │ PT  │     │页内    │</span><br><span class="line">│扩展  │index │index│index│index│index│     │偏移    │</span><br><span class="line">└──────┴──────┴─────┴─────┴─────┴─────┴─────┴────────┘</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>PML5 索引占据位 [56:48]（9 位）</li>
+<li>虚拟空间扩展至 128PB（Petabytes）</li>
+</ul>
+<p>五级页表由 CR4.LA57 位启用。Linux 7.0 通过编译选项 <code>CONFIG_X86_5LEVEL=y</code> 支持五级页表，并在启动阶段根据硬件能力动态决定是否启用。相关初始化代码位于 <code>arch/x86/boot/compressed/head_64.S</code>（早期引导阶段的页表建立）和 <code>arch/x86/kernel/head64.c</code>（内核启动后的页表切换）中。内核通过 <code>pgtable_l5_enabled</code> 变量在运行时标记当前是否启用了五级页表，确保代码能同时兼容四级和五级模式。</p>
+<hr>
+<h2 id="1-3-3-页表条目（PTE）格式"><a href="#1-3-3-页表条目（PTE）格式" class="headerlink" title="1.3.3 页表条目（PTE）格式"></a>1.3.3 页表条目（PTE）格式</h2><p>每一级页表的条目都是 64 位宽，其位域定义如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63  58 57  52 51      12 11  9 8  7  6  5  4  3  2  1  0</span><br><span class="line">┌─────┬─────┬───────────┬────┬──┬──┬──┬──┬──┬──┬──┬──┬──┐</span><br><span class="line">│ 可用│ 可用│ 物理页号  │可用│G │PS│D │A │PCD│PWT│U/S│R/W│P │</span><br><span class="line">│(OS) │(OS) │ (40 bit)  │(OS)│  │  │  │  │   │   │   │   │  │</span><br><span class="line">└─────┴─────┴───────────┴────┴──┴──┴──┴──┴──┴──┴──┴──┴──┘</span><br></pre></td></tr></table></figure></div>
+
+<p>各标志位的含义：</p>
+<table>
+<thead>
+<tr>
+<th>位</th>
+<th>名称</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td><strong>P</strong>（Present）</td>
+<td>页是否存在。P&#x3D;0 时访问触发 #PF，此时其余位可由 OS 自由使用（如存放 swap 位置信息）。</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>R&#x2F;W</strong>（Read&#x2F;Write）</td>
+<td>R&#x2F;W&#x3D;0 为只读页，R&#x2F;W&#x3D;1 为可读写页。与 U&#x2F;S 位配合实现写保护。</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>U&#x2F;S</strong>（User&#x2F;Supervisor）</td>
+<td>U&#x2F;S&#x3D;0 为特权页（Ring 0-2），U&#x2F;S&#x3D;1 为用户页（Ring 3 可访问）。</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>PWT</strong>（Page Write Through）</td>
+<td>控制该页的缓存写策略：直写（Write-Through）或回写（Write-Back）。</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>PCD</strong>（Page Cache Disable）</td>
+<td>PCD&#x3D;1 时禁用该页的缓存。用于映射 I&#x2F;O 设备寄存器等需要强一致性的区域。</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>A</strong>（Accessed）</td>
+<td>CPU 在首次读取该页时自动置位。内核可利用此位实现近似 LRU 页面替换算法。</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>D</strong>（Dirty）</td>
+<td>CPU 在首次写入该页时自动置位。内核据此判断页面是否需要写回磁盘。</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>PS&#x2F;PAT</strong></td>
+<td>在非末级页表中为 PS（Page Size）位，PS&#x3D;1 表示大页映射；在末级页表中为 PAT 位，用于选择页属性表中的内存类型。</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>G</strong>（Global）</td>
+<td>G&#x3D;1 标记该页为全局页，CR3 切换时不刷新对应的 TLB 条目（需 CR4.PGE&#x3D;1）。内核映射通常设置此位。</td>
+</tr>
+<tr>
+<td>9-11</td>
+<td><strong>Available</strong></td>
+<td>供操作系统自由使用。Linux 用这些位存储 <code>_PAGE_SOFT_DIRTY</code>、<code>_PAGE_FILE</code> 等软件标志。</td>
+</tr>
+<tr>
+<td>12-51</td>
+<td><strong>Physical Address</strong></td>
+<td>40 位物理页帧号（Physical Page Number），可寻址 2^52 字节 &#x3D; 4PB 物理内存。</td>
+</tr>
+<tr>
+<td>52-58</td>
+<td><strong>Available</strong></td>
+<td>供 OS 使用的扩展可用位。</td>
+</tr>
+<tr>
+<td>63</td>
+<td><strong>NX</strong>（No-Execute）</td>
+<td>NX&#x3D;1 时禁止从该页取指令执行。这是数据执行防护（DEP&#x2F;W^X）的核心硬件支撑。</td>
+</tr>
+</tbody></table>
+<p>其中 P、R&#x2F;W、U&#x2F;S、NX 四个标志位构成了页级内存保护的基础：内核通过组合这些位实现只读数据页、不可执行代码、用户不可见的内核页等安全隔离。</p>
+<hr>
+<h2 id="1-3-4-CR3-寄存器"><a href="#1-3-4-CR3-寄存器" class="headerlink" title="1.3.4 CR3 寄存器"></a>1.3.4 CR3 寄存器</h2><p>CR3 是页表体系的入口寄存器，存放顶层页表（PML4 或 PML5）的物理地址：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> 63                52 51        12 11  10  9  8  7  6  5  4  3  2  1  0</span><br><span class="line">┌───────────────────┬─────────────┬──────────────────────┬──┬──┬──┬──┐</span><br><span class="line">│    保留 / MBZ     │  物理页号   │      保留            │PCD│PWT│  PCID  │</span><br><span class="line">│                   │ (40 bit)    │                      │   │   │(0-11) │</span><br><span class="line">└───────────────────┴─────────────┴──────────────────────┴──┴──┴──┴──┘</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>位 [51:12]</strong>：顶层页表的物理页帧号。由于页表本身必须页对齐，低 12 位不需要存储。</li>
+<li><strong>位 [11:0]</strong>：PCID（Process-Context Identifier），当 CR4.PCIDE&#x3D;1 时有效。12 位 PCID 可区分 4096 个不同进程的 TLB 条目，避免每次进程切换时刷新全部 TLB。</li>
+<li><strong>位 [4]</strong>：PCD，位 [3]**：PWT，控制顶层页表本身的缓存属性。</li>
+</ul>
+<p><strong>Linux 对 PCID 的使用</strong>：Linux 启动时检测 CPU 是否支持 PCID（通过 <code>cpuid</code> 指令），若支持则在 CR4 中启用 PCIDE 位。此后每个进程的 <code>mm_struct</code> 中保存一个 PCID 值，进程切换时将 PCID 写入 CR3 的低 12 位。这样即使不同进程切换，TLB 中属于前一进程的条目也不会被立即丢弃——它们被标记了不同的 PCID，CPU 只会匹配当前 PCID 的条目。这一优化显著减少了 TLB 抖动（Thrashing）带来的性能损失。</p>
+<hr>
+<h2 id="1-3-5-TLB（Translation-Lookaside-Buffer）"><a href="#1-3-5-TLB（Translation-Lookaside-Buffer）" class="headerlink" title="1.3.5 TLB（Translation Lookaside Buffer）"></a>1.3.5 TLB（Translation Lookaside Buffer）</h2><p>四级甚至五级页表的遍历需要 4-5 次内存访问，如果每次地址翻译都走完整路径，性能将不可接受。TLB 是 CPU 内部缓存最近使用的页表翻译结果的硬件结构，将虚拟页号到物理页号的映射缓存起来，使得绝大多数地址翻译可以在单个时钟周期内完成。</p>
+<p><strong>TLB 的一致性维护</strong>是操作系统与硬件协同的关键：</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>INVLPG addr</code></td>
+<td>使指定地址对应的单个 TLB 条目失效</td>
+</tr>
+<tr>
+<td>CR3 重写（<code>mov cr3</code>）</td>
+<td>刷新所有非全局（G&#x3D;0）TLB 条目</td>
+</tr>
+<tr>
+<td>全局页（CR4.PGE&#x3D;1 且 G&#x3D;1）</td>
+<td>CR3 切换时<strong>不刷新</strong>，内核映射受益于此</td>
+</tr>
+<tr>
+<td>PCID 标记</td>
+<td>TLB 条目带有 PCID 标签，仅当 PCID 匹配时才命中</td>
+</tr>
+</tbody></table>
+<p>Linux 内核在修改页表（如缺页处理分配新页、<code>mprotect</code> 修改权限）后，必须主动调用 <code>flush_tlb_page()</code>、<code>flush_tlb_range()</code> 等函数使对应的 TLB 条目失效，确保后续访问使用更新后的页表。在 SMP 系统中，还需要通过 IPI（处理器间中断）通知其他 CPU 刷新其 TLB 中的过期条目，这是 <code>flush_tlb_others()</code> 的职责。</p>
+<hr>
+<h2 id="1-3-6-Linux-内核虚拟内存布局（x86-64）"><a href="#1-3-6-Linux-内核虚拟内存布局（x86-64）" class="headerlink" title="1.3.6 Linux 内核虚拟内存布局（x86_64）"></a>1.3.6 Linux 内核虚拟内存布局（x86_64）</h2><p>在四级页表模式下，Linux 7.0 的 x86_64 内核虚拟地址空间布局如下。所有内核地址的高 16 位全为 1（符号扩展），与用户空间的高 16 位全为 0 形成鲜明分界：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">虚拟地址范围                                                    用途</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br><span class="line">0x0000000000000000 - 0x00007FFFFFFFFFFF (128TB)                用户空间</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br><span class="line">0xFFFF800000000000 - 0xFFFF87FFFFFFFFFF (128TB)                直接映射（物理内存）</span><br><span class="line">0xFFFF888000000000 - 0xFFFF8FFFFFFFFFFF (128TB)                直接映射（物理内存，主区域）</span><br><span class="line">0xFFFF900000000000 - 0xFFFF97FFFFFFFFFF (128TB)                vmalloc / ioremap</span><br><span class="line">0xFFFF980000000000 - 0xFFFF9FFFFFFFFFFF (128TB)                vmalloc（备用区域）</span><br><span class="line">0xFFFFA000000000000 - 0xFFFFEAFFFFFFFFFF (~40TB)               vmemmap（struct page 数组）</span><br><span class="line">0xFFFFEB0000000000 - 0xFFFFFE7FFFFFFFFF                        未使用</span><br><span class="line">0xFFFFFE8000000000 - 0xFFFFFEFFFFFFFFFF                        CPU entry area（入口区域）</span><br><span class="line">0xFFFFFF0000000000 - 0xFFFFFFFF7FFFFFFF                        %esp fixup 栈</span><br><span class="line">0xFFFFFFFF80000000 - 0xFFFFFFFFAFFFFFFF (512MB)                内核正文（__START_KERNEL_map）</span><br><span class="line">0xFFFFFFFFB0000000 - 0xFFFFFFFFBFFFFFFF (256MB)                内核数据</span><br><span class="line">0xFFFFFFFFC0000000 - 0xFFFFFFFFFFFFFFFF (1GB)                  Fixmap / early ioremap</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br></pre></td></tr></table></figure></div>
+
+<p>各区域的详细说明：</p>
+<p><strong>用户空间（0x0000000000000000 - 0x00007FFFFFFFFFFF）</strong>：低 128TB 完全归用户进程使用，包括代码段、数据段、堆、共享库映射区和栈。每个进程拥有独立的用户空间映射。</p>
+<p><strong>直接映射区域（0xFFFF888000000000 起）</strong>：这是内核访问物理内存的窗口。物理页帧号 <code>pfn</code> 对应的虚拟地址为 <code>0xFFFF888000000000 + pfn * PAGE_SIZE</code>。内核通过 <code>__va()</code> 宏将物理地址转换为该区域内的虚拟地址，通过 <code>__pa()</code> 宏执行反向转换。这个区域使得内核能够以简单的线性偏移访问任意物理内存页。</p>
+<p><strong>vmalloc 区域（0xFFFF900000000000 起）</strong>：用于非连续物理页面的虚拟连续映射。<code>vmalloc()</code> 在此区域分配虚拟连续但物理不连续的内存，适用于大块内存的动态分配。<code>ioremap()</code> 也在此区域将设备 MMIO 空间映射到内核虚拟地址。</p>
+<p><strong>vmemmap 区域（0xFFFFA00000000000 起）</strong>：每个物理页帧对应一个 <code>struct page</code> 结构体，所有这些结构体在此区域连续排列。物理页帧 <code>pfn</code> 对应的 <code>struct page</code> 地址为 <code>vmemmap + pfn</code>。这一设计使得从物理地址到 <code>struct page</code> 的转换只需一次加法。</p>
+<p><strong>CPU entry area（0xFFFFFE80000000000 起）</strong>：每个 CPU 的入口区域包含异常入口栈、SYSCALL 入口栈和 trampoline 页。这些区域在 Meltdown 漏洞（KPTI）缓解措施中扮演重要角色。</p>
+<p><strong>内核正文（0xFFFFFFFF80000000 起）</strong>：即 <code>__START_KERNEL_map</code> 区域，存放内核的代码段。此区域通过独立的页表映射，不参与直接映射区域的线性偏移关系。内核编译时的虚拟起始地址 <code>_text</code> 即位于此处。此区域通常使用 2MB 大页映射以优化 TLB 利用率。</p>
+<p><strong>Fixmap（0xFFFFFFFFC0000000 起）</strong>：固定映射区域，用于早期启动阶段（直接映射区域尚未建立时）的永久或临时映射。<code>early_ioremap()</code> 在此区域提供启动阶段的 I&#x2F;O 映射能力。</p>
+<h1 id="1-4-中断与异常"><a href="#1-4-中断与异常" class="headerlink" title="1.4 中断与异常"></a>1.4 中断与异常</h1><p>中断和异常是 CPU 与操作系统协作的核心机制。它们使处理器能够响应外部硬件事件、处理指令执行中的错误，并实现系统调用等关键功能。在 x86_64 架构下，Linux 7.0 内核对中断和异常的管理涉及硬件电路、CPU 微架构、入口代码、C 处理函数等多个层面。本节将逐一剖析这些内容。</p>
+<h2 id="1-4-1-中断与异常的基本概念"><a href="#1-4-1-中断与异常的基本概念" class="headerlink" title="1.4.1 中断与异常的基本概念"></a>1.4.1 中断与异常的基本概念</h2><p>x86_64 架构将”中断”（interrupt）和”异常”（exception）统称为”中断事件”，但二者在来源和语义上有本质区别。</p>
+<p><strong>中断</strong>是异步事件，由外部硬件设备在任意时刻发出。典型来源包括键盘输入、磁盘 I&#x2F;O 完成通知、定时器 tick 等。中断的发生与 CPU 当前正在执行的指令没有因果关系。x86_64 将中断分为两类：</p>
+<ul>
+<li><strong>可屏蔽中断（Maskable Interrupt）</strong>：通过 CPU 的 INTR 引脚传递。软件可以通过 <code>CLI</code> 指令将 EFLAGS.IF 清零来禁止响应可屏蔽中断，通过 <code>STI</code> 指令恢复。这意味着操作系统可以在执行临界区代码时暂时屏蔽中断，保证原子性。</li>
+<li><strong>不可屏蔽中断（Non-Maskable Interrupt, NMI）</strong>：通过 CPU 的 NMI 引脚传递，无法通过软件手段屏蔽。NMI 通常用于报告严重的硬件故障，如内存校验错误、总线错误等。</li>
+</ul>
+<p><strong>异常</strong>是同步事件，由 CPU 在执行指令的过程中自行产生。异常的发生总是可以追溯到一条具体的指令。根据恢复可能性和返回地址的不同，异常被分为三类：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>英文名</th>
+<th>特征</th>
+<th>返回地址</th>
+<th>典型示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>故障</td>
+<td>Fault</td>
+<td>可恢复</td>
+<td>指向引发异常的指令</td>
+<td>#PF（缺页异常）、#GP（一般保护异常）</td>
+</tr>
+<tr>
+<td>陷阱</td>
+<td>Trap</td>
+<td>有意为之</td>
+<td>指向下一条指令</td>
+<td>#BP（断点 INT3）、#OF（溢出）</td>
+</tr>
+<tr>
+<td>终止</td>
+<td>Abort</td>
+<td>不可恢复</td>
+<td>不可预测</td>
+<td>#DF（双重故障）、#MC（机器检查）</td>
+</tr>
+</tbody></table>
+<p>故障（Fault）是最常见的异常类型。以缺页异常为例，当 CPU 访问一个尚未建立页表映射的虚拟地址时，会触发 #PF，此时保存的 RIP 指向那条引发异常的指令。操作系统在页故障处理程序中完成映射后，通过 IRET 指令返回，CPU 会重新执行那条指令，此时映射已就绪，指令得以正常完成。</p>
+<p>陷阱（Trap）的典型用例是断点指令 <code>INT3</code>（操作码 <code>0xCC</code>）。调试器在代码中插入 <code>INT3</code> 以暂停程序执行，保存的 RIP 指向 <code>INT3</code> 之后的那条指令，因此恢复执行时不会再次触发断点。</p>
+<p>终止（Abort）表示发生了严重的不可恢复错误。双重故障（#DF）意味着在处理一个异常的过程中又发生了另一个异常，这通常表明内核栈或 IDT 表已被破坏，内核只能触发 panic。</p>
+<h2 id="1-4-2-中断描述符表（IDT）"><a href="#1-4-2-中断描述符表（IDT）" class="headerlink" title="1.4.2 中断描述符表（IDT）"></a>1.4.2 中断描述符表（IDT）</h2><p>x86_64 架构通过<strong>中断描述符表</strong>（Interrupt Descriptor Table, IDT）将中断向量号映射到对应的处理程序。IDT 最多包含 256 个表项（向量 0-255），每个表项是一个<strong>门描述符</strong>（Gate Descriptor），在 64 位模式下占用 16 字节。</p>
+<p>IDT 的基地址和界限存储在 <strong>IDTR</strong>（Interrupt Descriptor Table Register）系统寄存器中。IDTR 包含两个字段：16 位的 limit（表大小减一）和 64 位的 base（IDT 的线性地址）。操作系统通过 <code>LIDT</code> 指令加载 IDTR，通过 <code>SIDT</code> 指令读取 IDTR 的内容。</p>
+<p><strong>向量号分配</strong>如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th>向量号范围</th>
+<th>用途</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0-19</td>
+<td>CPU 固定异常</td>
+<td>#DE(0), #DB(1), #NMI(2), #BP(3), #OF(4), #BR(5), #UD(6), #NM(7), #DF(8), #TS(10), #NP(11), #SS(12), #GP(13), #PF(14), #MF(16), #AC(17), #MC(18), #XM(19) 等</td>
+</tr>
+<tr>
+<td>20-31</td>
+<td>Intel 保留</td>
+<td>未分配，由架构保留</td>
+</tr>
+<tr>
+<td>32-255</td>
+<td>用户自定义</td>
+<td>外部硬件中断（IRQ 从 32 开始以避免与 CPU 异常冲突）</td>
+</tr>
+</tbody></table>
+<p>Linux 在初始化阶段通过 <code>idt_setup_early_handler()</code> 和 <code>idt_setup_from_tables()</code> 等函数逐步构建完整的 IDT。</p>
+<h2 id="1-4-3-门描述符类型"><a href="#1-4-3-门描述符类型" class="headerlink" title="1.4.3 门描述符类型"></a>1.4.3 门描述符类型</h2><p>x86_64 的 IDT 表项支持以下几种门描述符类型：</p>
+<p><strong>中断门（Interrupt Gate, type&#x3D;14）</strong>：当 CPU 通过中断门进入处理程序时，会自动清除 EFLAGS.IF，即禁止后续的可屏蔽中断。这保证了中断处理程序在入口处不会被打断。Linux 中的大多数硬件中断处理程序使用中断门。</p>
+<p><strong>陷阱门（Trap Gate, type&#x3D;15）</strong>：CPU 进入处理程序时不会修改 IF 标志，即中断保持原来的开关状态。Linux 的异常处理程序（如 #PF、#GP）通常使用陷阱门，因为异常处理过程中可能需要响应中断。</p>
+<p><strong>任务门（Task Gate, type&#x3D;12）</strong>：用于硬件任务切换。Linux 不使用硬件任务切换机制，因此任务门在 Linux 中没有实际用途，仅在理论层面存在。</p>
+<p>64 位模式下的门描述符包含以下关键字段：</p>
+<ul>
+<li><strong>Offset（偏移量）</strong>：分为两部分存储，共 64 位，组成处理程序的线性地址</li>
+<li><strong>Segment Selector（段选择子）</strong>：处理程序所在代码段的段选择子，Linux 中为内核代码段 <code>__KERNEL_CS</code></li>
+<li><strong>IST（Interrupt Stack Table）</strong>：3 位字段，值为 0 表示不使用 IST，值为 1-7 表示使用对应的 IST 栈</li>
+<li><strong>DPL（Descriptor Privilege Level）</strong>：2 位字段，限制哪些特权级可以通过软件中断（INT n）触发此门</li>
+</ul>
+<h2 id="1-4-4-硬件中断交付机制"><a href="#1-4-4-硬件中断交付机制" class="headerlink" title="1.4.4 硬件中断交付机制"></a>1.4.4 硬件中断交付机制</h2><h3 id="8259A-PIC（传统可编程中断控制器）"><a href="#8259A-PIC（传统可编程中断控制器）" class="headerlink" title="8259A PIC（传统可编程中断控制器）"></a>8259A PIC（传统可编程中断控制器）</h3><p>在早期的 PC 架构中，两片 8259A PIC 级联提供 15 条 IRQ 线。主片处理 IRQ 0-7，从片处理 IRQ 8-15，从片级联到主片的 IRQ 2 上。8259A 的向量基址在初始化时设定：主片从向量 32 开始（IRQ 0 → 向量 32），从片从向量 40 开始（IRQ 8 → 向量 40）。8259A 存在严重的限制：仅支持单 CPU、IRQ 数量有限、优先级固定、不支持中断共享（SMP 场景下）。现代 x86_64 系统中 8259A 仅在极早期启动阶段使用，随后即切换到 APIC。</p>
+<h3 id="I-O-APIC"><a href="#I-O-APIC" class="headerlink" title="I&#x2F;O APIC"></a>I&#x2F;O APIC</h3><p>I&#x2F;O APIC 是现代系统的标准中断控制器，提供 24 个或更多的 IRQ 输入引脚。与 8259A 相比，I&#x2F;O APIC 的优势包括：支持多 CPU 中断路由（可以将中断定向到特定 CPU）、支持消息信号中断（MSI）、每个引脚可以独立配置触发模式（边沿&#x2F;电平）和极性。I&#x2F;O APIC 通过中断重定向表（Redirection Table）将每个 IRQ 映射到目标 CPU 和向量号。</p>
+<h3 id="Local-APIC"><a href="#Local-APIC" class="headerlink" title="Local APIC"></a>Local APIC</h3><p>每个 CPU 核心都有一个本地 APIC（Local APIC，简称 LAPIC），负责接收来自 I&#x2F;O APIC 的中断消息、处理本地中断（如定时器、温度传感器、性能计数器），以及发送和接收处理器间中断（IPI, Inter-Processor Interrupt）。Linux 利用 IPI 实现 TLB 刷新（<code>smp_call_function</code>）、停机控制（<code>REBOOT</code> IPI）、调度器负载均衡等操作。</p>
+<h3 id="中断重映射（VT-d）"><a href="#中断重映射（VT-d）" class="headerlink" title="中断重映射（VT-d）"></a>中断重映射（VT-d）</h3><p>在虚拟化场景中，Intel VT-d 技术（Intel Virtualization Technology for Directed I&#x2F;O）提供中断重映射功能。它允许 Hypervisor 将设备发出的中断重定向到正确的虚拟机，同时防止恶意设备发起中断攻击。中断重映射通过 IOMMU 中的中断重映射表实现，每个中断请求都经过翻译和权限检查。</p>
+<h3 id="IRQ-到向量的映射"><a href="#IRQ-到向量的映射" class="headerlink" title="IRQ 到向量的映射"></a>IRQ 到向量的映射</h3><p>在 Linux 7.0 中，IRQ 到向量的映射策略如下：</p>
+<ul>
+<li><strong>传统 ISA 设备</strong>：IRQ 0 映射到向量 32，IRQ 1 映射到向量 33，依此类推，直到 IRQ 15 映射到向量 47。这种固定映射仅在早期启动或特定遗留设备上使用。</li>
+<li><strong>I&#x2F;O APIC 设备</strong>：Linux 为每个 CPU 分配独立的向量空间。向量分配在 <code>arch/x86/kernel/apic/vector.c</code> 中管理，采用 per-CPU 位图分配策略。可用向量范围从 <code>FIRST_EXTERNAL_VECTOR</code>（0x20，即 32）到 <code>FIRST_SYSTEM_VECTOR</code>（约 0xEF），系统向量从顶部向下分配，设备向量从底部向上分配。</li>
+</ul>
+<h2 id="1-4-5-Linux-中断入口路径"><a href="#1-4-5-Linux-中断入口路径" class="headerlink" title="1.4.5 Linux 中断入口路径"></a>1.4.5 Linux 中断入口路径</h2><p>当中断或异常发生时，CPU 硬件自动完成以下操作：</p>
+<ol>
+<li>根据向量号索引 IDT 表，找到对应的门描述符</li>
+<li>检查特权级变化（如果从用户态进入内核态，即 CPL 从 3 变为 0）</li>
+<li>如果特权级发生变化，CPU 切换到内核栈（从 TSS 中获取 <code>RSP0</code>），并将用户态的 SS 和 RSP 压入新栈</li>
+<li>将 RFLAGS、CS、RIP 压栈；如果是异常且有错误码，将错误码压栈</li>
+<li>如果是中断门，清除 IF 标志</li>
+<li>从门描述符中加载新的 CS 和 RIP，跳转到处理程序</li>
+</ol>
+<p>Linux 的中断入口代码位于 <code>arch/x86/entry/</code> 目录下。以 64 位模式为例，入口流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">硬件中断 → IDT 表项 → entry_64.S 中的汇编入口</span><br><span class="line">    → PUSH_AND_CLEAR_REGS（保存所有通用寄存器）</span><br><span class="line">    → 如果从用户态进入：切换到内核栈（SWITCH_TO_KERNEL_CR3）</span><br><span class="line">    → 调用 C 语言处理函数（如 do_page_fault、do_general_protection）</span><br><span class="line">    → 中断返回路径（interrupt_return）</span><br><span class="line">    → POP_REGS + IRET 恢复现场</span><br></pre></td></tr></table></figure></div>
+
+<p><code>PUSH_AND_CLEAR_REGS</code> 宏将所有 15 个通用寄存器（R15 到 RDI）压入栈中，并将它们清零以防止内核信息泄露。随后通过 <code>SWITCH_TO_KERNEL_CR3</code> 宏完成页表切换（KPTI，内核页表隔离），防止 Meltdown 类侧信道攻击。</p>
+<p>异常的入口代码稍有不同。每个异常有独立的入口桩（stub），部分异常需要压入伪造的错误码（CPU 不自动生成错误码的异常需要在栈上压入一个 -1 作为占位符，以保持栈帧格式统一）。入口代码最终调用 <code>idtentry</code> 宏定义的处理函数。</p>
+<h2 id="1-4-6-Linux-使用的关键-x86-64-异常"><a href="#1-4-6-Linux-使用的关键-x86-64-异常" class="headerlink" title="1.4.6 Linux 使用的关键 x86_64 异常"></a>1.4.6 Linux 使用的关键 x86_64 异常</h2><p>下表列出了 Linux 7.0 内核实际使用的 CPU 异常及其用途：</p>
+<table>
+<thead>
+<tr>
+<th>向量</th>
+<th>助记符</th>
+<th>名称</th>
+<th>错误码</th>
+<th>Linux 中的用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>#DE</td>
+<td>除法错误</td>
+<td>无</td>
+<td>整数除零或除法溢出，向进程发送 SIGFPE</td>
+</tr>
+<tr>
+<td>1</td>
+<td>#DB</td>
+<td>调试异常</td>
+<td>无</td>
+<td>硬件断点、观察点，用于 kgdb、kprobes、perf</td>
+</tr>
+<tr>
+<td>2</td>
+<td>#NMI</td>
+<td>不可屏蔽中断</td>
+<td>无</td>
+<td>硬件故障报告、性能分析（perf NMI）、看门狗</td>
+</tr>
+<tr>
+<td>3</td>
+<td>#BP</td>
+<td>断点</td>
+<td>无</td>
+<td>INT3 指令触发，用于 kgdb 断点、kprobes</td>
+</tr>
+<tr>
+<td>4</td>
+<td>#OF</td>
+<td>溢出</td>
+<td>无</td>
+<td>INTO 指令且 OF&#x3D;1 时触发，实际很少使用</td>
+</tr>
+<tr>
+<td>5</td>
+<td>#BR</td>
+<td>BOUND 范围越界</td>
+<td>无</td>
+<td>BOUND 指令越界，主要用于 32 位兼容模式</td>
+</tr>
+<tr>
+<td>6</td>
+<td>#UD</td>
+<td>无效操作码</td>
+<td>无</td>
+<td>执行未定义指令，用于 CPU 特性模拟（如缺省的 SIMD 指令通过模拟执行）</td>
+</tr>
+<tr>
+<td>7</td>
+<td>#NM</td>
+<td>设备不可用</td>
+<td>无</td>
+<td>历史上用于 FPU 懒惰上下文切换（CR0.TS 标志），现代内核中已不常用</td>
+</tr>
+<tr>
+<td>8</td>
+<td>#DF</td>
+<td>双重故障</td>
+<td>有（始终为 0）</td>
+<td>灾难性错误，内核触发 panic</td>
+</tr>
+<tr>
+<td>10</td>
+<td>#TS</td>
+<td>无效 TSS</td>
+<td>有</td>
+<td>任务状态段无效，通常表示内核数据结构损坏</td>
+</tr>
+<tr>
+<td>11</td>
+<td>#NP</td>
+<td>段不存在</td>
+<td>有</td>
+<td>段描述符的 Present 位为 0，Linux 中极少触发</td>
+</tr>
+<tr>
+<td>12</td>
+<td>#SS</td>
+<td>栈段故障</td>
+<td>有</td>
+<td>栈段相关错误，如 SS 选择子无效</td>
+</tr>
+<tr>
+<td>13</td>
+<td>#GP</td>
+<td>一般保护</td>
+<td>有</td>
+<td>段级保护违规或非法内存访问，向进程发送 SIGSEGV</td>
+</tr>
+<tr>
+<td>14</td>
+<td>#PF</td>
+<td>缺页异常</td>
+<td>有</td>
+<td>按需调页、写时复制（COW）、权限违例的核心机制</td>
+</tr>
+<tr>
+<td>16</td>
+<td>#MF</td>
+<td>x87 FPU 错误</td>
+<td>无</td>
+<td>x87 浮点运算异常</td>
+</tr>
+<tr>
+<td>17</td>
+<td>#AC</td>
+<td>对齐检查</td>
+<td>有</td>
+<td>启用 <code>CONFIG_ALIGNMENT_TRAP</code> 后检测非对齐访问（CPL&#x3D;3 时）</td>
+</tr>
+<tr>
+<td>18</td>
+<td>#MC</td>
+<td>机器检查</td>
+<td>无</td>
+<td>硬件错误检测，由 MCE（Machine Check Exception）子系统处理</td>
+</tr>
+<tr>
+<td>19</td>
+<td>#XM</td>
+<td>SIMD 浮点异常</td>
+<td>无</td>
+<td>SSE&#x2F;AVX 浮点运算异常</td>
+</tr>
+<tr>
+<td>20</td>
+<td>#VE</td>
+<td>虚拟化异常</td>
+<td>无</td>
+<td>Intel TDX（Trust Domain Extensions）中使用</td>
+</tr>
+<tr>
+<td>21</td>
+<td>#CP</td>
+<td>控制保护异常</td>
+<td>有</td>
+<td>Intel CET（Control-flow Enforcement Technology）影子栈违例</td>
+</tr>
+</tbody></table>
+<h3 id="缺页异常（-PF）详解"><a href="#缺页异常（-PF）详解" class="headerlink" title="缺页异常（#PF）详解"></a>缺页异常（#PF）详解</h3><p>缺页异常是 Linux 内存管理子系统最核心的异常。当 CPU 访问的虚拟地址没有对应的页表映射或违反了页表权限时，触发 #PF。CPU 硬件提供以下关键信息：</p>
+<ul>
+<li><strong>CR2 寄存器</strong>：保存引发缺页的线性地址（即程序试图访问的虚拟地址）</li>
+<li><strong>错误码</strong>：一个 5 位（或更宽）的字段，编码了缺页的具体原因：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>位</th>
+<th>名称</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>P（Present）</td>
+<td>0 &#x3D; 页不存在，1 &#x3D; 页存在但权限不足</td>
+</tr>
+<tr>
+<td>1</td>
+<td>W（Write）</td>
+<td>0 &#x3D; 读访问，1 &#x3D; 写访问</td>
+</tr>
+<tr>
+<td>2</td>
+<td>U（User）</td>
+<td>0 &#x3D; 内核态访问，1 &#x3D; 用户态访问</td>
+</tr>
+<tr>
+<td>3</td>
+<td>RSVD（Reserved）</td>
+<td>1 &#x3D; 保留了保留位（通常表示页表损坏）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>I（Instruction）</td>
+<td>1 &#x3D; 取指时触发（执行权限违例）</td>
+</tr>
+</tbody></table>
+<p>Linux 的 <code>do_page_fault()</code> 函数接收这些信息后，区分以下情况：内核态缺页（可能是由 <code>fixup</code> 表修复的异常访问，也可能来自 <code>copy_from_user</code> 等与用户空间交互的函数）、用户态缺页（按需调页、COW、栈扩展或真正的段违例）。最终处理结果要么成功建立映射并返回，要么向用户进程发送 SIGSEGV 或 SIGBUS 信号。</p>
+<h2 id="1-4-7-IST（中断栈表）"><a href="#1-4-7-IST（中断栈表）" class="headerlink" title="1.4.7 IST（中断栈表）"></a>1.4.7 IST（中断栈表）</h2><p>在 x86_64 的 TSS（Task State Segment）中，除了传统的 RSP0-RSP2 三个栈指针外，还有 7 个 IST（Interrupt Stack Table）指针（IST1-IST7）。IST 机制允许特定的中断或异常在独立的、已知安全的栈上执行，而不使用当前栈。</p>
+<p>IST 的使用场景是那些可能在栈已经损坏或栈状态不可信时触发的异常：</p>
+<table>
+<thead>
+<tr>
+<th>IST 编号</th>
+<th>用途</th>
+<th>对应异常</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IST 0（IST1）</td>
+<td>双重故障</td>
+<td>#DF</td>
+<td>双重故障意味着当前栈可能已损坏，必须切换到已知安全栈</td>
+</tr>
+<tr>
+<td>IST 1（IST2）</td>
+<td>NMI</td>
+<td>#NMI</td>
+<td>NMI 可以在任何时刻中断内核，包括内核栈切换过程中，必须使用独立栈</td>
+</tr>
+<tr>
+<td>IST 2（IST3）</td>
+<td>机器检查</td>
+<td>#MC</td>
+<td>硬件错误可能导致栈不可信</td>
+</tr>
+<tr>
+<td>IST 3（IST4）</td>
+<td>调试异常</td>
+<td>#DB</td>
+<td>早期启动阶段的调试需要独立栈，防止递归栈使用</td>
+</tr>
+<tr>
+<td>IST 4（IST5）</td>
+<td>#VC（SEV-ES）</td>
+<td>#VC</td>
+<td>AMD SEV-ES 中的 #VC 异常需要独立的栈来处理加密状态下的退出</td>
+</tr>
+</tbody></table>
+<p>IST 栈在系统启动时通过 <code>cpu_init()</code> 函数分配和初始化，每个 IST 栈通常为 4KB（一页）或 8KB。IST 的选择由 IDT 表项中的 IST 字段决定，CPU 硬件在中断入口时自动从 TSS 中加载对应的 RSP。</p>
+<p>需要注意的是，IST 栈空间有限，且不能嵌套使用（同一个 IST 不能同时被两层使用），因此 IST 处理程序必须尽可能精简，快速处理并切换回普通栈。</p>
+<h2 id="1-4-8-软件中断与系统调用"><a href="#1-4-8-软件中断与系统调用" class="headerlink" title="1.4.8 软件中断与系统调用"></a>1.4.8 软件中断与系统调用</h2><p>软件中断是指通过指令主动触发的中断。在 x86_64 架构中，Linux 使用以下几种机制：</p>
+<h3 id="INT-0x80（传统系统调用）"><a href="#INT-0x80（传统系统调用）" class="headerlink" title="INT 0x80（传统系统调用）"></a>INT 0x80（传统系统调用）</h3><p>在 32 位 Linux 中，用户程序通过 <code>INT 0x80</code> 指令触发系统调用。系统调用号通过 EAX 寄存器传递，参数通过 EBX、ECX、EDX、ESI、EDI、EBP 寄存器传递。该机制在 64 位系统中仍然可用（通过兼容模式），但性能较差，因为 INT 指令需要完整的中断入口和出口开销。</p>
+<h3 id="SYSCALL-SYSRET（64-位快速系统调用）"><a href="#SYSCALL-SYSRET（64-位快速系统调用）" class="headerlink" title="SYSCALL&#x2F;SYSRET（64 位快速系统调用）"></a>SYSCALL&#x2F;SYSRET（64 位快速系统调用）</h3><p>SYSCALL&#x2F;SYSRET 是 64 位 Linux 的主要系统调用机制，由 AMD 首先引入，Intel 也予以支持。与 INT 0x80 相比，SYSCALL 的优势在于：</p>
+<ul>
+<li><strong>极低的入口开销</strong>：SYSCALL 不经过 IDT 查找，而是直接从 MSR（Model Specific Register）中加载目标 CS、RIP 和 RFLAGS 掩码</li>
+<li><strong>专用寄存器</strong>：<code>IA32_LSTAR</code> MSR 存放系统调用入口地址（Linux 中为 <code>entry_SYSCALL_64</code>），<code>IA32_STAR</code> MSR 存放 CS&#x2F;SS 选择子</li>
+<li><strong>参数传递</strong>：系统调用号通过 RAX 传递，参数通过 RDI、RSI、RDX、R10、R8、R9 传递（遵循 System V AMD64 ABI，注意第 4 个参数使用 R10 而非 RCX，因为 RCX 被 SYSCALL 指令用于保存返回地址）</li>
+</ul>
+<p>Linux 7.0 的 <code>entry_SYSCALL_64</code> 入口代码执行以下操作：将 RFLAGS 保存到 R11、将返回地址保存到 RCX、切换到内核栈、保存用户态寄存器、调用对应的系统调用处理函数、通过 SYSRET 返回用户态。</p>
+<h3 id="SYSENTER-SYSEXIT（32-位快速系统调用）"><a href="#SYSENTER-SYSEXIT（32-位快速系统调用）" class="headerlink" title="SYSENTER&#x2F;SYSEXIT（32 位快速系统调用）"></a>SYSENTER&#x2F;SYSEXIT（32 位快速系统调用）</h3><p>SYSENTER&#x2F;SYSEXIT 是 Intel 引入的 32 位快速系统调用机制，使用 <code>IA32_SYSENTER_CS</code>、<code>IA32_SYSENTER_EIP</code>、<code>IA32_SYSENTER_ESP</code> 三个 MSR。Linux 在 32 位兼容模式下仍支持此机制，入口为 <code>entry_SYSENTER_compat</code>。</p>
+<p>三种系统调用机制的对比如下：</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>INT 0x80</th>
+<th>SYSENTER&#x2F;SYSEXIT</th>
+<th>SYSCALL&#x2F;SYSRET</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>架构</td>
+<td>所有 x86</td>
+<td>Intel 32&#x2F;64 位</td>
+<td>AMD64 &#x2F; Intel 64</td>
+</tr>
+<tr>
+<td>入口方式</td>
+<td>IDT 查找</td>
+<td>MSR 直接跳转</td>
+<td>MSR 直接跳转</td>
+</tr>
+<tr>
+<td>栈切换</td>
+<td>硬件自动</td>
+<td>硬件自动</td>
+<td>软件手动</td>
+</tr>
+<tr>
+<td>寄存器保存</td>
+<td>硬件保存部分</td>
+<td>硬件保存部分</td>
+<td>软件保存全部</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>最慢</td>
+<td>较快</td>
+<td>最快</td>
+</tr>
+<tr>
+<td>Linux 入口</td>
+<td><code>entry_INT80_compat</code></td>
+<td><code>entry_SYSENTER_compat</code></td>
+<td><code>entry_SYSCALL_64</code></td>
+</tr>
+</tbody></table>
+<p>在现代 Linux 7.0 内核中，64 位原生程序统一使用 SYSCALL&#x2F;SYSRET，32 位兼容程序使用 SYSENTER&#x2F;SYSEXIT 或 INT 0x80（后者仅作为兼容后备）。</p>
+<h1 id="1-5-特权级与保护机制"><a href="#1-5-特权级与保护机制" class="headerlink" title="1.5 特权级与保护机制"></a>1.5 特权级与保护机制</h1><p>x86_64 架构提供了完善的多级特权保护体系，Linux 内核利用这一硬件基础构建了内核态与用户态之间严格的隔离屏障。本节将深入剖析保护环（Protection Rings）、特权检查规则、用户态与内核态之间的切换机制、页表级保护、I&#x2F;O 保护，以及 Linux 在 x86_64 上采用的各类安全特性。</p>
+<h2 id="1-5-1-保护环模型"><a href="#1-5-1-保护环模型" class="headerlink" title="1.5.1 保护环模型"></a>1.5.1 保护环模型</h2><p>x86_64 架构定义了四个特权级别（Protection Ring），从 Ring 0 到 Ring 3，权限依次递减：</p>
+<ul>
+<li><strong>Ring 0（最高特权级）</strong>：内核模式。运行在此级别的代码拥有对全部硬件资源的访问权限，包括直接操作 I&#x2F;O 端口、修改控制寄存器（CR0~CR4）、访问所有内存区域等。Linux 内核代码运行在 Ring 0。</li>
+<li><strong>Ring 1 和 Ring 2</strong>：中间特权级。Linux 并未使用这两个级别，所有非内核代码均运行在 Ring 3。某些虚拟机监视器（Hypervisor）会利用 Ring 1 来实现客户操作系统的隔离，但 Linux 内核自身不涉及。</li>
+<li><strong>Ring 3（最低特权级）</strong>：用户模式。运行在此级别的代码受到严格限制：无法直接访问 I&#x2F;O 端口、无法执行特权指令、只能访问被标记为用户可访问的内存页面。所有用户空间应用程序均运行在 Ring 3。</li>
+</ul>
+<p>在 CPU 硬件层面，特权信息通过以下三个关键字段来编码：</p>
+<ul>
+<li><strong>CPL（Current Privilege Level，当前特权级）</strong>：存储在 CS（代码段）寄存器的第 0 位和第 1 位。CPL 反映了当前正在执行的代码的特权级别。当 CPU 运行内核代码时 CPL&#x3D;0，运行用户态代码时 CPL&#x3D;3。</li>
+<li><strong>RPL（Requestor Privilege Level，请求者特权级）</strong>：存储在段选择子（Segment Selector）的第 0 位和第 1 位。RPL 用于在段选择子被加载到段寄存器时标识请求者的特权级别，起到额外的权限约束作用。</li>
+<li><strong>DPL（Descriptor Privilege Level，描述符特权级）</strong>：存储在段描述符或门描述符中。DPL 定义了访问该段或通过该门所需的最低特权级别。</li>
+</ul>
+<h2 id="1-5-2-特权检查规则"><a href="#1-5-2-特权检查规则" class="headerlink" title="1.5.2 特权检查规则"></a>1.5.2 特权检查规则</h2><p>CPU 在执行各类操作时，会依据 CPL、RPL 和 DPL 执行严格的权限检查。不同的操作类型对应不同的检查规则：</p>
+<p><strong>数据段访问</strong>：当试图通过段选择子访问数据段时，CPU 要求 <code>max(CPL, RPL) &lt;= DPL</code>。也就是说，CPL 和 RPL 中较低的特权级别（数值较大者）必须不超过目标段的 DPL。这一机制确保低特权级代码无法直接访问高特权级的数据段。</p>
+<p><strong>代码段执行</strong>：当通过远跳转或远调用进入新的代码段时，通常要求 <code>CPL == DPL</code>，即当前特权级必须与目标代码段的特权级相等。x86 架构还定义了一类”一致代码段”（Conforming Segment），允许低特权级代码调用高特权级的一致代码，但特权级不会发生切换（CPL 保持不变）。Linux 内核不使用一致代码段。</p>
+<p><strong>栈段检查</strong>：栈段（SS）的 DPL 必须始终等于 CPL。每次特权级切换时，CPU 会自动加载与新 CPL 匹配的 SS 段选择子，确保栈段的特权级始终与当前执行级别一致。</p>
+<h2 id="1-5-3-用户态与内核态的切换"><a href="#1-5-3-用户态与内核态的切换" class="headerlink" title="1.5.3 用户态与内核态的切换"></a>1.5.3 用户态与内核态的切换</h2><p>用户态与内核态之间的切换是 Linux 系统中最关键的操作之一。x86_64 提供了多种机制实现这一过程。</p>
+<h3 id="用户态进入内核态"><a href="#用户态进入内核态" class="headerlink" title="用户态进入内核态"></a>用户态进入内核态</h3><p><strong>SYSCALL 指令</strong>：这是 64 位 Linux 系统调用使用的快速入口机制。SYSCALL 指令利用 MSR（Model Specific Register）中预设的入口地址直接跳转到内核空间。与传统的中断机制不同，SYSCALL 不会自动切换栈——内核代码需要在入口处手动完成栈切换。具体而言，SYSCALL 从 IA32_STAR MSR（地址 0xC0000081）读取目标 CS 和 SS 值，从 IA32_LSTAR MSR（地址 0xC0000082）读取入口 RIP，将返回地址保存到 RCX，将原始 RFLAGS 保存到 R11，然后跳转至内核入口点执行。Linux 7.0 中，SYSCALL 入口点位于 <code>entry_SYSCALL_64</code>，该入口会通过 <code>swapgs</code> 指令切换 GS 基址，并从 per-CPU 数据结构中获取内核栈指针。</p>
+<p><strong>INT n 指令</strong>（如 INT 0x80）：这是 32 位时代遗留的系统调用接口。通过中断门进入内核时，CPU 会自动根据 TSS（Task State Segment）中的信息完成栈切换，将用户态的 SS、RSP、RFLAGS、CS 和 RIP 压入内核栈。这一机制虽然安全但开销较大，现代 Linux 仅保留兼容性支持。</p>
+<p><strong>CPU 异常</strong>：当发生缺页异常（Page Fault）、通用保护错误（General Protection Fault）等异常时，CPU 同样会自动切换栈（通过 TSS）并跳转到对应的中断描述符表（IDT）项所指向的处理程序。异常入口代码将完整的异常帧（包括错误码）保存在内核栈上，然后调用相应的处理函数。</p>
+<h3 id="内核态返回用户态"><a href="#内核态返回用户态" class="headerlink" title="内核态返回用户态"></a>内核态返回用户态</h3><p><strong>SYSRET 指令</strong>：与 SYSCALL 配对的快速返回指令。SYSRET 从 RCX 恢复 RIP，从 R11 恢复 RFLAGS，并恢复用户态的 CS 和 SS，将 CPL 切换回 Ring 3。</p>
+<p><strong>IRET 指令</strong>：中断返回指令，用于从通过 INT 指令或异常进入的内核代码返回。IRET 从栈上弹出 RIP、CS、RFLAGS、RSP 和 SS（64 位模式下为 IRETQ），完整恢复进入内核前的用户态上下文。</p>
+<h3 id="栈切换机制"><a href="#栈切换机制" class="headerlink" title="栈切换机制"></a>栈切换机制</h3><p>当 CPU 从 Ring 3 进入 Ring 0 时（通过中断或异常），硬件会自动从当前 CPU 的 TSS 中读取 Ring 0 的 SS 和 RSP 值，并将用户态的 SS:RSP 压入新的内核栈顶。对于 SYSCALL，由于不自动切换栈，内核入口代码需要手动从 per-CPU 区域读取内核栈地址。每个 CPU 核心都有自己的 TSS 结构，其中存储了 Ring 0~Ring 2 的栈指针，在 <code>cpu_init()</code> 函数中完成初始化。</p>
+<h3 id="SWAPGS-指令"><a href="#SWAPGS-指令" class="headerlink" title="SWAPGS 指令"></a>SWAPGS 指令</h3><p>SWAPGS 是 x86_64 引入的特权指令，它交换 IA32_GS_BASE MSR 和 IA32_KERNEL_GS_BASE MSR 的值。Linux 利用这一机制管理 per-CPU 数据：在用户态时，GS 基址指向用户空间的 TLS（Thread Local Storage）区域；进入内核态后，通过 SWAPGS 将 GS 基址切换到内核的 per-CPU 数据区域，从而内核可以通过 <code>__per_cpu_offset</code> 快速访问当前 CPU 的私有数据。退出内核态时再次执行 SWAPGS 恢复用户态 GS 基址。</p>
+<h2 id="1-5-4-页表级保护机制"><a href="#1-5-4-页表级保护机制" class="headerlink" title="1.5.4 页表级保护机制"></a>1.5.4 页表级保护机制</h2><p>除了段级保护外，x86_64 通过页表项中的多个标志位提供了更细粒度的内存保护：</p>
+<p><strong>U&#x2F;S 位（User&#x2F;Supervisor）</strong>：页表项的第 2 位。当 U&#x2F;S&#x3D;0 时，该页面为超级用户页，仅 Ring 0 可以访问；当 U&#x2F;S&#x3D;1 时，该页面为用户页，Ring 0 和 Ring 3 均可访问。内核线性地址空间的所有页面的 U&#x2F;S 位均被设为 0，确保用户态代码无法直接读取或修改内核内存。</p>
+<p><strong>R&#x2F;W 位（Read&#x2F;Write）</strong>：页表项的第 1 位。当 R&#x2F;W&#x3D;0 时，页面只读；当 R&#x2F;W&#x3D;1 时，页面可读写。结合 CR0.WP（Write Protect）位，内核可以实现写保护——当 WP&#x3D;1 时，即使在 Ring 0，对只读页面的写入也会触发缺页异常。Linux 在设置了 CR0.WP 后，利用这一机制捕获内核代码对只读页面的非法修改。</p>
+<p><strong>NX 位（No-Execute）</strong>：页表项的第 63 位（在支持该特性的 CPU 上）。当 NX&#x3D;1 时，该页面不允许执行代码。Linux 利用 NX 位实现数据段不可执行策略，防止栈溢出攻击（如将恶意代码注入栈区并执行）。</p>
+<h3 id="SMEP（Supervisor-Mode-Execution-Prevention）"><a href="#SMEP（Supervisor-Mode-Execution-Prevention）" class="headerlink" title="SMEP（Supervisor Mode Execution Prevention）"></a>SMEP（Supervisor Mode Execution Prevention）</h3><p>SMEP 通过 CR4 寄存器的第 20 位启用。当 CR4.SMEP&#x3D;1 时，CPU 在 Ring 0 执行代码时若试图执行 U&#x2F;S&#x3D;1 的用户页面，将触发通用保护错误（#GP）。这一机制从根本上阻止了 ret2user 攻击——攻击者即使在内核中获得了代码执行能力，也无法跳转到用户空间预先布置的恶意代码执行。SMEP 由 Linux 在启动阶段通过 <code>cpu_init()</code> 和 CR4 写入启用。</p>
+<h3 id="SMAP（Supervisor-Mode-Access-Prevention）"><a href="#SMAP（Supervisor-Mode-Access-Prevention）" class="headerlink" title="SMAP（Supervisor Mode Access Prevention）"></a>SMAP（Supervisor Mode Access Prevention）</h3><p>SMAP 通过 CR4 寄存器的第 21 位启用。当 CR4.SMAP&#x3D;1 时，CPU 在 Ring 0 执行代码时若试图读写 U&#x2F;S&#x3D;1 的用户页面，将触发缺页异常。这一机制进一步强化了内核与用户空间的隔离，防止内核意外引用用户空间指针（例如通过精心构造的指针进行的攻击）。</p>
+<p>内核需要在系统调用中合法地读写用户空间内存（如 <code>copy_to_user</code> 和 <code>copy_from_user</code>），为此 x86_64 提供了 STAC（Set AC flag）和 CLAC（Clear AC flag）指令。AC 标志（EFLAGS 的第 18 位）是 SMAP 的软件覆写开关：当 AC&#x3D;1 时，SMAP 检查被暂时禁止。Linux 在 <code>copy_to_user</code>、<code>copy_from_user</code>、<code>get_user</code>、<code>put_user</code> 等函数中使用 STAC 临时关闭 SMAP，完成数据拷贝后立即通过 CLAC 恢复 SMAP 保护。</p>
+<h2 id="1-5-5-I-O-保护"><a href="#1-5-5-I-O-保护" class="headerlink" title="1.5.5 I&#x2F;O 保护"></a>1.5.5 I&#x2F;O 保护</h2><p>x86_64 通过 IOPL（I&#x2F;O Privilege Level）机制控制对 I&#x2F;O 端口的访问权限：</p>
+<ul>
+<li>IOPL 存储在 RFLAGS 寄存器的第 12~13 位。</li>
+<li>IN、OUT、INS、OUTS 等 I&#x2F;O 指令只有在 <code>CPL &lt;= IOPL</code> 时才被允许执行。</li>
+<li>Linux 为所有用户进程设置 IOPL&#x3D;0，由于用户进程的 CPL&#x3D;3（3 &gt; 0），因此普通用户态代码无法直接执行 I&#x2F;O 指令，任何尝试都会触发通用保护错误。</li>
+</ul>
+<p>对于需要直接操作硬件的特权驱动程序（如 X Server），Linux 提供了两个系统调用：</p>
+<ul>
+<li><code>iopl()</code>：将调用进程的 IOPL 提升至指定级别（通常为 3），使其获得完全的 I&#x2F;O 端口访问权限。此操作需要 CAP_SYS_RAWIO 能力。</li>
+<li><code>ioperm()</code>：以位图方式精细控制特定 I&#x2F;O 端口范围的访问权限。内核为每个进程维护一个 I&#x2F;O 位图（I&#x2F;O Bitmap），该位图存储在进程的 <code>io_bitmap</code> 字段中，在任务切换时被加载到 TSS 的相应区域。</li>
+</ul>
+<h2 id="1-5-6-Linux-能力模型"><a href="#1-5-6-Linux-能力模型" class="headerlink" title="1.5.6 Linux 能力模型"></a>1.5.6 Linux 能力模型</h2><p>Linux 采用了简洁的二级特权模型：内核运行在 Ring 0，用户空间运行在 Ring 3。系统调用是两级之间唯一的通道。内核在系统调用边界上对所有来自用户空间的输入进行严格验证，包括指针合法性、缓冲区大小、文件描述符有效性等。</p>
+<p>传统的 Unix 模型将权限简单划分为 root（UID 0）和普通用户，但 Linux 引入了细粒度的能力（Capability）模型。能力机制将传统 root 权限分解为数十种具体的能力，例如：</p>
+<ul>
+<li><code>CAP_SYS_ADMIN</code>：最广泛的能力，涵盖挂载文件系统、设置主机名等大量管理操作。</li>
+<li><code>CAP_NET_ADMIN</code>：网络管理能力，允许修改路由表、网络接口配置等。</li>
+<li><code>CAP_SYS_RAWIO</code>：直接 I&#x2F;O 端口访问能力。</li>
+<li><code>CAP_SYS_PTRACE</code>：进程跟踪能力。</li>
+<li><code>CAP_DAC_OVERRIDE</code>：绕过文件权限检查的能力。</li>
+</ul>
+<p>每个进程拥有一个能力集合，内核在执行特权操作前检查调用进程是否拥有相应的能力，而非简单地检查 UID 是否为 0。这一模型大大降低了过度授权的风险——进程只需获得完成其功能所需的最小能力集。</p>
+<h2 id="1-5-7-Linux-在-x86-64-上的安全特性"><a href="#1-5-7-Linux-在-x86-64-上的安全特性" class="headerlink" title="1.5.7 Linux 在 x86_64 上的安全特性"></a>1.5.7 Linux 在 x86_64 上的安全特性</h2><p>除了硬件提供的保护机制外，Linux 还利用多种硬件和软件技术增强内核安全性：</p>
+<p><strong>KASLR（Kernel Address Space Layout Randomization）</strong>：内核地址空间布局随机化。在每次启动时，内核代码段、模块区域、页表等关键数据结构的虚拟地址会被随机偏移，使得攻击者难以预测内核中特定函数或数据的地址。KASLR 的熵值取决于可用的物理内存大小，通常可达 20 位以上。</p>
+<p><strong>KPTI（Kernel Page Table Isolation）</strong>：内核页表隔离，针对 Meltdown 漏洞的缓解措施。Meltdown 攻击利用了乱序执行（Out-of-Order Execution）的侧信道效应，允许用户态程序读取内核线性地址空间的内容。KPTI 的核心思想是为用户态和内核态维护两套独立的页表：用户态运行时仅映射极少量的内核入口&#x2F;出口代码（trampoline），内核态运行时才映射完整的内核地址空间。页表切换在用户态和内核态的入口&#x2F;出口路径中完成，虽然引入了 TLB 刷新开销，但有效阻止了 Meltdown 类攻击。</p>
+<p><strong>SMEP&#x2F;SMAP</strong>：前述的硬件强制内核&#x2F;用户空间隔离机制，共同构成了防御 ret2user 和内核引用用户空间攻击的硬件屏障。</p>
+<p><strong>W^X（Write XOR Execute）策略</strong>：内核页面要么可写要么可执行，不可同时具备两种属性。通过页表项的 R&#x2F;W 和 NX 位联合实现，阻止攻击者在内核中注入并执行任意代码。Linux 内核模块在加载时，其代码段被设为只读+可执行，数据段设为可读写+不可执行，严格遵循 W^X 原则。</p>
+<p><strong>Stack Protector（栈保护器）</strong>：在每个函数的栈帧中插入一个随机值（canary，金丝雀），函数返回前检查该值是否被修改。若 canary 发生变化，说明发生了栈缓冲区溢出，内核立即触发 panic。Canary 值在每个任务创建时随机生成，存储在任务结构体的 <code>stack_canary</code> 字段中，由 GCC 的 <code>-fstack-protector-strong</code> 选项自动插入检测代码。</p>
+<p><strong>Shadow Stack（影子栈，CET）</strong>：Intel Control-flow Enforcement Technology（CET）提供的硬件级返回地址保护。CPU 维护一个独立的影子栈，每次 CALL 指令执行时将返回地址同时写入普通栈和影子栈，RET 指令执行时比较两者是否一致。若检测到不匹配，说明返回地址被篡改，触发控制保护异常（#CP）。Linux 7.0 对影子栈提供了初步支持，在进程创建时通过 <code>map_shadow_stack</code> 系统调用分配影子栈页面。</p>
+<p><strong>IBRS&#x2F;STIBP（Spectre 缓解）</strong>：针对 Spectre 变体 2（分支目标注入）的缓解措施。IBRS（Indirect Branch Restricted Speculation）通过 MSR 限制间接分支预测，防止攻击者训练分支预测器来泄露敏感数据。STIBP（Single Thread Indirect Branch Predictors）防止单个物理核心上的超线程共享分支预测资源。Linux 通过 <code>spectre_v2</code> 启动参数控制这些缓解措施的启用策略。</p>
+<p><strong>L1TF&#x2F;Foreshadow 缓解</strong>：L1 Terminal Fault 是另一种利用 L1 数据缓存的侧信道攻击。Linux 通过在缺页处理中清除 L1 缓存、禁用超线程等手段进行缓解。对于虚拟化场景，内核确保客户机的页表项中不会出现宿主机敏感数据的物理地址。</p>
+<p>这些安全特性层层叠加，共同构成了 Linux 内核在 x86_64 平台上的纵深防御体系。从硬件强制的特权级隔离到软件实现的各类缓解措施，每一层都增加了攻击者的利用成本，有效地保护了系统的安全性和完整性。</p>
+<h1 id="1-6-Linux-内核安全加固机制全景"><a href="#1-6-Linux-内核安全加固机制全景" class="headerlink" title="1.6 Linux 内核安全加固机制全景"></a>1.6 Linux 内核安全加固机制全景</h1><p>Linux 内核面对的现实威胁环境极其复杂：本地提权、容器逃逸、内核信息泄露、控制流劫持、堆喷射攻击……单一的防御手段远远不够。Linux 7.0 在 x86_64 上构建了一套纵深的加固体系，按照防护目标可以分为四大类：<strong>地址空间保护</strong>、<strong>控制流完整性</strong>、<strong>数据完整性</strong>和<strong>信息泄露防护</strong>。本节将对这些机制逐一进行深入剖析。</p>
+<blockquote>
+<p>相关源码索引：推荐的加固基线配置见 <code>kernel/configs/hardening.config</code>。</p>
+</blockquote>
+<hr>
+<h2 id="1-6-1-地址空间保护"><a href="#1-6-1-地址空间保护" class="headerlink" title="1.6.1 地址空间保护"></a>1.6.1 地址空间保护</h2><p>地址空间保护的目标是让攻击者无法预测或利用内核的虚拟地址布局。</p>
+<h3 id="KASLR-——-内核地址空间布局随机化"><a href="#KASLR-——-内核地址空间布局随机化" class="headerlink" title="KASLR —— 内核地址空间布局随机化"></a>KASLR —— 内核地址空间布局随机化</h3><p><strong>配置项</strong>：<code>CONFIG_RANDOMIZE_BASE</code>、<code>CONFIG_RANDOMIZE_MEMORY</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/Kconfig</code>（第 2094-2127 行）、<code>arch/x86/boot/compressed/kaslr.c</code></p>
+<p><strong>防护目标</strong>：阻止攻击者利用硬编码的内核虚拟地址进行 ROP&#x2F;JOP 攻击。</p>
+<p><strong>工作原理</strong>：在每次启动时，内核解压器将内核映像加载到一个随机物理地址（对齐到 <code>CONFIG_PHYSICAL_ALIGN</code>，最小 2MB）。虚拟地址随之偏移，使得攻击者无法提前知道特定函数或数据结构的地址。<code>CONFIG_RANDOMIZE_MEMORY</code> 进一步随机化内核直接映射区（physmap）、vmalloc 区、vmemmap 区的基地址，在 x86_64 上每个区域平均可获得约 30,000 种可能的虚拟地址。</p>
+<p>KASLR 的熵受限于物理地址位数和对齐约束，通常约 20+ 位熵。引导参数 <code>nokaslr</code> 可禁用此特性（仅用于调试）。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/boot/compressed/kaslr.c</span></span><br><span class="line"><span class="comment">// KASLR 在解压阶段选择随机物理地址</span></span><br><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> <span class="title function_">find_random_phys_addr</span><span class="params">(<span class="type">unsigned</span> <span class="type">long</span> minimum,</span></span><br><span class="line"><span class="params">                                            <span class="type">unsigned</span> <span class="type">long</span> image_size)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="KPTI-——-内核页表隔离"><a href="#KPTI-——-内核页表隔离" class="headerlink" title="KPTI —— 内核页表隔离"></a>KPTI —— 内核页表隔离</h3><p><strong>配置项</strong>：<code>CONFIG_MITIGATION_PAGE_TABLE_ISOLATION</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/mm/pti.c</code>、<code>arch/x86/entry/entry_64.S</code></p>
+<p><strong>防护目标</strong>：防御 Meltdown 类侧信道攻击（利用乱序执行读取内核地址空间）。</p>
+<p><strong>工作原理</strong>：维护两套页表——</p>
+<table>
+<thead>
+<tr>
+<th>页表</th>
+<th>内核态使用</th>
+<th>用户态使用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内核 PGD</td>
+<td>完整内核映射</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>用户 PGD</td>
+<td>仅入口&#x2F;出口跳板代码</td>
+<td>✗</td>
+</tr>
+</tbody></table>
+<p>每次系统调用入口&#x2F;出口时切换 CR3 寄存器。用户态运行时，页表中几乎不存在内核映射，Meltdown 攻击读到的只是跳板代码。代价是每次系统调用需要两次 TLB 刷新，性能影响约 1-5%（可通过 <code>nopti</code> 参数禁用）。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/mm/pti.c — 初始化 KPTI 页表</span></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">pti_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 为用户 PGD 创建最小化的内核映射（仅入口跳板 + vsyscall）</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="MMAP-MIN-ADDR-——-低地址映射防护"><a href="#MMAP-MIN-ADDR-——-低地址映射防护" class="headerlink" title="MMAP_MIN_ADDR —— 低地址映射防护"></a>MMAP_MIN_ADDR —— 低地址映射防护</h3><p><strong>配置项</strong>：<code>CONFIG_DEFAULT_MMAP_MIN_ADDR</code>（DAC 层，默认 4096）、<code>CONFIG_LSM_MMAP_MIN_ADDR</code>（LSM 层，x86 默认 65536）</p>
+<p><strong>源码位置</strong>：<code>security/min_addr.c</code>、<code>mm/mmap.c</code></p>
+<p><strong>防护目标</strong>：阻止 NULL 指针解引用攻击。如果攻击者能 <code>mmap(0, ...)</code> 在地址 0 映射一个可写页面，则内核中的 NULL 指针解引用 bug 就变成了一条可利用的任意写原语。</p>
+<p><strong>工作原理</strong>：取 DAC 值和 LSM 值的较大者作为最终的 <code>mmap_min_addr</code>。非特权进程的 <code>mmap()</code> 调用如果请求的地址低于此阈值，将被直接拒绝。该值可通过 <code>/proc/sys/vm/mmap_min_addr</code> 在运行时调整（需 <code>CAP_SYS_RAWIO</code>）。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// security/min_addr.c</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> mmap_min_addr = CONFIG_DEFAULT_MMAP_MIN_ADDR;</span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> dac_mmap_min_addr = CONFIG_DEFAULT_MMAP_MIN_ADDR;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="内核栈偏移随机化"><a href="#内核栈偏移随机化" class="headerlink" title="内核栈偏移随机化"></a>内核栈偏移随机化</h3><p><strong>配置项</strong>：<code>CONFIG_RANDOMIZE_KSTACK_OFFSET_DEFAULT</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/entry/entry_64.S</code>、<code>include/linux/randomize_kstack.h</code></p>
+<p><strong>防护目标</strong>：增加内核栈地址的不可预测性，阻止基于栈布局的攻击。</p>
+<p><strong>工作原理</strong>：每次系统调用入口时，内核使用随机值对栈指针进行额外对齐偏移（最多 255 字节的随机偏移量）。这破坏了系统调用之间栈帧的空间连续性，使得攻击者难以通过一个漏洞推断出其他系统调用的栈布局。</p>
+<hr>
+<h2 id="1-6-2-控制流完整性"><a href="#1-6-2-控制流完整性" class="headerlink" title="1.6.2 控制流完整性"></a>1.6.2 控制流完整性</h2><p>控制流完整性（CFI）的目标是确保程序的执行流只能沿着合法的路径前进，攻击者无法通过覆写函数指针或返回地址来劫持控制流。</p>
+<h3 id="CFI-——-编译器级控制流完整性"><a href="#CFI-——-编译器级控制流完整性" class="headerlink" title="CFI —— 编译器级控制流完整性"></a>CFI —— 编译器级控制流完整性</h3><p><strong>配置项</strong>：<code>CONFIG_CFI</code>（原 <code>CONFIG_CFI_CLANG</code>，Linux 7.0 统一更名为 <code>CONFIG_CFI</code>）</p>
+<p><strong>源码位置</strong>：<code>arch/Kconfig</code>（第 905-985 行）</p>
+<p><strong>防护目标</strong>：阻止间接函数调用被重定向到任意内核地址（ROP&#x2F;JOP 攻击）。</p>
+<p><strong>工作原理</strong>：使用 Clang 编译器的 <code>-fsanitize=kcfi</code> 选项，编译器在编译期为每个函数的类型签名生成一个唯一标记（tag），嵌入到函数入口之前的 <code>.kcfi_traps</code> 节中。每个间接调用点在调用前插入运行时类型检查代码，验证目标地址处的标记是否与调用点期望的类型匹配。如果不匹配，内核触发 panic（在非宽容模式下）。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">间接调用前:</span><br><span class="line">    mov  -4(%rax), %ecx      ; 读取目标函数前的类型标记</span><br><span class="line">    cmp  $EXPECTED_TAG, %ecx ; 与期望类型比较</span><br><span class="line">    jne  .cfi_failure         ; 不匹配则 panic</span><br><span class="line">    call *%rax                ; 匹配则正常调用</span><br></pre></td></tr></table></figure></div>
+
+<p><code>CONFIG_CFI_ICALL_NORMALIZE_INTEGRES</code> 可归一化整数类型标记，用于 Rust 互操作。生产环境应确保 <code>CONFIG_CFI_PERMISSIVE</code> 未设置（严格模式）。</p>
+<h3 id="Stack-Protector-——-栈金丝雀"><a href="#Stack-Protector-——-栈金丝雀" class="headerlink" title="Stack Protector —— 栈金丝雀"></a>Stack Protector —— 栈金丝雀</h3><p><strong>配置项</strong>：<code>CONFIG_STACKPROTECTOR</code>（基础模式）、<code>CONFIG_STACKPROTECTOR_STRONG</code>（增强模式，默认启用）</p>
+<p><strong>源码位置</strong>：<code>arch/Kconfig</code>（第 697-733 行）</p>
+<p><strong>防护目标</strong>：检测栈缓冲区溢出对返回地址的覆写。</p>
+<p><strong>工作原理</strong>：编译器通过 <code>-fstack-protector-strong</code> 选项在含局部数组、取地址操作或包含数组的结构体的函数中插入金丝雀值检查。金丝雀在每个任务创建时随机生成，存储在 <code>task_struct-&gt;stack_canary</code> 中。函数入口将金丝雀压入栈帧，返回前校验——若被覆写，调用 <code>__stack_chk_fail()</code> 触发 panic。</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>覆盖函数比例</th>
+<th>代码增量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>STACKPROTECTOR</td>
+<td>~3%</td>
+<td>~0.3%</td>
+</tr>
+<tr>
+<td>STACKPROTECTOR_STRONG</td>
+<td>~20%</td>
+<td>~2.5%</td>
+</tr>
+</tbody></table>
+<h3 id="Shadow-Stack-——-影子栈（Intel-CET）"><a href="#Shadow-Stack-——-影子栈（Intel-CET）" class="headerlink" title="Shadow Stack —— 影子栈（Intel CET）"></a>Shadow Stack —— 影子栈（Intel CET）</h3><p><strong>配置项</strong>：<code>CONFIG_X86_USER_SHADOW_STACK</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/Kconfig</code>（第 1888-1904 行）</p>
+<p><strong>防护目标</strong>：硬件级检测返回地址篡改，防御 ROP 攻击。</p>
+<p><strong>工作原理</strong>：在支持 CET 的 Intel CPU 上，CPU 硬件维护一个独立的影子栈。每次 <code>CALL</code> 指令将返回地址同时写入普通栈和影子栈，<code>RET</code> 指令比较两者——不匹配则触发 <code>#CP</code>（Control Protection）异常。内核通过 <code>map_shadow_stack</code> 系统调用为用户进程分配影子栈页面，通过 <code>WRUSS</code> 指令管理影子栈令牌。应用程序需显式选择启用。</p>
+<h3 id="SMEP-SMAP-——-内核-用户空间执行与访问隔离"><a href="#SMEP-SMAP-——-内核-用户空间执行与访问隔离" class="headerlink" title="SMEP &#x2F; SMAP —— 内核&#x2F;用户空间执行与访问隔离"></a>SMEP &#x2F; SMAP —— 内核&#x2F;用户空间执行与访问隔离</h3><p><strong>配置项</strong>：硬件特性，由 CR4.SMEP（第 20 位）和 CR4.SMAP（第 21 位）控制</p>
+<p><strong>源码位置</strong>：<code>arch/x86/kernel/cpu/common.c</code>（CR4 配置）</p>
+<p><strong>防护目标</strong>：</p>
+<ul>
+<li><strong>SMEP</strong>：阻止 ret2user 攻击——内核态无法执行用户空间（U&#x2F;S&#x3D;1）页面中的代码。</li>
+<li><strong>SMAP</strong>：阻止内核意外访问用户空间内存——内核态无法读写用户空间页面（<code>copy_to_user</code>&#x2F;<code>copy_from_user</code> 除外，通过 STAC&#x2F;CLAC 指令临时禁用）。</li>
+</ul>
+<h3 id="IBRS-STIBP-——-Spectre-变体-2-缓解"><a href="#IBRS-STIBP-——-Spectre-变体-2-缓解" class="headerlink" title="IBRS &#x2F; STIBP —— Spectre 变体 2 缓解"></a>IBRS &#x2F; STIBP —— Spectre 变体 2 缓解</h3><p><strong>配置项</strong>：<code>CONFIG_MITIGATION_SPECTRE_V2</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/kernel/cpu/bugs.c</code></p>
+<p><strong>防护目标</strong>：防御分支目标注入（Branch Target Injection）侧信道攻击。</p>
+<p><strong>工作原理</strong>：</p>
+<ul>
+<li><strong>IBRS</strong>（Indirect Branch Restricted Speculation）：通过 MSR 限制间接分支预测器在特权级切换时的行为。</li>
+<li><strong>STIBP</strong>（Single Thread Indirect Branch Predictors）：防止单个物理核心上的超线程共享分支预测资源。</li>
+<li><strong>eIBRS</strong>（Enhanced IBRS）：新型 CPU 硬件内置支持，只需写入一次 MSR 即可持久生效。</li>
+<li><strong>RETPOLINE</strong>：软件层面的替代方案，通过返回 trampoline 隔离间接分支预测。</li>
+</ul>
+<p>引导参数 <code>spectre_v2=</code> 控制启用策略。</p>
+<hr>
+<h2 id="1-6-3-数据完整性"><a href="#1-6-3-数据完整性" class="headerlink" title="1.6.3 数据完整性"></a>1.6.3 数据完整性</h2><p>数据完整性机制确保内核数据结构不被非法篡改，堆分配器的元数据不被破坏。</p>
+<h3 id="Slab-Freelist-Hardening-——-SLAB-空闲链表加固"><a href="#Slab-Freelist-Hardening-——-SLAB-空闲链表加固" class="headerlink" title="Slab Freelist Hardening —— SLAB 空闲链表加固"></a>Slab Freelist Hardening —— SLAB 空闲链表加固</h3><p><strong>配置项</strong>：<code>CONFIG_SLAB_FREELIST_HARDENED</code></p>
+<p><strong>源码位置</strong>：<code>mm/slub.c</code>（第 495-523 行）</p>
+<p><strong>防护目标</strong>：阻止堆溢出攻击通过覆写 slab 空闲链表指针（next-pointer poisoning）获得任意写原语。</p>
+<p><strong>工作原理</strong>：每个 <code>kmem_cache</code> 在创建时获得一个随机密钥 <code>s-&gt;random</code>。空闲链表指针使用以下公式编码：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">encoded_ptr = actual_ptr XOR s-&gt;random XOR swab(ptr_storage_addr)</span><br></pre></td></tr></table></figure></div>
+
+<p>其中 <code>swab()</code> 是字节序交换操作。解码时执行相同的 XOR 运算还原。攻击者如果不了解 per-cache 的随机密钥和指针存储地址，就无法构造有效的编码指针——覆写空闲链表指针只会导致解码出无效地址，触发 kernel oops 而非任意写入。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/slub.c — freelist 指针编码/解码</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> *<span class="title function_">freelist_ptr</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> kmem_cache *s, <span class="type">void</span> *ptr,</span></span><br><span class="line"><span class="params">                                  <span class="type">unsigned</span> <span class="type">long</span> *addr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> mask = s-&gt;random ^ (<span class="type">unsigned</span> <span class="type">long</span>)addr;</span><br><span class="line">    <span class="keyword">return</span> (<span class="type">void</span> *)((<span class="type">unsigned</span> <span class="type">long</span>)ptr ^ mask ^ swab((<span class="type">unsigned</span> <span class="type">long</span>)addr));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="Slab-Freelist-Random-——-空闲链表顺序随机化"><a href="#Slab-Freelist-Random-——-空闲链表顺序随机化" class="headerlink" title="Slab Freelist Random —— 空闲链表顺序随机化"></a>Slab Freelist Random —— 空闲链表顺序随机化</h3><p><strong>配置项</strong>：<code>CONFIG_SLAB_FREELIST_RANDOM</code></p>
+<p><strong>源码位置</strong>：<code>mm/slab_common.c</code>（第 1038-1075 行）</p>
+<p><strong>防护目标</strong>：打破 slab 分配的确定性顺序，阻止堆喷射攻击预测对象相邻关系。</p>
+<p><strong>工作原理</strong>：每个 slab 页创建时，空闲对象的顺序通过 Fisher-Yates 洗牌算法随机化，随机序列存储在 <code>cachep-&gt;random_seq</code> 中。攻击者无法预测下一次分配返回哪个索引的对象，从而无法精确控制堆布局。</p>
+<h3 id="Hardened-Usercopy-——-加固的用户空间拷贝"><a href="#Hardened-Usercopy-——-加固的用户空间拷贝" class="headerlink" title="Hardened Usercopy —— 加固的用户空间拷贝"></a>Hardened Usercopy —— 加固的用户空间拷贝</h3><p><strong>配置项</strong>：<code>CONFIG_HARDENED_USERCOPY</code></p>
+<p><strong>源码位置</strong>：<code>mm/usercopy.c</code>（完整文件，288 行）</p>
+<p><strong>防护目标</strong>：阻止通过 <code>copy_to_user()</code>&#x2F;<code>copy_from_user()</code> 越界读写堆对象，以及阻止将内核代码段地址泄露到用户空间。</p>
+<p><strong>工作原理</strong>：<code>__check_object_size()</code> 在每次 <code>copy_to_user</code>&#x2F;<code>copy_from_user</code> 路径中被调用（通过内联的 <code>check_object_size()</code>），执行四层检查：</p>
+<ol>
+<li><strong>地址合法性检查</strong>：拒绝 NULL 指针和回绕地址。</li>
+<li><strong>栈对象检查</strong>：通过 <code>arch_within_stack_frames()</code> 验证缓冲区完全位于有效栈帧内。</li>
+<li><strong>堆对象检查</strong>：验证拷贝范围不超出 slab 对象边界。对于使用 <code>kmem_cache_create_usercopy()</code> 创建的缓存，拷贝必须在声明的 <code>[useroffset, useroffset + usersize]</code> 白名单范围内。</li>
+<li><strong>内核代码段检查</strong>：拒绝任何与 <code>_stext</code>~&#96;_etext&#96; 重叠的拷贝操作，防止内核代码泄露到用户空间。</li>
+</ol>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/usercopy.c — 核心检查函数</span></span><br><span class="line"><span class="type">void</span> __check_object_size(<span class="type">const</span> <span class="type">void</span> *ptr, <span class="type">unsigned</span> <span class="type">long</span> n, <span class="type">bool</span> to_user)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (check_bogus_address(ptr, n))  <span class="keyword">return</span>;</span><br><span class="line">    <span class="keyword">if</span> (check_stack_object(ptr, n))   <span class="keyword">return</span>;</span><br><span class="line">    <span class="keyword">if</span> (check_heap_object(ptr, n, to_user)) <span class="keyword">return</span>;</span><br><span class="line">    check_kernel_text_object(ptr, n);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>用户拷贝白名单机制</strong>：SLAB 缓存通过 <code>kmem_cache_create_usercopy()</code> 声明哪些字节范围可以安全地与用户空间交换：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 例如：msg_msg 缓存允许用户空间访问消息头之后的部分</span></span><br><span class="line">msg_cache = kmem_cache_create_usercopy(<span class="string">&quot;msg_msg&quot;</span>, <span class="keyword">sizeof</span>(<span class="keyword">struct</span> msg_msg) + MAX_MSG_SIZE,</span><br><span class="line">                                        <span class="keyword">sizeof</span>(<span class="keyword">struct</span> msg_msg), <span class="number">0</span>,</span><br><span class="line">                                        <span class="number">0</span>, MAX_MSG_SIZE, <span class="literal">NULL</span>);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="RANDSTRUCT-——-结构体布局随机化"><a href="#RANDSTRUCT-——-结构体布局随机化" class="headerlink" title="RANDSTRUCT —— 结构体布局随机化"></a>RANDSTRUCT —— 结构体布局随机化</h3><p><strong>配置项</strong>：<code>CONFIG_RANDSTRUCT_FULL</code>（完全随机化）或 <code>CONFIG_RANDSTRUCT_PERFORMANCE</code>（缓存行内随机化）</p>
+<p><strong>源码位置</strong>：<code>scripts/gcc-plugins/randomize_layout_plugin.c</code>（GCC）、<code>scripts/Makefile.randstruct</code>（构建集成）</p>
+<p><strong>防护目标</strong>：阻止攻击者利用已知的内核结构体字段偏移进行攻击（如篡改 <code>file_operations</code> 函数指针表）。</p>
+<p><strong>工作原理</strong>：在编译时，所有标记了 <code>__randomize_layout</code> 的结构体（以及仅包含函数指针的结构体）的字段顺序会被随机打乱。随机种子存储在 <code>scripts/basic/randomize.seed</code> 中，编译模块时需要使用相同种子以保证 ABI 兼容。</p>
+<ul>
+<li><strong>RANDSTRUCT_FULL</strong>：所有成员位置完全随机化。</li>
+<li><strong>RANDSTRUCT_PERFORMANCE</strong>：仅在缓存行（64 字节）边界内随机化，减少性能影响。</li>
+</ul>
+<p><code>make mrproper</code> 会删除种子文件，重新编译将产生完全不同的结构体布局。</p>
+<h3 id="LIST-HARDENED-——-链表完整性检查"><a href="#LIST-HARDENED-——-链表完整性检查" class="headerlink" title="LIST_HARDENED —— 链表完整性检查"></a>LIST_HARDENED —— 链表完整性检查</h3><p><strong>配置项</strong>：<code>CONFIG_LIST_HARDENED</code></p>
+<p><strong>源码位置</strong>：<code>include/linux/list.h</code></p>
+<p><strong>防护目标</strong>：检测内核链表操作中的内存损坏。</p>
+<p><strong>工作原理</strong>：在 <code>list_del()</code>、<code>list_add()</code> 等操作中插入额外的完整性检查，验证 <code>prev-&gt;next == entry</code> 和 <code>next-&gt;prev == entry</code> 等不变量。如果检测到损坏，触发 WARN 并阻止操作继续。</p>
+<h3 id="KFENCE-——-内核电子围栏"><a href="#KFENCE-——-内核电子围栏" class="headerlink" title="KFENCE —— 内核电子围栏"></a>KFENCE —— 内核电子围栏</h3><p><strong>配置项</strong>：<code>CONFIG_KFENCE</code></p>
+<p><strong>源码位置</strong>：<code>mm/kfence/core.c</code>、<code>mm/kfence/report.c</code></p>
+<p><strong>防护目标</strong>：在生产环境中以极低性能开销检测堆越界访问和释放后使用（Use-After-Free）。</p>
+<p><strong>工作原理</strong>：KFENCE 采用采样策略。默认每 100ms（<code>CONFIG_KFENCE_SAMPLE_INTERVAL</code>），从常规 SLAB 分配器中抽取一次分配，将其重定向到 KFENCE 专用池。每个 KFENCE 对象独占一个页面，两侧各有保护页：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[保护页(不可访问)] [对象页(实际对象)] [保护页(不可访问)]</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><strong>越界访问</strong>：触及保护页 → 触发页面错误 → KFENCE 捕获并报告。</li>
+<li><strong>释放后使用</strong>：对象释放后其页面被取消映射 → 访问触发页面错误 → 报告 UAF。</li>
+<li><strong>无效释放</strong>：检测 double-free 和错误指针释放。</li>
+</ul>
+<p>池大小由 <code>CONFIG_KFENCE_NUM_OBJECTS</code>（默认 255）控制。KFENCE 不替代 KASAN，而是作为 KASAN 的生产环境补充——KASAN 开销大适合测试，KFENCE 开销极小适合部署。</p>
+<h3 id="FORTIFY-SOURCE-——-编译期缓冲区溢出检测"><a href="#FORTIFY-SOURCE-——-编译期缓冲区溢出检测" class="headerlink" title="FORTIFY_SOURCE —— 编译期缓冲区溢出检测"></a>FORTIFY_SOURCE —— 编译期缓冲区溢出检测</h3><p><strong>配置项</strong>：<code>CONFIG_FORTIFY_SOURCE</code></p>
+<p><strong>源码位置</strong>：<code>include/linux/fortify-string.h</code></p>
+<p><strong>防护目标</strong>：在编译期和运行时检测 <code>memcpy()</code>、<code>strcpy()</code> 等函数中的缓冲区溢出。</p>
+<p><strong>工作原理</strong>：编译器通过 <code>__builtin_object_size()</code> 在编译时推断目标缓冲区大小。如果拷贝长度超出目标缓冲区，编译期能直接报错；运行时则调用 <code>fortify_panic()</code> 触发 oops。</p>
+<hr>
+<h2 id="1-6-4-信息泄露防护"><a href="#1-6-4-信息泄露防护" class="headerlink" title="1.6.4 信息泄露防护"></a>1.6.4 信息泄露防护</h2><p>信息泄露防护的目标是确保攻击者无法从内核获取有助于构建利用的信息。</p>
+<h3 id="Dmesg-限制"><a href="#Dmesg-限制" class="headerlink" title="Dmesg 限制"></a>Dmesg 限制</h3><p><strong>配置项</strong>：<code>CONFIG_SECURITY_DMESG_RESTRICT</code></p>
+<p><strong>源码位置</strong>：<code>kernel/printk/printk.c</code>（第 603 行）</p>
+<p><strong>防护目标</strong>：阻止非特权进程通过内核环形缓冲区获取内核地址、模块加载地址等敏感信息。</p>
+<p><strong>工作原理</strong>：设置 <code>dmesg_restrict</code> sysctl 的初始值。当 <code>dmesg_restrict=1</code> 时，只有拥有 <code>CAP_SYSLOG</code> 能力的进程才能通过 <code>dmesg(8)</code> 或 <code>/proc/kmsg</code> 读取内核日志。内核日志中可能包含函数地址、内存映射信息等对攻击者有价值的数据。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/printk/printk.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> dmesg_restrict = IS_ENABLED(CONFIG_SECURITY_DMESG_RESTRICT);</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="KSTACK-ERASE-——-内核栈擦除"><a href="#KSTACK-ERASE-——-内核栈擦除" class="headerlink" title="KSTACK_ERASE —— 内核栈擦除"></a>KSTACK_ERASE —— 内核栈擦除</h3><p><strong>配置项</strong>：<code>CONFIG_KSTACK_ERASE</code>（原 <code>CONFIG_STACKLEAK</code>，Linux 7.0 更名）</p>
+<p><strong>源码位置</strong>：<code>include/linux/kstack_erase.h</code>、<code>kernel/kstack_erase.c</code>、<code>arch/x86/entry/calling.h</code>（第 370-393 行）</p>
+<p><strong>防护目标</strong>：阻止通过未初始化的栈变量泄露敏感信息，阻止攻击者读取先前系统调用残留的栈数据。</p>
+<p><strong>工作原理</strong>：在每个系统调用返回前，将使用过的内核栈区域覆写为毒化值 <code>0xFFFFBEEF</code>。擦除范围由 <code>__sanitizer_cov_stack_depth()</code> 插桩跟踪的最低栈深度决定。性能影响约 1%。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// arch/x86/entry/calling.h</span><br><span class="line">.macro STACKLEAK_ERASE</span><br><span class="line">    call stackleak_erase    // 擦除使用过的栈区域</span><br><span class="line">.endm</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="INIT-ON-ALLOC-INIT-ON-FREE-——-内存初始化"><a href="#INIT-ON-ALLOC-INIT-ON-FREE-——-内存初始化" class="headerlink" title="INIT_ON_ALLOC &#x2F; INIT_ON_FREE —— 内存初始化"></a>INIT_ON_ALLOC &#x2F; INIT_ON_FREE —— 内存初始化</h3><p><strong>配置项</strong>：<code>CONFIG_INIT_ON_ALLOC_DEFAULT_ON</code>、<code>CONFIG_INIT_ON_FREE_DEFAULT_ON</code></p>
+<p><strong>源码位置</strong>：<code>mm/mm_init.c</code>（第 2502-2523 行）、<code>mm/slab.h</code>（第 675-695 行）</p>
+<p><strong>防护目标</strong>：</p>
+<ul>
+<li><strong>INIT_ON_ALLOC</strong>：阻止未初始化堆内存导致的信息泄露和不可预测行为。</li>
+<li><strong>INIT_ON_FREE</strong>：缩短敏感数据在内存中的生命周期，防御冷启动攻击。</li>
+</ul>
+<p><strong>工作原理</strong>：</p>
+<ul>
+<li><strong>INIT_ON_ALLOC</strong>：所有页面和 slab 对象在分配时被清零。通过静态密钥 <code>init_on_alloc</code> 控制，可由 <code>init_on_alloc=0</code> 引导参数覆盖。性能影响 &lt;1%。</li>
+<li><strong>INIT_ON_FREE</strong>：所有页面和 slab 对象在释放时被清零。比 alloc 初始化更强——释放后的内容立即被抹除。性能影响 3-5%（需要触碰冷内存）。可由 <code>init_on_free=0</code> 覆盖。</li>
+</ul>
+<p>对于有自定义构造函数的 slab 缓存或使用 <code>SLAB_TYPESAFE_BY_RCU</code> 的缓存，自动跳过初始化。</p>
+<h3 id="STRICT-KERNEL-RWX-STRICT-MODULE-RWX-——-内核代码只读"><a href="#STRICT-KERNEL-RWX-STRICT-MODULE-RWX-——-内核代码只读" class="headerlink" title="STRICT_KERNEL_RWX &#x2F; STRICT_MODULE_RWX —— 内核代码只读"></a>STRICT_KERNEL_RWX &#x2F; STRICT_MODULE_RWX —— 内核代码只读</h3><p><strong>配置项</strong>：<code>CONFIG_STRICT_KERNEL_RWX</code>、<code>CONFIG_STRICT_MODULE_RWX</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/mm/init_64.c</code>（<code>mark_rodata_ro()</code>）</p>
+<p><strong>防护目标</strong>：阻止运行时修改内核代码和只读数据（代码注入、ROP 写入）。</p>
+<p><strong>工作原理</strong>：内核初始化完成后，<code>mark_rodata_ro()</code> 将内核代码段的页表权限设为只读+可执行（R+X），只读数据段设为只读+不可执行（R），非代码内存设为不可执行（NX）。模块加载时同样遵循 W^X 原则。这确保了整个内核地址空间严格遵循”可写与可执行互斥”原则。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/x86/mm/init_64.c</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">mark_rodata_ro</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 将内核代码段设为只读+可执行</span></span><br><span class="line">    <span class="comment">// 将 rodata 设为只读</span></span><br><span class="line">    <span class="comment">// 将非代码区域设为 NX</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="STATIC-USERMODEHELPER-——-静态用户态助手"><a href="#STATIC-USERMODEHELPER-——-静态用户态助手" class="headerlink" title="STATIC_USERMODEHELPER —— 静态用户态助手"></a>STATIC_USERMODEHELPER —— 静态用户态助手</h3><p><strong>配置项</strong>：<code>CONFIG_STATIC_USERMODEHELPER</code>、<code>CONFIG_STATIC_USERMODEHELPER_PATH</code></p>
+<p><strong>源码位置</strong>：<code>kernel/umh.c</code>（第 368-423 行）</p>
+<p><strong>防护目标</strong>：阻止攻击者通过篡改用户态助手路径（如 <code>/proc/sys/kernel/modprobe</code>、<code>core_pattern</code>）来以 root 权限执行任意用户态程序。</p>
+<p><strong>工作原理</strong>：启用后，所有 <code>call_usermodehelper()</code> 调用都被重定向到单一静态路径（默认 <code>/sbin/usermode-helper</code>）：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/umh.c</span></span><br><span class="line"><span class="keyword">if</span> (static_usermodehelper_path[<span class="number">0</span>]) &#123;</span><br><span class="line">    sub_info-&gt;path = CONFIG_STATIC_USERMODEHELPER_PATH;</span><br><span class="line">    <span class="comment">// 原始路径作为第一个参数传递给静态助手</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>静态助手接收原始请求的二进制路径作为参数，自行决定是否执行。如果将路径设为空字符串，则完全禁用所有用户态助手调用。</p>
+<hr>
+<h2 id="1-6-5-侧信道与-speculative-执行防护"><a href="#1-6-5-侧信道与-speculative-执行防护" class="headerlink" title="1.6.5 侧信道与 speculative 执行防护"></a>1.6.5 侧信道与 speculative 执行防护</h2><h3 id="Spectre-变体-1（Bounds-Check-Bypass）"><a href="#Spectre-变体-1（Bounds-Check-Bypass）" class="headerlink" title="Spectre 变体 1（Bounds Check Bypass）"></a>Spectre 变体 1（Bounds Check Bypass）</h3><p><strong>缓解方式</strong>：<code>array_index_mask_nospec()</code> —— 在索引使用前通过推测安全的掩码操作确保索引不越界。</p>
+<h3 id="Spectre-变体-2（Branch-Target-Injection）"><a href="#Spectre-变体-2（Branch-Target-Injection）" class="headerlink" title="Spectre 变体 2（Branch Target Injection）"></a>Spectre 变体 2（Branch Target Injection）</h3><p><strong>缓解方式</strong>：见上文 IBRS&#x2F;STIBP&#x2F;RETPOLINE 描述。</p>
+<h3 id="Meltdown（Rogue-Data-Cache-Load）"><a href="#Meltdown（Rogue-Data-Cache-Load）" class="headerlink" title="Meltdown（Rogue Data Cache Load）"></a>Meltdown（Rogue Data Cache Load）</h3><p><strong>缓解方式</strong>：见上文 KPTI 描述。</p>
+<h3 id="L1TF（L1-Terminal-Fault-Foreshadow）"><a href="#L1TF（L1-Terminal-Fault-Foreshadow）" class="headerlink" title="L1TF（L1 Terminal Fault &#x2F; Foreshadow）"></a>L1TF（L1 Terminal Fault &#x2F; Foreshadow）</h3><p><strong>配置项</strong>：<code>CONFIG_MITIGATION_L1TF</code></p>
+<p><strong>源码位置</strong>：<code>arch/x86/kernel/cpu/bugs.c</code></p>
+<p><strong>防护目标</strong>：阻止利用 L1 数据缓存读取宿主机或跨虚拟机数据。</p>
+<p><strong>缓解方式</strong>：在缺页处理中清除 L1 缓存、对 VMM 确保客户机页表项不含宿主机敏感物理地址、必要时禁用超线程。</p>
+<h3 id="MDS（Microarchitectural-Data-Sampling）"><a href="#MDS（Microarchitectural-Data-Sampling）" class="headerlink" title="MDS（Microarchitectural Data Sampling）"></a>MDS（Microarchitectural Data Sampling）</h3><p><strong>缓解方式</strong>：在用户态切换时刷新 CPU 内部缓冲区（通过 <code>VERW</code> 指令或缓冲区清除）。</p>
+<hr>
+<h2 id="1-6-6-加固特性速查表"><a href="#1-6-6-加固特性速查表" class="headerlink" title="1.6.6 加固特性速查表"></a>1.6.6 加固特性速查表</h2><p>下表汇总了 Linux 7.0 x86_64 上所有主要加固特性，按类别组织：</p>
+<h3 id="地址空间保护"><a href="#地址空间保护" class="headerlink" title="地址空间保护"></a>地址空间保护</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>配置项</th>
+<th>防护对象</th>
+<th>性能影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KASLR</td>
+<td><code>CONFIG_RANDOMIZE_BASE</code></td>
+<td>内核地址预测</td>
+<td>无</td>
+</tr>
+<tr>
+<td>内存区域随机化</td>
+<td><code>CONFIG_RANDOMIZE_MEMORY</code></td>
+<td>内核内存区域布局</td>
+<td>无</td>
+</tr>
+<tr>
+<td>KPTI</td>
+<td><code>CONFIG_MITIGATION_PAGE_TABLE_ISOLATION</code></td>
+<td>Meltdown</td>
+<td>1-5%</td>
+</tr>
+<tr>
+<td>MMAP_MIN_ADDR</td>
+<td><code>CONFIG_DEFAULT_MMAP_MIN_ADDR</code></td>
+<td>NULL 指针解引用</td>
+<td>无</td>
+</tr>
+<tr>
+<td>栈偏移随机化</td>
+<td><code>CONFIG_RANDOMIZE_KSTACK_OFFSET_DEFAULT</code></td>
+<td>内核栈地址预测</td>
+<td>极小</td>
+</tr>
+</tbody></table>
+<h3 id="控制流完整性"><a href="#控制流完整性" class="headerlink" title="控制流完整性"></a>控制流完整性</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>配置项</th>
+<th>防护对象</th>
+<th>性能影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KCFI</td>
+<td><code>CONFIG_CFI</code></td>
+<td>间接调用劫持</td>
+<td>~1%</td>
+</tr>
+<tr>
+<td>栈金丝雀</td>
+<td><code>CONFIG_STACKPROTECTOR_STRONG</code></td>
+<td>栈缓冲区溢出</td>
+<td>~2.5% 代码增量</td>
+</tr>
+<tr>
+<td>影子栈 (CET)</td>
+<td><code>CONFIG_X86_USER_SHADOW_STACK</code></td>
+<td>ROP 攻击</td>
+<td>需硬件支持</td>
+</tr>
+<tr>
+<td>SMEP</td>
+<td>CR4.SMEP</td>
+<td>ret2user</td>
+<td>无</td>
+</tr>
+<tr>
+<td>SMAP</td>
+<td>CR4.SMAP</td>
+<td>内核访问用户内存</td>
+<td>无</td>
+</tr>
+</tbody></table>
+<h3 id="数据完整性"><a href="#数据完整性" class="headerlink" title="数据完整性"></a>数据完整性</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>配置项</th>
+<th>防护对象</th>
+<th>性能影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SLAB 空闲链表加固</td>
+<td><code>CONFIG_SLAB_FREELIST_HARDENED</code></td>
+<td>堆元数据破坏</td>
+<td>极小</td>
+</tr>
+<tr>
+<td>SLAB 顺序随机化</td>
+<td><code>CONFIG_SLAB_FREELIST_RANDOM</code></td>
+<td>堆喷射</td>
+<td>极小</td>
+</tr>
+<tr>
+<td>Hardened Usercopy</td>
+<td><code>CONFIG_HARDENED_USERCOPY</code></td>
+<td>copy_*_user 越界</td>
+<td>极小</td>
+</tr>
+<tr>
+<td>结构体随机化</td>
+<td><code>CONFIG_RANDSTRUCT_FULL</code></td>
+<td>结构体字段偏移利用</td>
+<td>可变</td>
+</tr>
+<tr>
+<td>链表完整性</td>
+<td><code>CONFIG_LIST_HARDENED</code></td>
+<td>链表损坏</td>
+<td>极小</td>
+</tr>
+<tr>
+<td>KFENCE</td>
+<td><code>CONFIG_KFENCE</code></td>
+<td>堆越界&#x2F;UAF 检测</td>
+<td>极小</td>
+</tr>
+<tr>
+<td>FORTIFY_SOURCE</td>
+<td><code>CONFIG_FORTIFY_SOURCE</code></td>
+<td>缓冲区溢出</td>
+<td>极小</td>
+</tr>
+</tbody></table>
+<h3 id="信息泄露防护"><a href="#信息泄露防护" class="headerlink" title="信息泄露防护"></a>信息泄露防护</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>配置项</th>
+<th>防护对象</th>
+<th>性能影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dmesg 限制</td>
+<td><code>CONFIG_SECURITY_DMESG_RESTRICT</code></td>
+<td>内核日志泄露</td>
+<td>无</td>
+</tr>
+<tr>
+<td>栈擦除</td>
+<td><code>CONFIG_KSTACK_ERASE</code></td>
+<td>残留栈数据泄露</td>
+<td>~1%</td>
+</tr>
+<tr>
+<td>分配清零</td>
+<td><code>CONFIG_INIT_ON_ALLOC_DEFAULT_ON</code></td>
+<td>未初始化堆泄露</td>
+<td>&lt;1%</td>
+</tr>
+<tr>
+<td>释放清零</td>
+<td><code>CONFIG_INIT_ON_FREE_DEFAULT_ON</code></td>
+<td>敏感数据生命周期</td>
+<td>3-5%</td>
+</tr>
+<tr>
+<td>内核代码只读</td>
+<td><code>CONFIG_STRICT_KERNEL_RWX</code></td>
+<td>代码注入</td>
+<td>无</td>
+</tr>
+<tr>
+<td>模块代码只读</td>
+<td><code>CONFIG_STRICT_MODULE_RWX</code></td>
+<td>模块代码注入</td>
+<td>无</td>
+</tr>
+<tr>
+<td>静态用户态助手</td>
+<td><code>CONFIG_STATIC_USERMODEHELPER</code></td>
+<td>助手路径篡改</td>
+<td>无</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-6-7-纵深防御架构图"><a href="#1-6-7-纵深防御架构图" class="headerlink" title="1.6.7 纵深防御架构图"></a>1.6.7 纵深防御架构图</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">       攻击者</span><br><span class="line">         │</span><br><span class="line">┌────────┴────────┐</span><br><span class="line">│  信息收集阶段    │  ← KASLR, Dmesg限制, 栈擦除, 释放清零</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">┌────────┴────────┐</span><br><span class="line">│  漏洞触发阶段    │  ← KFENCE, FORTIFY_SOURCE, Hardened Usercopy</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">┌────────┴────────┐</span><br><span class="line">│  控制流劫持阶段  │  ← CFI, Stack Protector, Shadow Stack, SMEP</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">┌────────┴────────┐</span><br><span class="line">│  数据篡改阶段    │  ← SLAB Freelist Hardening, RANDSTRUCT, W^X</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">┌────────┴────────┐</span><br><span class="line">│  提权/逃逸阶段   │  ← SMAP, KPTI, MMAP_MIN_ADDR, STATIC_UMH</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">       失败</span><br></pre></td></tr></table></figure></div>
+
+<p>这套纵深防御体系的设计原则是：任何单一防御手段的失效都不会导致整体安全性的崩溃。攻击者需要同时突破多层防御才能成功利用内核漏洞，而每一层都显著增加了攻击的复杂度和成本。</p>
+<blockquote>
+<p>推荐实践：生产环境内核应启用 <code>kernel/configs/hardening.config</code> 中的全部选项，该文件由内核社区维护，提供了当前最佳实践的加固基线。</p>
+</blockquote>
+
 		</div>
 
 		
@@ -580,7 +2618,7 @@
         
             <li>
                 <strong>Updated at
-                    :</strong> 2026-04-21 14:32:09
+                    :</strong> 2026-05-28 18:40:03
             </li>
         
         <li>
@@ -775,7 +2813,7 @@
 	<div class="post-toc">
 		<div class="toc-title">On this page</div>
 		<div class="page-title">Linux内核分析之基础知识-00</div>
-		
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-1-%E5%AF%84%E5%AD%98%E5%99%A8%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-text">1.1 寄存器与数据类型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-1-%E9%80%9A%E7%94%A8%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88General-Purpose-Registers-GPRs%EF%BC%89"><span class="nav-text">1.1.1 通用寄存器（General-Purpose Registers, GPRs）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8%E5%B1%82%E7%BA%A7%E5%91%BD%E5%90%8D"><span class="nav-text">寄存器层级命名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#System-V-AMD64-ABI-%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E7%BA%A6%E5%AE%9A"><span class="nav-text">System V AMD64 ABI 函数调用约定</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E4%B8%AD%E7%9A%84%E7%89%B9%E6%AE%8A%E7%94%A8%E9%80%94"><span class="nav-text">系统调用中的特殊用途</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-2-%E6%8C%87%E4%BB%A4%E6%8C%87%E9%92%88%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88RIP%EF%BC%89"><span class="nav-text">1.1.2 指令指针寄存器（RIP）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-3-%E6%A0%87%E5%BF%97%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88RFLAGS%EF%BC%89"><span class="nav-text">1.1.3 标志寄存器（RFLAGS）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-4-%E6%AE%B5%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">1.1.4 段寄存器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#64-%E4%BD%8D%E6%A8%A1%E5%BC%8F%E4%B8%8B%E7%9A%84%E6%AE%B5%E5%AF%84%E5%AD%98%E5%99%A8%E8%A1%8C%E4%B8%BA"><span class="nav-text">64 位模式下的段寄存器行为</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CS-%E6%AE%B5%E9%80%89%E6%8B%A9%E5%AD%90"><span class="nav-text">CS 段选择子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FS-GS-%E4%B8%8E-per-CPU-%E6%95%B0%E6%8D%AE"><span class="nav-text">FS&#x2F;GS 与 per-CPU 数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-5-%E6%8E%A7%E5%88%B6%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88Control-Registers%EF%BC%89"><span class="nav-text">1.1.5 控制寄存器（Control Registers）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CR0-%E2%80%94-%E7%B3%BB%E7%BB%9F%E6%8E%A7%E5%88%B6%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">CR0 — 系统控制寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CR2-%E2%80%94-%E9%A1%B5%E6%95%85%E9%9A%9C%E7%BA%BF%E6%80%A7%E5%9C%B0%E5%9D%80"><span class="nav-text">CR2 — 页故障线性地址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CR3-%E2%80%94-%E9%A1%B5%E7%9B%AE%E5%BD%95%E5%9F%BA%E5%9D%80"><span class="nav-text">CR3 — 页目录基址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CR4-%E2%80%94-%E6%89%A9%E5%B1%95%E6%8E%A7%E5%88%B6%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">CR4 — 扩展控制寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CR8-%E2%80%94-%E4%BB%BB%E5%8A%A1%E4%BC%98%E5%85%88%E7%BA%A7%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88TPR%EF%BC%89"><span class="nav-text">CR8 — 任务优先级寄存器（TPR）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-6-%E6%A8%A1%E5%9E%8B%E4%B8%93%E7%94%A8%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88MSR-Model-Specific-Registers%EF%BC%89"><span class="nav-text">1.1.6 模型专用寄存器（MSR, Model-Specific Registers）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9B%B8%E5%85%B3-MSR"><span class="nav-text">系统调用相关 MSR</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E5%8A%9F%E8%83%BD%E4%BD%BF%E8%83%BD%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">扩展功能使能寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GS-FS-%E5%9F%BA%E5%9D%80-MSR"><span class="nav-text">GS&#x2F;FS 基址 MSR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-7-%E8%B0%83%E8%AF%95%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88Debug-Registers%EF%BC%89"><span class="nav-text">1.1.7 调试寄存器（Debug Registers）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-8-SIMD-%E6%89%A9%E5%B1%95%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">1.1.8 SIMD 扩展寄存器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#XSAVE-%E5%8C%BA%E5%9F%9F%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A2"><span class="nav-text">XSAVE 区域与上下文切换</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-9-%E5%86%85%E6%A0%B8%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-text">1.1.9 内核数据类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E5%A4%A7%E5%B0%8F%E4%B8%8E%E5%91%BD%E5%90%8D"><span class="nav-text">基本大小与命名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E7%B1%BB%E5%9E%8B"><span class="nav-text">地址类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A1%B5%E8%A1%A8%E7%9B%B8%E5%85%B3%E7%B1%BB%E5%9E%8B"><span class="nav-text">页表相关类型</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-2-CPU-%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F%EF%BC%9A%E5%AE%9E%E6%A8%A1%E5%BC%8F%E3%80%81%E4%BF%9D%E6%8A%A4%E6%A8%A1%E5%BC%8F%E4%B8%8E%E9%95%BF%E6%A8%A1%E5%BC%8F"><span class="nav-text">1.2 CPU 运行模式：实模式、保护模式与长模式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-1-%E5%AE%9E%E6%A8%A1%E5%BC%8F%EF%BC%88Real-Mode%EF%BC%89"><span class="nav-text">1.2.1 实模式（Real Mode）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-2-%E4%BF%9D%E6%8A%A4%E6%A8%A1%E5%BC%8F%EF%BC%88Protected-Mode%EF%BC%89"><span class="nav-text">1.2.2 保护模式（Protected Mode）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-3-%E9%95%BF%E6%A8%A1%E5%BC%8F%EF%BC%88Long-Mode%EF%BC%89"><span class="nav-text">1.2.3 长模式（Long Mode）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-4-Linux-%E5%90%AF%E5%8A%A8%E4%B8%AD%E7%9A%84%E6%A8%A1%E5%BC%8F%E8%BD%AC%E6%8D%A2"><span class="nav-text">1.2.4 Linux 启动中的模式转换</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-5-%E5%85%BC%E5%AE%B9%E5%AD%90%E6%A8%A1%E5%BC%8F%EF%BC%88Compatibility-Mode%EF%BC%89"><span class="nav-text">1.2.5 兼容子模式（Compatibility Mode）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-3-%E5%88%86%E6%AE%B5%E4%B8%8E%E5%88%86%E9%A1%B5%E6%9C%BA%E5%88%B6"><span class="nav-text">1.3 分段与分页机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-1-%E5%88%86%E6%AE%B5%E6%9C%BA%E5%88%B6%EF%BC%9A%E4%BB%8E%E4%B8%BB%E8%A7%92%E5%88%B0%E9%85%8D%E8%A7%92"><span class="nav-text">1.3.1 分段机制：从主角到配角</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%86%E5%8F%B2%E8%83%8C%E6%99%AF"><span class="nav-text">历史背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#64-%E4%BD%8D%E9%95%BF%E6%A8%A1%E5%BC%8F%E4%B8%8B%E7%9A%84%E5%88%86%E6%AE%B5"><span class="nav-text">64 位长模式下的分段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-%E5%86%85%E6%A0%B8%E5%AF%B9-FS-GS-%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-text">Linux 内核对 FS&#x2F;GS 的使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GDT-%E7%BB%93%E6%9E%84"><span class="nav-text">GDT 结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-2-%E5%88%86%E9%A1%B5%E6%9C%BA%E5%88%B6%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E6%A0%B8%E5%BF%83"><span class="nav-text">1.3.2 分页机制——内存管理的核心</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B%E7%BA%A7%E9%A1%B5%E8%A1%A8%EF%BC%884-Level-Paging%EF%BC%89"><span class="nav-text">四级页表（4-Level Paging）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%A7%E9%A1%B5%EF%BC%88Huge-Pages%EF%BC%89"><span class="nav-text">大页（Huge Pages）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94%E7%BA%A7%E9%A1%B5%E8%A1%A8%EF%BC%885-Level-Paging%EF%BC%89"><span class="nav-text">五级页表（5-Level Paging）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-3-%E9%A1%B5%E8%A1%A8%E6%9D%A1%E7%9B%AE%EF%BC%88PTE%EF%BC%89%E6%A0%BC%E5%BC%8F"><span class="nav-text">1.3.3 页表条目（PTE）格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-4-CR3-%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">1.3.4 CR3 寄存器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-5-TLB%EF%BC%88Translation-Lookaside-Buffer%EF%BC%89"><span class="nav-text">1.3.5 TLB（Translation Lookaside Buffer）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-6-Linux-%E5%86%85%E6%A0%B8%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%EF%BC%88x86-64%EF%BC%89"><span class="nav-text">1.3.6 Linux 内核虚拟内存布局（x86_64）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-4-%E4%B8%AD%E6%96%AD%E4%B8%8E%E5%BC%82%E5%B8%B8"><span class="nav-text">1.4 中断与异常</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-1-%E4%B8%AD%E6%96%AD%E4%B8%8E%E5%BC%82%E5%B8%B8%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-text">1.4.1 中断与异常的基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-2-%E4%B8%AD%E6%96%AD%E6%8F%8F%E8%BF%B0%E7%AC%A6%E8%A1%A8%EF%BC%88IDT%EF%BC%89"><span class="nav-text">1.4.2 中断描述符表（IDT）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-3-%E9%97%A8%E6%8F%8F%E8%BF%B0%E7%AC%A6%E7%B1%BB%E5%9E%8B"><span class="nav-text">1.4.3 门描述符类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-4-%E7%A1%AC%E4%BB%B6%E4%B8%AD%E6%96%AD%E4%BA%A4%E4%BB%98%E6%9C%BA%E5%88%B6"><span class="nav-text">1.4.4 硬件中断交付机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8259A-PIC%EF%BC%88%E4%BC%A0%E7%BB%9F%E5%8F%AF%E7%BC%96%E7%A8%8B%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%EF%BC%89"><span class="nav-text">8259A PIC（传统可编程中断控制器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I-O-APIC"><span class="nav-text">I&#x2F;O APIC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Local-APIC"><span class="nav-text">Local APIC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%AD%E6%96%AD%E9%87%8D%E6%98%A0%E5%B0%84%EF%BC%88VT-d%EF%BC%89"><span class="nav-text">中断重映射（VT-d）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IRQ-%E5%88%B0%E5%90%91%E9%87%8F%E7%9A%84%E6%98%A0%E5%B0%84"><span class="nav-text">IRQ 到向量的映射</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-5-Linux-%E4%B8%AD%E6%96%AD%E5%85%A5%E5%8F%A3%E8%B7%AF%E5%BE%84"><span class="nav-text">1.4.5 Linux 中断入口路径</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-6-Linux-%E4%BD%BF%E7%94%A8%E7%9A%84%E5%85%B3%E9%94%AE-x86-64-%E5%BC%82%E5%B8%B8"><span class="nav-text">1.4.6 Linux 使用的关键 x86_64 异常</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%EF%BC%88-PF%EF%BC%89%E8%AF%A6%E8%A7%A3"><span class="nav-text">缺页异常（#PF）详解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-7-IST%EF%BC%88%E4%B8%AD%E6%96%AD%E6%A0%88%E8%A1%A8%EF%BC%89"><span class="nav-text">1.4.7 IST（中断栈表）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-4-8-%E8%BD%AF%E4%BB%B6%E4%B8%AD%E6%96%AD%E4%B8%8E%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-text">1.4.8 软件中断与系统调用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#INT-0x80%EF%BC%88%E4%BC%A0%E7%BB%9F%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%EF%BC%89"><span class="nav-text">INT 0x80（传统系统调用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SYSCALL-SYSRET%EF%BC%8864-%E4%BD%8D%E5%BF%AB%E9%80%9F%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%EF%BC%89"><span class="nav-text">SYSCALL&#x2F;SYSRET（64 位快速系统调用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SYSENTER-SYSEXIT%EF%BC%8832-%E4%BD%8D%E5%BF%AB%E9%80%9F%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%EF%BC%89"><span class="nav-text">SYSENTER&#x2F;SYSEXIT（32 位快速系统调用）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-5-%E7%89%B9%E6%9D%83%E7%BA%A7%E4%B8%8E%E4%BF%9D%E6%8A%A4%E6%9C%BA%E5%88%B6"><span class="nav-text">1.5 特权级与保护机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-1-%E4%BF%9D%E6%8A%A4%E7%8E%AF%E6%A8%A1%E5%9E%8B"><span class="nav-text">1.5.1 保护环模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-2-%E7%89%B9%E6%9D%83%E6%A3%80%E6%9F%A5%E8%A7%84%E5%88%99"><span class="nav-text">1.5.2 特权检查规则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-3-%E7%94%A8%E6%88%B7%E6%80%81%E4%B8%8E%E5%86%85%E6%A0%B8%E6%80%81%E7%9A%84%E5%88%87%E6%8D%A2"><span class="nav-text">1.5.3 用户态与内核态的切换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%A8%E6%88%B7%E6%80%81%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E6%80%81"><span class="nav-text">用户态进入内核态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E6%80%81%E8%BF%94%E5%9B%9E%E7%94%A8%E6%88%B7%E6%80%81"><span class="nav-text">内核态返回用户态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E5%88%87%E6%8D%A2%E6%9C%BA%E5%88%B6"><span class="nav-text">栈切换机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SWAPGS-%E6%8C%87%E4%BB%A4"><span class="nav-text">SWAPGS 指令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-4-%E9%A1%B5%E8%A1%A8%E7%BA%A7%E4%BF%9D%E6%8A%A4%E6%9C%BA%E5%88%B6"><span class="nav-text">1.5.4 页表级保护机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#SMEP%EF%BC%88Supervisor-Mode-Execution-Prevention%EF%BC%89"><span class="nav-text">SMEP（Supervisor Mode Execution Prevention）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SMAP%EF%BC%88Supervisor-Mode-Access-Prevention%EF%BC%89"><span class="nav-text">SMAP（Supervisor Mode Access Prevention）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-5-I-O-%E4%BF%9D%E6%8A%A4"><span class="nav-text">1.5.5 I&#x2F;O 保护</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-6-Linux-%E8%83%BD%E5%8A%9B%E6%A8%A1%E5%9E%8B"><span class="nav-text">1.5.6 Linux 能力模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-5-7-Linux-%E5%9C%A8-x86-64-%E4%B8%8A%E7%9A%84%E5%AE%89%E5%85%A8%E7%89%B9%E6%80%A7"><span class="nav-text">1.5.7 Linux 在 x86_64 上的安全特性</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-6-Linux-%E5%86%85%E6%A0%B8%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E6%9C%BA%E5%88%B6%E5%85%A8%E6%99%AF"><span class="nav-text">1.6 Linux 内核安全加固机制全景</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-1-%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E4%BF%9D%E6%8A%A4"><span class="nav-text">1.6.1 地址空间保护</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#KASLR-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E5%B8%83%E5%B1%80%E9%9A%8F%E6%9C%BA%E5%8C%96"><span class="nav-text">KASLR —— 内核地址空间布局随机化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KPTI-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8%E9%A1%B5%E8%A1%A8%E9%9A%94%E7%A6%BB"><span class="nav-text">KPTI —— 内核页表隔离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MMAP-MIN-ADDR-%E2%80%94%E2%80%94-%E4%BD%8E%E5%9C%B0%E5%9D%80%E6%98%A0%E5%B0%84%E9%98%B2%E6%8A%A4"><span class="nav-text">MMAP_MIN_ADDR —— 低地址映射防护</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E6%A0%88%E5%81%8F%E7%A7%BB%E9%9A%8F%E6%9C%BA%E5%8C%96"><span class="nav-text">内核栈偏移随机化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-2-%E6%8E%A7%E5%88%B6%E6%B5%81%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="nav-text">1.6.2 控制流完整性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CFI-%E2%80%94%E2%80%94-%E7%BC%96%E8%AF%91%E5%99%A8%E7%BA%A7%E6%8E%A7%E5%88%B6%E6%B5%81%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="nav-text">CFI —— 编译器级控制流完整性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Stack-Protector-%E2%80%94%E2%80%94-%E6%A0%88%E9%87%91%E4%B8%9D%E9%9B%80"><span class="nav-text">Stack Protector —— 栈金丝雀</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Shadow-Stack-%E2%80%94%E2%80%94-%E5%BD%B1%E5%AD%90%E6%A0%88%EF%BC%88Intel-CET%EF%BC%89"><span class="nav-text">Shadow Stack —— 影子栈（Intel CET）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SMEP-SMAP-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8-%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%89%A7%E8%A1%8C%E4%B8%8E%E8%AE%BF%E9%97%AE%E9%9A%94%E7%A6%BB"><span class="nav-text">SMEP &#x2F; SMAP —— 内核&#x2F;用户空间执行与访问隔离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IBRS-STIBP-%E2%80%94%E2%80%94-Spectre-%E5%8F%98%E4%BD%93-2-%E7%BC%93%E8%A7%A3"><span class="nav-text">IBRS &#x2F; STIBP —— Spectre 变体 2 缓解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-3-%E6%95%B0%E6%8D%AE%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="nav-text">1.6.3 数据完整性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Slab-Freelist-Hardening-%E2%80%94%E2%80%94-SLAB-%E7%A9%BA%E9%97%B2%E9%93%BE%E8%A1%A8%E5%8A%A0%E5%9B%BA"><span class="nav-text">Slab Freelist Hardening —— SLAB 空闲链表加固</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Slab-Freelist-Random-%E2%80%94%E2%80%94-%E7%A9%BA%E9%97%B2%E9%93%BE%E8%A1%A8%E9%A1%BA%E5%BA%8F%E9%9A%8F%E6%9C%BA%E5%8C%96"><span class="nav-text">Slab Freelist Random —— 空闲链表顺序随机化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Hardened-Usercopy-%E2%80%94%E2%80%94-%E5%8A%A0%E5%9B%BA%E7%9A%84%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%8B%B7%E8%B4%9D"><span class="nav-text">Hardened Usercopy —— 加固的用户空间拷贝</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RANDSTRUCT-%E2%80%94%E2%80%94-%E7%BB%93%E6%9E%84%E4%BD%93%E5%B8%83%E5%B1%80%E9%9A%8F%E6%9C%BA%E5%8C%96"><span class="nav-text">RANDSTRUCT —— 结构体布局随机化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LIST-HARDENED-%E2%80%94%E2%80%94-%E9%93%BE%E8%A1%A8%E5%AE%8C%E6%95%B4%E6%80%A7%E6%A3%80%E6%9F%A5"><span class="nav-text">LIST_HARDENED —— 链表完整性检查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KFENCE-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8%E7%94%B5%E5%AD%90%E5%9B%B4%E6%A0%8F"><span class="nav-text">KFENCE —— 内核电子围栏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FORTIFY-SOURCE-%E2%80%94%E2%80%94-%E7%BC%96%E8%AF%91%E6%9C%9F%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA%E6%A3%80%E6%B5%8B"><span class="nav-text">FORTIFY_SOURCE —— 编译期缓冲区溢出检测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-4-%E4%BF%A1%E6%81%AF%E6%B3%84%E9%9C%B2%E9%98%B2%E6%8A%A4"><span class="nav-text">1.6.4 信息泄露防护</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Dmesg-%E9%99%90%E5%88%B6"><span class="nav-text">Dmesg 限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KSTACK-ERASE-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8%E6%A0%88%E6%93%A6%E9%99%A4"><span class="nav-text">KSTACK_ERASE —— 内核栈擦除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#INIT-ON-ALLOC-INIT-ON-FREE-%E2%80%94%E2%80%94-%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">INIT_ON_ALLOC &#x2F; INIT_ON_FREE —— 内存初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#STRICT-KERNEL-RWX-STRICT-MODULE-RWX-%E2%80%94%E2%80%94-%E5%86%85%E6%A0%B8%E4%BB%A3%E7%A0%81%E5%8F%AA%E8%AF%BB"><span class="nav-text">STRICT_KERNEL_RWX &#x2F; STRICT_MODULE_RWX —— 内核代码只读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#STATIC-USERMODEHELPER-%E2%80%94%E2%80%94-%E9%9D%99%E6%80%81%E7%94%A8%E6%88%B7%E6%80%81%E5%8A%A9%E6%89%8B"><span class="nav-text">STATIC_USERMODEHELPER —— 静态用户态助手</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-5-%E4%BE%A7%E4%BF%A1%E9%81%93%E4%B8%8E-speculative-%E6%89%A7%E8%A1%8C%E9%98%B2%E6%8A%A4"><span class="nav-text">1.6.5 侧信道与 speculative 执行防护</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Spectre-%E5%8F%98%E4%BD%93-1%EF%BC%88Bounds-Check-Bypass%EF%BC%89"><span class="nav-text">Spectre 变体 1（Bounds Check Bypass）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Spectre-%E5%8F%98%E4%BD%93-2%EF%BC%88Branch-Target-Injection%EF%BC%89"><span class="nav-text">Spectre 变体 2（Branch Target Injection）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Meltdown%EF%BC%88Rogue-Data-Cache-Load%EF%BC%89"><span class="nav-text">Meltdown（Rogue Data Cache Load）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#L1TF%EF%BC%88L1-Terminal-Fault-Foreshadow%EF%BC%89"><span class="nav-text">L1TF（L1 Terminal Fault &#x2F; Foreshadow）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MDS%EF%BC%88Microarchitectural-Data-Sampling%EF%BC%89"><span class="nav-text">MDS（Microarchitectural Data Sampling）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-6-%E5%8A%A0%E5%9B%BA%E7%89%B9%E6%80%A7%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="nav-text">1.6.6 加固特性速查表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E4%BF%9D%E6%8A%A4"><span class="nav-text">地址空间保护</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A7%E5%88%B6%E6%B5%81%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="nav-text">控制流完整性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="nav-text">数据完整性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%A1%E6%81%AF%E6%B3%84%E9%9C%B2%E9%98%B2%E6%8A%A4"><span class="nav-text">信息泄露防护</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-6-7-%E7%BA%B5%E6%B7%B1%E9%98%B2%E5%BE%A1%E6%9E%B6%E6%9E%84%E5%9B%BE"><span class="nav-text">1.6.7 纵深防御架构图</span></a></li></ol></li></ol>
 
 	</div>
 </div>
@@ -805,7 +2843,7 @@
                 
                 <p class="post-count space-x-0.5">
                     <span>
-                        143 posts in total
+                        148 posts in total
                     </span>
                     
                 </p>

@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/05/28/linux内核分析之基础知识-04/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-04">
+<meta property="og:url" content="https://jelasin.github.io/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-04/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-05-28T10:15:43.000Z">
+<meta property="article:modified_time" content="2026-05-28T10:40:00.992Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-04 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.json"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-circle-info fa-beat-fade\" style=\"--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;\" ></i>","start":"2023/9/20 11:45:14","statistics":true,"customize":"关山初度尘未洗，策马扬鞭再奋蹄。","icp":{"enable":false,"number":null,"url":null}},"footerStart":"2023/9/20 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">16</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-04</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-05-28 18:15:43</span>
+        <span class="mobile">2026-05-28 18:15:43</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-05-28 18:40</span>
+            <span class="mobile">2026-05-28 18:40</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="5-1-ARM64-架构概述-——-寄存器、异常级别与系统寄存器"><a href="#5-1-ARM64-架构概述-——-寄存器、异常级别与系统寄存器" class="headerlink" title="5.1 ARM64 架构概述 —— 寄存器、异常级别与系统寄存器"></a>5.1 ARM64 架构概述 —— 寄存器、异常级别与系统寄存器</h1><p>本节全面介绍 ARM64（AArch64）执行状态的核心编程模型，这是理解 Linux ARM64 内核代码的基础。我们将依次讨论寄存器文件、异常级别模型、关键系统寄存器、过程调用约定，以及与 x86_64 的本质差异。</p>
+<h2 id="1-ARM64-寄存器文件"><a href="#1-ARM64-寄存器文件" class="headerlink" title="1. ARM64 寄存器文件"></a>1. ARM64 寄存器文件</h2><p>ARM64 的寄存器文件设计体现了”简洁即力量”的哲学。与 x86_64 继承自 8086 时代的寄存器命名和语义不同，ARM64 的寄存器编号线性、语义统一。</p>
+<h3 id="1-1-通用寄存器（X0-X30-W0-W30）"><a href="#1-1-通用寄存器（X0-X30-W0-W30）" class="headerlink" title="1.1 通用寄存器（X0-X30 &#x2F; W0-W30）"></a>1.1 通用寄存器（X0-X30 &#x2F; W0-W30）</h3><p>ARM64 提供 31 个 64 位通用寄存器，编号 X0 到 X30：</p>
+<ul>
+<li><strong>X0-X30</strong>：64 位（全量）访问。每个寄存器宽度为 64 位。</li>
+<li><strong>W0-W30</strong>：32 位访问，对应 X 寄存器的低 32 位。对 W 寄存器的写入会将对应 X 寄存器的高 32 位清零（而非像 x86 那样仅修改低 32 位而保留高位）。</li>
+</ul>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">63                                      0</span><br><span class="line">+---------------------------------------+</span><br><span class="line">|                X[n]                   |  64-bit access</span><br><span class="line">+-------------------+-------------------+</span><br><span class="line">|        (zeros)    |       W[n]        |  32-bit access (write zeros upper)</span><br><span class="line">+-------------------+-------------------+</span><br></pre></td></tr></table></figure></div>
+
+<p>注意是 31 个而非 32 个，因为 X31 被编码为零寄存器（XZR）而非通用寄存器。</p>
+<h3 id="1-2-零寄存器（XZR-WZR）"><a href="#1-2-零寄存器（XZR-WZR）" class="headerlink" title="1.2 零寄存器（XZR &#x2F; WZR）"></a>1.2 零寄存器（XZR &#x2F; WZR）</h3><p>XZR（64 位）和 WZR（32 位）是硬连线零寄存器：</p>
+<ul>
+<li><strong>读操作</strong>：始终返回 0</li>
+<li><strong>写操作</strong>：被丢弃，无任何效果</li>
+</ul>
+<p>零寄存器在内核代码中极为常见。例如，<code>MOV X0, XZR</code> 等价于将 X0 清零，但不需要一个立即数 0 的编码。在许多指令中，零寄存器充当”丢弃目标”——当你不需要指令的某个输出时，可以将目标设为 XZR。这比 x86 需要求助于 <code>XOR EAX, EAX</code> 或 <code>MOV EAX, 0</code> 更加优雅。</p>
+<p>零寄存器的设计消除了许多特殊指令变体的需要。例如，<code>CMP X0, X1</code> 实际上编码为 <code>SUBS XZR, X0, X1</code>——减法结果被丢弃，只影响条件标志。</p>
+<h3 id="1-3-栈指针（SP）"><a href="#1-3-栈指针（SP）" class="headerlink" title="1.3 栈指针（SP）"></a>1.3 栈指针（SP）</h3><p>栈指针 SP 是一个独立的寄存器，不属于通用寄存器文件：</p>
+<ul>
+<li>SP 不是 X31，尽管在某些指令编码中 X31 的位置可能映射到 SP 或 XZR（取决于具体指令）。</li>
+<li>SP 始终指向当前异常级别的栈顶。ARM64 栈为满降序（full descending）：SP 指向最后压入的数据，压栈时 SP 先递减再写入。</li>
+<li>对 SP 有严格的对齐要求：在 AArch64 状态下，SP 必须保持 16 字节对齐。违反此对齐规则会触发 SP 对齐异常（由 SCTLR_ELx.SA 控制）。</li>
+<li>大多数算术指令不能直接使用 SP 作为操作数，但 ADD&#x2F;SUB 指令有专门的 SP 操作形式。</li>
+</ul>
+<p>在 Linux 内核中，每个 CPU 的异常栈、内核栈、中断栈都通过 SP 进行管理。内核入口代码的第一件事通常就是将 SP 切换到对应的内核栈。</p>
+<h3 id="1-4-程序计数器（PC）"><a href="#1-4-程序计数器（PC）" class="headerlink" title="1.4 程序计数器（PC）"></a>1.4 程序计数器（PC）</h3><p>ARM64 的程序计数器 PC 同样是独立寄存器，不像 x86 那样与 RIP 合并：</p>
+<ul>
+<li>PC 不能作为大多数指令的操作数直接读写（这不是 x86 的 <code>MOV EAX, EIP</code>）</li>
+<li>PC 的修改只能通过以下方式：<ul>
+<li>条件分支：<code>B.cond</code>、<code>CBNZ</code>、<code>CBZ</code>、<code>TBNZ</code>、<code>TBZ</code></li>
+<li>无条件分支：<code>B</code>、<code>BL</code></li>
+<li>异常产生&#x2F;返回：<code>SVC</code>、<code>HVC</code>、<code>SMC</code>、<code>ERET</code></li>
+<li>间接分支：<code>BR</code>、<code>BLR</code>、<code>RET</code></li>
+</ul>
+</li>
+<li><code>ADR</code> 和 <code>ADRP</code> 指令可以基于 PC 计算地址，但不是直接读取 PC</li>
+</ul>
+<h3 id="1-5-处理器状态寄存器（PSTATE）"><a href="#1-5-处理器状态寄存器（PSTATE）" class="headerlink" title="1.5 处理器状态寄存器（PSTATE）"></a>1.5 处理器状态寄存器（PSTATE）</h3><p>PSTATE 不是一个单一寄存器，而是处理器状态的抽象集合。在 AArch64 中，PSTATE 的各个字段独立访问（不像 x86 的 RFLAGS 那样是一个整体寄存器）：</p>
+<p><strong>条件标志（NZCV）</strong>：</p>
+<ul>
+<li><strong>N</strong>（Negative）：运算结果的最高位为 1 时置位</li>
+<li><strong>Z</strong>（Zero）：运算结果为零时置位</li>
+<li><strong>C</strong>（Carry）：无符号溢出时置位</li>
+<li><strong>V</strong>（oVerflow）：有符号溢出时置位</li>
+</ul>
+<p>与 x86 不同，大多数 ARM64 算术指令不会自动设置条件标志。只有以 “S” 结尾的指令（如 <code>ADDS</code>、<code>SUBS</code>）才会更新 NZCV。这使得编译器可以自由调度普通算术指令而不用担心标志被破坏。</p>
+<p><strong>中断屏蔽（DAIF）</strong>：</p>
+<ul>
+<li><strong>D</strong>（Debug mask）：屏蔽硬件调试异常</li>
+<li><strong>A</strong>（SError mask）：屏蔽系统错误（SError）</li>
+<li><strong>I</strong>（IRQ mask）：屏蔽普通中断</li>
+<li><strong>F</strong>（FIQ mask）：屏蔽快速中断</li>
+</ul>
+<p>Linux 内核通过 <code>DAIF</code> 字段控制中断使能。<code>local_irq_enable()</code> 本质上就是清除 <code>DAIF.I</code> 位，<code>local_irq_disable()</code> 则是设置该位。</p>
+<p><strong>安全与访问控制</strong>：</p>
+<ul>
+<li><strong>PAN</strong>（Privileged Access Never）：阻止 EL1 对用户空间内存的直接访问（防止内核直接读写用户缓冲区，强制使用 <code>copy_to_user</code>&#x2F;<code>copy_from_user</code> 等安全接口）</li>
+<li><strong>UAO</strong>（User Access Override）：临时覆盖 PAN，允许内核在 <code>uaccess</code> 操作期间访问用户空间</li>
+<li><strong>SSBS</strong>（Speculative Store Bypass Safe）：控制推测性存储旁路行为</li>
+<li><strong>DIT</strong>（Data Independent Timing）：启用数据无关时序模式，减少侧信道攻击面</li>
+<li><strong>TCO</strong>（Tag Check Override）：控制 MTE 标签检查</li>
+</ul>
+<p><strong>当前状态</strong>：</p>
+<ul>
+<li><strong>EL</strong>：当前异常级别（0-3）</li>
+<li><strong>SP</strong>：当前使用的栈指针选择（SP_EL0 或 SP_ELx）</li>
+</ul>
+<h3 id="1-6-NEON-SIMD-寄存器（V0-V31）"><a href="#1-6-NEON-SIMD-寄存器（V0-V31）" class="headerlink" title="1.6 NEON&#x2F;SIMD 寄存器（V0-V31）"></a>1.6 NEON&#x2F;SIMD 寄存器（V0-V31）</h3><p>ARM64 的 SIMD&#x2F;浮点寄存器组包含 32 个 128 位寄存器 V0-V31，每个可以按多种粒度访问：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">127                                   0</span><br><span class="line">+---------------------------------------+</span><br><span class="line">|                Q[n]                   |  128-bit (Quadword)</span><br><span class="line">+-------------------+-------------------+</span><br><span class="line">|                   |        D[n]       |   64-bit (Doubleword)</span><br><span class="line">+-------------------+----------+--------+</span><br><span class="line">|                   |          | S[n]   |  32-bit (Single word)</span><br><span class="line">+-------------------+----------+--------+</span><br><span class="line">|                   |   | H[n] |        |  16-bit (Halfword)</span><br><span class="line">+-------------------+----------+--------+</span><br><span class="line">|                   |B[n]|              |   8-bit (Byte)</span><br><span class="line">+-------------------+----------+--------+</span><br></pre></td></tr></table></figure></div>
+
+<p>这些寄存器在内核中主要用于：</p>
+<ul>
+<li><strong>内核模式 NEON</strong>：某些内核路径（如加密算法）使用 NEON 指令加速。Linux 通过 <code>kernel_neon_begin()</code>&#x2F;<code>kernel_neon_end()</code> 管理内核对 NEON 寄存器的借用。</li>
+<li><strong>信号处理</strong>：保存和恢复用户空间的浮点&#x2F;SIMD 状态。</li>
+<li><strong><code>fpsimd_state</code> 结构体</strong>：用于管理浮点&#x2F;SIMD 上下文的保存和恢复。</li>
+</ul>
+<h3 id="1-7-SVE-寄存器（Z0-Z31-P0-P15）"><a href="#1-7-SVE-寄存器（Z0-Z31-P0-P15）" class="headerlink" title="1.7 SVE 寄存器（Z0-Z31, P0-P15）"></a>1.7 SVE 寄存器（Z0-Z31, P0-P15）</h3><p>可伸缩向量扩展（Scalable Vector Extension, SVE）是 ARMv8-A 的可选扩展，引入了可变长度的向量寄存器：</p>
+<ul>
+<li><strong>Z0-Z31</strong>：可伸缩向量数据寄存器，每个宽度从 128 位到 2048 位（由实现决定），是 V0-V31 的超集（低 128 位即对应的 V 寄存器）</li>
+<li><strong>P0-P15</strong>：16 个谓词（Predicate）寄存器，每个宽度为 Z 寄存器的 1&#x2F;8，用于逐元素条件控制</li>
+</ul>
+<p>SVE 的核心理念是”编写一次，在不同向量长度的硬件上都能运行”。软件通过 <code>RDVL</code> 等指令在运行时查询向量长度，而不需要为特定长度硬编码。</p>
+<p>SVE2 是 SVE 的增量扩展，增加了更多指令类别。Linux 内核通过 <code>fpsimd</code> 子系统统一管理 NEON 和 SVE 状态，在上下文切换时按需保存和恢复。</p>
+<h2 id="2-异常级别（Exception-Levels-EL0-EL3）"><a href="#2-异常级别（Exception-Levels-EL0-EL3）" class="headerlink" title="2. 异常级别（Exception Levels, EL0-EL3）"></a>2. 异常级别（Exception Levels, EL0-EL3）</h2><p>ARM64 采用四级异常级别模型，取代了 x86 的 Ring 0-3 保护环模型。异常级别在概念上类似特权级，但语义更加清晰和严格：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+-----------------------------------------------+</span><br><span class="line">|  EL3  Secure Monitor (ARM TrustZone)          |  最高特权</span><br><span class="line">+-----------------------------------------------+</span><br><span class="line">|  EL2  Hypervisor (虚拟化支持)                   |</span><br><span class="line">+-----------------------------------------------+</span><br><span class="line">|  EL1  OS Kernel (Linux 运行于此)                |</span><br><span class="line">+-----------------------------------------------+</span><br><span class="line">|  EL0  User Applications (用户态)                |  最低特权</span><br><span class="line">+-----------------------------------------------+</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="2-1-各级别的角色"><a href="#2-1-各级别的角色" class="headerlink" title="2.1 各级别的角色"></a>2.1 各级别的角色</h3><p><strong>EL0 —— 用户应用层</strong>：</p>
+<ul>
+<li>运行普通用户态应用程序</li>
+<li>无硬件特权，所有系统资源访问必须通过 SVC 系统调用陷入内核</li>
+<li>使用 TTBR0_EL1 指向的页表（用户空间地址）</li>
+<li>执行 AArch64 或 AArch32 指令集（可选）</li>
+</ul>
+<p><strong>EL1 —— 操作系统内核层</strong>：</p>
+<ul>
+<li>Linux 内核通常运行在此级别</li>
+<li>拥有完整的系统寄存器访问权限（EL1 级别的系统寄存器）</li>
+<li>管理页表、中断、设备驱动等</li>
+<li>可以控制 EL0 的行为（通过 SCTLR_EL1、TCR_EL1 等）</li>
+</ul>
+<p><strong>EL2 —— 虚拟机监控器层</strong>：</p>
+<ul>
+<li>运行 Hypervisor（如 KVM）</li>
+<li>管理虚拟机的创建、调度和隔离</li>
+<li>控制第二阶段地址翻译（Stage-2 Translation）</li>
+<li>VHE（Virtualization Host Extension）允许 Linux 内核在 EL2 运行，同时保持 EL1 的语义</li>
+</ul>
+<p><strong>EL3 —— 安全监控器层</strong>：</p>
+<ul>
+<li>ARM TrustZone 的核心，管理安全世界（Secure world）和非安全世界（Normal world）之间的切换</li>
+<li>最高特权级别，可以访问所有系统资源</li>
+<li>通常运行 ARM Trusted Firmware（ATF&#x2F;TF-A）</li>
+<li>Linux 内核不直接操作 EL3，但通过 SMC（Secure Monitor Call）指令请求 EL3 服务</li>
+</ul>
+<h3 id="2-2-Linux-运行的异常级别"><a href="#2-2-Linux-运行的异常级别" class="headerlink" title="2.2 Linux 运行的异常级别"></a>2.2 Linux 运行的异常级别</h3><p>Linux 内核通常运行在 EL1。但在启用了 VHE（Virtualization Host Extension）的系统上，为了支持更高效的虚拟化，内核会运行在 EL2。VHE 扩展通过修改 EL2 的行为使其”看起来像”EL1，这样内核代码无需大规模修改即可在 EL2 运行。</p>
+<p>内核在启动时通过检查 <code>ID_AA64MMFR1_EL1.VH</code> 字段判断是否支持 VHE，并通过 <code>__boot_cpu_mode</code> 变量记录实际启动的异常级别。相关逻辑参见 <code>arch/arm64/kernel/head.S</code> 和 <code>arch/arm64/kernel/hyp-stub.S</code>。</p>
+<h3 id="2-3-异常级别的关键系统寄存器"><a href="#2-3-异常级别的关键系统寄存器" class="headerlink" title="2.3 异常级别的关键系统寄存器"></a>2.3 异常级别的关键系统寄存器</h3><p><strong>CurrentEL</strong>：读取当前异常级别：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">MRS X0, CurrentEL</span><br><span class="line">// X0[3:2] = 00 (EL0), 01 (EL1), 10 (EL2), 11 (EL3)</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>SPSR_ELx</strong>（Saved Program Status Register）：异常发生时，处理器自动将 PSTATE 保存到目标异常级别的 SPSR 中。<code>ERET</code> 指令从 SPSR 恢复 PSTATE。</p>
+<p><strong>ESR_ELx</strong>（Exception Syndrome Register）：包含异常的综合信息——异常类别（EC 字段）和具体条件码（ISS 字段）。内核的异常处理程序依赖此寄存器判断异常原因。例如：</p>
+<ul>
+<li>EC&#x3D;0x15：SVC 系统调用，ISS 中包含系统调用号</li>
+<li>EC&#x3D;0x24：数据中止（Data Abort，如缺页），ISS 中包含读写方向、访问大小等信息</li>
+<li>EC&#x3D;0x20：指令中止（Instruction Abort，如代码页缺失）</li>
+</ul>
+<p><strong>ELR_ELx</strong>（Exception Link Register）：异常发生时保存返回地址。对于同步异常，返回到产生异常的指令；对于中断，返回到下一条待执行指令。<code>ERET</code> 从此寄存器恢复 PC。</p>
+<p><strong>FAR_ELx</strong>（Fault Address Register）：对于访存引起的异常，FAR 保存触发异常的虚拟地址。缺页处理程序通过此寄存器获得故障地址。</p>
+<h2 id="3-关键系统寄存器"><a href="#3-关键系统寄存器" class="headerlink" title="3. 关键系统寄存器"></a>3. 关键系统寄存器</h2><p>ARM64 的系统寄存器通过 <code>MRS</code>（读）和 <code>MSR</code>（写）指令访问，命名遵循 <code>&lt;name&gt;_&lt;op0&gt;_&lt;op1&gt;_&lt;CRn&gt;_&lt;CRm&gt;_&lt;op2&gt;</code> 的编码格式，但 Linux 代码中通常使用助记符名称。</p>
+<h3 id="3-1-SCTLR-EL1-——-系统控制寄存器"><a href="#3-1-SCTLR-EL1-——-系统控制寄存器" class="headerlink" title="3.1 SCTLR_EL1 —— 系统控制寄存器"></a>3.1 SCTLR_EL1 —— 系统控制寄存器</h3><p>SCTLR_EL1 是最重要的系统控制寄存器之一，控制处理器的多项核心行为：</p>
+<table>
+<thead>
+<tr>
+<th>位域</th>
+<th>名称</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>M</td>
+<td>MMU 使能（1&#x3D;开启地址翻译）</td>
+</tr>
+<tr>
+<td>1</td>
+<td>A</td>
+<td>对齐检查使能</td>
+</tr>
+<tr>
+<td>2</td>
+<td>C</td>
+<td>数据缓存使能</td>
+</tr>
+<tr>
+<td>3</td>
+<td>SA</td>
+<td>SP 对齐检查使能</td>
+</tr>
+<tr>
+<td>4</td>
+<td>SA0</td>
+<td>EL0 的 SP 对齐检查</td>
+</tr>
+<tr>
+<td>17</td>
+<td>PAN</td>
+<td>特权访问禁止（阻止 EL1 直接访问用户空间内存）</td>
+</tr>
+<tr>
+<td>18</td>
+<td>UAO</td>
+<td>用户访问覆盖（配合 PAN 使用）</td>
+</tr>
+<tr>
+<td>22</td>
+<td>EE</td>
+<td>数据字节序（0&#x3D;小端，1&#x3D;大端）</td>
+</tr>
+<tr>
+<td>23</td>
+<td>E0E</td>
+<td>EL0 数据字节序</td>
+</tr>
+</tbody></table>
+<p>在 Linux 内核启动的早期阶段（<code>__primary_entry</code> 到 <code>__cpu_setup</code>），SCTLR 的配置是关键步骤之一。内核需要先关闭 MMU 和缓存，配置好页表后再重新启用。</p>
+<h3 id="3-2-TCR-EL1-——-翻译控制寄存器"><a href="#3-2-TCR-EL1-——-翻译控制寄存器" class="headerlink" title="3.2 TCR_EL1 —— 翻译控制寄存器"></a>3.2 TCR_EL1 —— 翻译控制寄存器</h3><p>TCR_EL1 控制地址翻译的各个方面：</p>
+<ul>
+<li><strong>T0SZ &#x2F; T1SZ</strong>：TTBR0&#x2F;TTBR1 覆盖的地址空间大小。Linux 默认配置 T0SZ&#x3D;25（用户空间 39 位地址）、T1SZ&#x3D;25（内核空间 39 位地址），共构成 48 位虚拟地址空间。在支持 52 位 VA 的系统上（ARMv8.2-LVA），这些值可以更小。</li>
+<li><strong>TG0 &#x2F; TG1</strong>：TTBR0&#x2F;TTBR1 的页粒度（4KB&#x2F;16KB&#x2F;64KB）。Linux 允许在编译时选择页大小。</li>
+<li><strong>IR0&#x2F;IR1, OR0&#x2F;OR1</strong>：内部&#x2F;外部缓存的回写属性（Normal Cacheable、Non-cacheable 等）</li>
+<li><strong>SH0&#x2F;SH1</strong>：页表内存的共享属性（Inner Shareable、Outer Shareable 等）</li>
+<li><strong>E0PD0 &#x2F; E0PD1</strong>：EL0 访问时对 TTBR0&#x2F;TTBR1 区域的预防性拒绝（安全特性，防止推测性访问）</li>
+</ul>
+<h3 id="3-3-TTBR0-EL1-与-TTBR1-EL1-——-页表基址寄存器"><a href="#3-3-TTBR0-EL1-与-TTBR1-EL1-——-页表基址寄存器" class="headerlink" title="3.3 TTBR0_EL1 与 TTBR1_EL1 —— 页表基址寄存器"></a>3.3 TTBR0_EL1 与 TTBR1_EL1 —— 页表基址寄存器</h3><p>ARM64 使用双页表基址寄存器实现地址空间隔离：</p>
+<ul>
+<li><strong>TTBR0_EL1</strong>：用户空间页表基址，覆盖虚拟地址空间的低半部分（VA[63]&#x3D;0）</li>
+<li><strong>TTBR1_EL1</strong>：内核空间页表基址，覆盖虚拟地址空间的高半部分（VA[63]&#x3D;1）</li>
+</ul>
+<p>这种设计的优势在于：内核页表和用户页表可以独立管理，切换进程时只需切换 TTBR0 即可，TTBR1 保持不变（内核页表在所有进程间共享）。这比 x86_64 的单一 CR3 寄存器更加高效。</p>
+<p>在 Linux ARM64 中，<code>mm_struct-&gt;pgd</code> 指向进程的完整页表，其中 TTBR0 部分是进程私有的，TTBR1 部分指向共享的内核页表（<code>init_mm.pgd</code>）。KPTI（Kernel Page Table Isolation）通过为每个进程维护两套页表来隔离内核空间。</p>
+<h3 id="3-4-VBAR-EL1-——-向量基址寄存器"><a href="#3-4-VBAR-EL1-——-向量基址寄存器" class="headerlink" title="3.4 VBAR_EL1 —— 向量基址寄存器"></a>3.4 VBAR_EL1 —— 向量基址寄存器</h3><p>VBAR_EL1 保存异常向量表的基地址。当异常发生时，处理器根据异常类型和当前状态（异常级别、栈指针选择）从向量表中取入口地址：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">VBAR_EL1 + 0x000  : EL0, SP0, 同步异常 (Current EL with SP0)</span><br><span class="line">VBAR_EL1 + 0x080  : EL0, SP0, IRQ</span><br><span class="line">VBAR_EL1 + 0x100  : EL0, SP0, FIQ</span><br><span class="line">VBAR_EL1 + 0x180  : EL0, SP0, SError</span><br><span class="line"></span><br><span class="line">VBAR_EL1 + 0x200  : EL0, SPx, 同步异常 (Current EL with SPx)</span><br><span class="line">VBAR_EL1 + 0x280  : EL0, SPx, IRQ</span><br><span class="line">VBAR_EL1 + 0x300  : EL0, SPx, FIQ</span><br><span class="line">VBAR_EL1 + 0x380  : EL0, SPx, SError</span><br><span class="line"></span><br><span class="line">VBAR_EL1 + 0x400  : EL1 (来自低级别), 同步异常</span><br><span class="line">VBAR_EL1 + 0x480  : EL1 (来自低级别), IRQ</span><br><span class="line">VBAR_EL1 + 0x500  : EL1 (来自低级别), FIQ</span><br><span class="line">VBAR_EL1 + 0x580  : EL1 (来自低级别), SError</span><br><span class="line"></span><br><span class="line">VBAR_EL1 + 0x600  : EL1 (来自同级), 同步异常</span><br><span class="line">VBAR_EL1 + 0x680  : EL1 (来自同级), IRQ</span><br><span class="line">VBAR_EL1 + 0x700  : EL1 (来自同级), FIQ</span><br><span class="line">VBAR_EL1 + 0x780  : EL1 (来自同级), SError</span><br></pre></td></tr></table></figure></div>
+
+<p>Linux 内核的异常向量表定义在 <code>arch/arm64/kernel/entry.S</code> 中，每个入口占 128 字节（0x80），内含跳转到具体处理程序的指令。</p>
+<h3 id="3-5-MAIR-EL1-——-内存属性间接寄存器"><a href="#3-5-MAIR-EL1-——-内存属性间接寄存器" class="headerlink" title="3.5 MAIR_EL1 —— 内存属性间接寄存器"></a>3.5 MAIR_EL1 —— 内存属性间接寄存器</h3><p>MAIR_EL1 定义了最多 8 种内存属性，供页表项中的 AttrIndex 字段引用：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">AttrIndex 0 (000): Device-nGnRnE (最强设备属性，无聚合、无重排、无早期写确认)</span><br><span class="line">AttrIndex 1 (001): Normal, Inner/Outer Non-cacheable</span><br><span class="line">AttrIndex 2 (010): Normal, Inner/Outer Cacheable, R/W Allocate</span><br><span class="line">AttrIndex 3 (011): Normal, Inner/Outer Cacheable, R Allocate (用于只读数据)</span><br><span class="line">...</span><br></pre></td></tr></table></figure></div>
+
+<p>Linux ARM64 在 <code>__cpu_setup</code> 中配置 MAIR_EL1，将页表项的 AttrIndex 映射到具体的缓存属性。这与 x86 的 PAT（Page Attribute Table）在功能上类似，但编码方式不同。</p>
+<h3 id="3-6-ID-AA64-系列-——-CPU-特性标识寄存器"><a href="#3-6-ID-AA64-系列-——-CPU-特性标识寄存器" class="headerlink" title="3.6 ID_AA64* 系列 —— CPU 特性标识寄存器"></a>3.6 ID_AA64* 系列 —— CPU 特性标识寄存器</h3><p>ARM64 通过一组只读系统寄存器向软件报告处理器支持的功能特性：</p>
+<ul>
+<li><code>ID_AA64ISAR0_EL1</code> &#x2F; <code>ID_AA64ISAR1_EL1</code> &#x2F; <code>ID_AA64ISAR2_EL1</code>：指令集特性（AES、SHA、CRC32、Atomic、SME、MOPS 等）</li>
+<li><code>ID_AA64MMFR0_EL1</code> ~ <code>ID_AA64MMFR5_EL1</code>：内存模型特性（物理地址大小、VA 大小、BIG_ENDIAN、SVE VL、EVC 等）</li>
+<li><code>ID_AA64PFR0_EL1</code> ~ <code>ID_AA64PFR2_EL1</code>：处理器特性（EL 支持、FP&#x2F;SIMD、SVE、SME、GCS、RME 等）</li>
+<li><code>ID_AA64DFR0_EL1</code> &#x2F; <code>ID_AA64DFR1_EL1</code>：调试特性（断点数量、PMU 版本、Trace 等)</li>
+</ul>
+<p>Linux 内核通过 <code>arm64_ftr_reg</code> 框架解析这些寄存器，维护系统范围内各特性的最小公共能力（在多核系统中，特性能力取所有 CPU 的交集），并通过 <code>cpu_feature</code> 和 <code>arm64_kernel_features</code> 机制在运行时检测和使能新特性。</p>
+<h2 id="4-过程调用约定（AAPCS64）"><a href="#4-过程调用约定（AAPCS64）" class="headerlink" title="4. 过程调用约定（AAPCS64）"></a>4. 过程调用约定（AAPCS64）</h2><p>ARM64 遵循 ARM Architecture Procedure Call Standard for 64-bit（AAPCS64）调用约定，这是所有 ARM64 软件必须遵守的二进制接口规范：</p>
+<h3 id="4-1-寄存器角色分配"><a href="#4-1-寄存器角色分配" class="headerlink" title="4.1 寄存器角色分配"></a>4.1 寄存器角色分配</h3><table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>角色</th>
+<th>调用者&#x2F;被调用者保存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>X0-X7</td>
+<td>参数&#x2F;返回值</td>
+<td>调用者保存（caller-saved）</td>
+</tr>
+<tr>
+<td>X8</td>
+<td>间接结果位置 &#x2F; 系统调用号</td>
+<td>调用者保存</td>
+</tr>
+<tr>
+<td>X9-X15</td>
+<td>临时寄存器</td>
+<td>调用者保存</td>
+</tr>
+<tr>
+<td>X16-X17</td>
+<td>IP0&#x2F;IP1（链接器&#x2F;PLT 临时）</td>
+<td>调用者保存</td>
+</tr>
+<tr>
+<td>X18</td>
+<td>平台寄存器（Linux 未使用或特殊用途）</td>
+<td>调用者保存</td>
+</tr>
+<tr>
+<td>X19-X28</td>
+<td>被调用者保存</td>
+<td>被调用者保存（callee-saved）</td>
+</tr>
+<tr>
+<td>X29</td>
+<td>帧指针（FP）</td>
+<td>被调用者保存</td>
+</tr>
+<tr>
+<td>X30</td>
+<td>链接寄存器（LR）</td>
+<td>被调用者保存（通过保存到栈）</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-参数传递与返回值"><a href="#4-2-参数传递与返回值" class="headerlink" title="4.2 参数传递与返回值"></a>4.2 参数传递与返回值</h3><ul>
+<li>函数参数通过 X0-X7 按顺序传递，最多 8 个整数&#x2F;指针参数通过寄存器传递</li>
+<li>超出 8 个的参数通过栈传递</li>
+<li>返回值通过 X0 传递（128 位返回值使用 X0:X1 对）</li>
+<li>浮点&#x2F;向量参数通过 V0-V7 传递</li>
+<li>大于 16 字节的返回值由调用者分配内存，X8 传递指向该内存的指针</li>
+</ul>
+<h3 id="4-3-栈帧布局"><a href="#4-3-栈帧布局" class="headerlink" title="4.3 栈帧布局"></a>4.3 栈帧布局</h3><p>ARM64 的栈为满降序，16 字节对齐：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">低地址</span><br><span class="line">          +-------------------+</span><br><span class="line">          |  局部变量          |</span><br><span class="line">          |  ...              |</span><br><span class="line">          |  被调用者保存的     |  &lt;- FP (X29) 指向此处</span><br><span class="line">SP ----&gt;  |    X19, X20, ...  |</span><br><span class="line">          |    FP (X29)       |  &lt;- 保存的帧指针</span><br><span class="line">          |    LR (X30)       |  &lt;- 保存的返回地址</span><br><span class="line">          +-------------------+</span><br><span class="line">高地址</span><br></pre></td></tr></table></figure></div>
+
+<p><code>STP X29, X30, [SP, #-16]!</code> 是典型的函数序言，同时保存帧指针和返回地址并递减 SP。<code>LDP X29, X30, [SP], #16</code> 是对应的花尾。</p>
+<p>帧指针链（Frame Pointer Chain）通过每个栈帧中保存的 X29 形成链表，内核的栈回溯（stacktrace）机制依赖此链来追踪调用路径。内核编译时通常启用 <code>-fno-omit-frame-pointer</code> 以保证 X29 始终指向有效的帧指针。</p>
+<h2 id="5-ARM64-与-x86-64-的本质架构差异"><a href="#5-ARM64-与-x86-64-的本质架构差异" class="headerlink" title="5. ARM64 与 x86_64 的本质架构差异"></a>5. ARM64 与 x86_64 的本质架构差异</h2><h3 id="5-1-Load-Store-架构"><a href="#5-1-Load-Store-架构" class="headerlink" title="5.1 Load&#x2F;Store 架构"></a>5.1 Load&#x2F;Store 架构</h3><p>ARM64 是纯粹的 Load&#x2F;Store 架构：只有专门的 Load（<code>LDR</code>、<code>LDP</code>）和 Store（<code>STR</code>、<code>STP</code>）指令才能访问内存，算术和逻辑指令只能在寄存器之间操作。</p>
+<p>x86_64 允许 <code>ADD RAX, [RBX]</code> 这样的内存+寄存器操作，但 ARM64 必须先 Load 再计算再 Store：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// x86_64: 单条指令</span><br><span class="line">ADD RAX, [RBX]</span><br><span class="line"></span><br><span class="line">// ARM64: 必须分两步</span><br><span class="line">LDR X1, [X0]       // 先从内存加载</span><br><span class="line">ADD X0, X0, X1     // 再在寄存器间运算</span><br></pre></td></tr></table></figure></div>
+
+<p>这种设计简化了指令解码和流水线设计，但需要更多寄存器来暂存中间值（这也是 ARM64 有 31 个 GPR 的原因之一）。</p>
+<h3 id="5-2-固定长度指令"><a href="#5-2-固定长度指令" class="headerlink" title="5.2 固定长度指令"></a>5.2 固定长度指令</h3><p>AArch64 所有指令都是 32 位固定长度，这带来了多个优势：</p>
+<ul>
+<li>指令解码简单高效，不需要 x86 那样复杂的长度前缀解析</li>
+<li>指令边界确定，有利于分支预测和指令预取</li>
+<li>不需要 IT（If-Then）块等复杂的指令编码机制</li>
+<li>但代价是编码空间有限，立即数范围受到约束（ARM64 使用复杂的位模式编码立即数）</li>
+</ul>
+<h3 id="5-3-条件执行模型"><a href="#5-3-条件执行模型" class="headerlink" title="5.3 条件执行模型"></a>5.3 条件执行模型</h3><p>x86 的几乎所有算术指令都会设置 RFLAGS，随后通过条件跳转（<code>JZ</code>、<code>JNZ</code> 等）检查标志。ARM64 的模型则不同：</p>
+<ul>
+<li>大多数算术指令不设置标志（没有隐式副作用）</li>
+<li>只有带 S 后缀的指令（<code>ADDS</code>、<code>SUBS</code>、<code>ANDS</code>）更新 NZCV</li>
+<li>提供条件选择指令，避免分支：<code>CSEL Xd, Xn, Xm, cond</code>（条件为真选 Xn，否则选 Xm）</li>
+<li>类似的还有 <code>CSINC</code>、<code>CSINV</code>、<code>CSNEG</code> 等</li>
+</ul>
+<p>在内核代码中，<code>CSEL</code> 被广泛用于无分支的条件选择，减少分支预测失败的开销。</p>
+<h3 id="5-4-无分段机制"><a href="#5-4-无分段机制" class="headerlink" title="5.4 无分段机制"></a>5.4 无分段机制</h3><p>ARM64 完全没有 x86 的段描述符、段选择子、GDT&#x2F;LDT 等分段概念。地址翻译直接从虚拟地址通过页表映射到物理地址，没有段级转换。这大大简化了内存管理模型，也消除了 x86 分段机制带来的历史复杂性。</p>
+<h3 id="5-5-异常级别-vs-保护环"><a href="#5-5-异常级别-vs-保护环" class="headerlink" title="5.5 异常级别 vs 保护环"></a>5.5 异常级别 vs 保护环</h3><p>x86 的 Ring 0-3 是平坦的四个特权级，但实际上只有 Ring 0（内核）和 Ring 3（用户）被广泛使用。ARM64 的 EL 模型则赋予了每个级别明确的角色：EL0 给应用、EL1 给内核、EL2 给虚拟化、EL3 给安全。EL 之间不能自由转移——只能通过异常（向上）和 <code>ERET</code>（向下返回）来切换，且只能逐级返回，不能跳级。</p>
+<p>这种设计使得 ARM64 的特权模型比 x86 更加结构化，也为虚拟化和安全扩展提供了天然的硬件支持，而不需要像 x86 那样引入 VT-x&#x2F;VT-d 等附加扩展来弥补模型缺陷。5.2 ARM64 虚拟内存：TTBR0&#x2F;TTBR1 分割与多级页表</p>
+<p>ARM64 架构在虚拟内存管理上采用了与 x86_64 截然不同的设计哲学。其中最核心的区别在于：ARM64 使用两个独立的页表基址寄存器（TTBR0 和 TTBR1），将整个虚拟地址空间一分为二，分别服务于用户空间和内核空间。这种设计从根本上改变了地址翻译的硬件行为，也深刻影响了 Linux 内核在 ARM64 上的内存管理实现。</p>
+<h2 id="5-2-1-TTBR0-TTBR1-地址空间分割"><a href="#5-2-1-TTBR0-TTBR1-地址空间分割" class="headerlink" title="5.2.1 TTBR0&#x2F;TTBR1 地址空间分割"></a>5.2.1 TTBR0&#x2F;TTBR1 地址空间分割</h2><h3 id="双寄存器机制"><a href="#双寄存器机制" class="headerlink" title="双寄存器机制"></a>双寄存器机制</h3><p>ARM64 架构定义了两个翻译表基址寄存器：</p>
+<ul>
+<li><strong>TTBR0_EL1</strong>：映射虚拟地址空间的低半部分（用户空间），当虚拟地址的第 63 位（VA[63]）为 0 时，硬件自动选择此寄存器进行地址翻译。</li>
+<li><strong>TTBR1_EL1</strong>：映射虚拟地址空间的高半部分（内核空间），当虚拟地址的第 63 位（VA[63]）为 1 时，硬件自动选择此寄存器进行地址翻译。</li>
+</ul>
+<p>这种设计与 x86_64 形成鲜明对比。在 x86_64 上，单个 CR3 寄存器管理整个虚拟地址空间的页表，内核空间和用户空间共存于同一张页表中。而 ARM64 的双 TTBR 设计意味着用户空间和内核空间拥有完全独立的页表结构，硬件在每条指令访存时根据地址最高位自动选择对应的页表，无需软件干预。</p>
+<h3 id="TCR-EL1-的控制作用"><a href="#TCR-EL1-的控制作用" class="headerlink" title="TCR_EL1 的控制作用"></a>TCR_EL1 的控制作用</h3><p>翻译控制寄存器 TCR_EL1 负责配置地址翻译的各项参数，其中最关键的是 T0SZ 和 T1SZ 字段：</p>
+<ul>
+<li><strong>TCR_EL1.T0SZ</strong>：控制 TTBR0 管理的地址空间大小。有效地址位数为 <code>64 - T0SZ</code>，即 T0SZ 越大，用户空间越小。</li>
+<li><strong>TCR_EL1.T1SZ</strong>：控制 TTBR1 管理的地址空间大小。有效地址位数为 <code>64 - T1SZ</code>。</li>
+</ul>
+<p>默认配置下，两半空间大小相等，各占 <code>VA_BITS</code> 位地址宽度。以常见的 48 位虚拟地址为例，用户空间覆盖 <code>0x0000000000000000</code> 至 <code>0x0000FFFFFFFFFFFF</code>（256TB），内核空间覆盖 <code>0xFFFF000000000000</code> 至 <code>0xFFFFFFFFFFFFFFFF</code>（256TB）。</p>
+<p>TCR_EL1 还配置了中间物理地址宽度（IPS 字段）、页大小（TG0&#x2F;TG1）、共享属性（SH0&#x2F;SH1）、缓存属性（IRGN0&#x2F;IRGN1、ORGN0&#x2F;ORGN1）等关键参数。这些字段的 0&#x2F;1 后缀分别对应 TTBR0 和 TTBR1，允许对两半地址空间使用不同的配置。</p>
+<h2 id="5-2-2-虚拟地址空间布局"><a href="#5-2-2-虚拟地址空间布局" class="headerlink" title="5.2.2 虚拟地址空间布局"></a>5.2.2 虚拟地址空间布局</h2><p>以 48 位虚拟地址（4KB 页、4 级页表）为典型配置，ARM64 Linux 的虚拟地址空间布局如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">用户空间（TTBR0，256TB）：</span><br><span class="line">0x0000000000000000 - 0x0000FFFFFFFFFFFF  用户空间</span><br><span class="line"></span><br><span class="line">内核空间（TTBR1，256TB）：</span><br><span class="line">0xFFFF000000000000 - 0xFFFF0000FFFFFFFF  模块区域（Module region，2GB）</span><br><span class="line">0xFFFF001000000000 - ...                 vmalloc 区域</span><br><span class="line">...                                      IOREMAP 区域</span><br><span class="line">...                                      PCIe 配置空间映射</span><br><span class="line">...                                      直接物理内存映射（线性映射区）</span><br><span class="line">...                                      vmemmap（struct page 数组）</span><br><span class="line">...                                      固定映射区（fixmap）</span><br><span class="line">...                                      内核代码段（__init_begin 到 _end）</span><br><span class="line">0xFFFFFFFFFFFFFFFF                       内核空间顶部</span><br></pre></td></tr></table></figure></div>
+
+<p>其中几个关键区域的意义如下：</p>
+<ul>
+<li><strong>模块区域</strong>：位于内核空间最底部，紧挨着地址空间中点。内核模块（可加载模块 .ko 文件）加载到此处，因为它需要在内核虚拟地址空间中，但又靠近用户空间边界以便于地址转换。</li>
+<li><strong>vmalloc 区域</strong>：用于动态虚拟地址映射，包括 <code>vmalloc()</code>、<code>vmap()</code> 等分配。此区域与线性映射区物理上可能不连续。</li>
+<li><strong>线性映射区</strong>：物理内存的 1:1（加偏移）直接映射。大部分物理内存通过此区域访问，<code>__pa()</code> 和 <code>__va()</code> 宏在此区域工作。</li>
+<li><strong>vmemmap 区域</strong>：所有物理页帧对应的 <code>struct page</code> 结构体数组。每个物理页帧对应一个 <code>struct page</code>，通过 <code>pfn_to_page()</code> 访问。</li>
+<li><strong>内核代码段</strong>：内核镜像本身被映射到此区域，包含 <code>.text</code>、<code>.data</code>、<code>.bss</code> 等段。</li>
+</ul>
+<h2 id="5-2-3-页表层级（CONFIG-PGTABLE-LEVELS）"><a href="#5-2-3-页表层级（CONFIG-PGTABLE-LEVELS）" class="headerlink" title="5.2.3 页表层级（CONFIG_PGTABLE_LEVELS）"></a>5.2.3 页表层级（CONFIG_PGTABLE_LEVELS）</h2><p>ARM64 支持灵活的页表层级配置，由编译时的 <code>CONFIG_PGTABLE_LEVELS</code> 决定。页大小和虚拟地址位数的组合决定了需要多少级页表：</p>
+<table>
+<thead>
+<tr>
+<th>页大小</th>
+<th>VA 位数</th>
+<th>页表级数</th>
+<th>每级索引位数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4KB</td>
+<td>39</td>
+<td>3</td>
+<td>9+9+9</td>
+</tr>
+<tr>
+<td>4KB</td>
+<td>48</td>
+<td>4</td>
+<td>9+9+9+9</td>
+</tr>
+<tr>
+<td>4KB</td>
+<td>52</td>
+<td>5</td>
+<td>需要扩展</td>
+</tr>
+<tr>
+<td>16KB</td>
+<td>47</td>
+<td>3</td>
+<td>11+11+11</td>
+</tr>
+<tr>
+<td>16KB</td>
+<td>48</td>
+<td>4</td>
+<td>11+11+11+..</td>
+</tr>
+<tr>
+<td>64KB</td>
+<td>42</td>
+<td>2</td>
+<td>16+13</td>
+</tr>
+<tr>
+<td>64KB</td>
+<td>48</td>
+<td>3</td>
+<td>16+16+16</td>
+</tr>
+</tbody></table>
+<p>最常见的配置是 <strong>4KB 页 + 48 位 VA &#x3D; 4 级页表</strong>，对应的页表遍历路径为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PGD（页全局目录）→ PUD（页上级目录）→ PMD（页中间目录）→ PTE（页表项）→ 物理页帧</span><br></pre></td></tr></table></figure></div>
+
+<p>每一级页表使用 9 位索引（因为 4KB 页能容纳 512 个 8 字节的页表项：<code>4KB / 8B = 512 = 2^9</code>），加上页内偏移 12 位（4KB &#x3D; 2^12），共 <code>4 x 9 + 12 = 48</code> 位，恰好等于虚拟地址宽度。</p>
+<p>当配置为 3 级页表时，PUD 层级被折叠（fold），PGD 直接指向 PMD 页表。这种折叠机制通过软件实现，硬件感知的页表级数由 TCR_EL1.TG0&#x2F;TG1 和页大小共同决定。</p>
+<h2 id="5-2-4-页表项硬件格式"><a href="#5-2-4-页表项硬件格式" class="headerlink" title="5.2.4 页表项硬件格式"></a>5.2.4 页表项硬件格式</h2><p>ARM64 的页表项是 64 位宽的描述符，其格式与 x86_64 有显著差异。ARM64 使用描述符类型字段而非单一的 Present 位来区分不同类型的页表项：</p>
+<h3 id="关键字段"><a href="#关键字段" class="headerlink" title="关键字段"></a>关键字段</h3><ul>
+<li><strong>Valid 位（bit 0）</strong>：描述符是否有效。若为 0，硬件触发翻译故障（Translation Fault）。</li>
+<li><strong>描述符类型（bit 1）</strong>：区分表描述符（指向下一级页表）和块&#x2F;页描述符（指向物理页帧）。</li>
+<li><strong>AF（Access Flag，bit 10）</strong>：访问标志。硬件在首次访问时可以自动置位（由 TCR_EL1.HA 控制），也可由软件管理。Linux 通常启用硬件管理以减少页表错误。AF 必须被设置为 1，否则硬件会产生 Access Flag Fault。</li>
+<li><strong>SH[1:0]（Shareability，bits 9:8）</strong>：共享属性。00&#x3D;Non-shareable，01&#x3D;保留，10&#x3D;Inner Shareable，11&#x3D;Outer Shareable。内核通常使用 Inner Shareable 以确保多核间缓存一致性。</li>
+<li><strong>AP[2:1]（Access Permissions，bits 7,6）</strong>：访问权限。编码 EL0&#x2F;EL1 访问权和读&#x2F;写权限：<ul>
+<li><code>00</code>：EL1 可读写，EL0 不可访问</li>
+<li><code>01</code>：EL0&#x2F;EL1 均可读写</li>
+<li><code>10</code>：EL1 只读，EL0 不可访问</li>
+<li><code>11</code>：EL0&#x2F;EL1 均只读</li>
+</ul>
+</li>
+<li><strong>UXN（bit 54）</strong>：User Execute Never，EL0 不可执行。</li>
+<li><strong>PXN（bit 53）</strong>：Privileged Execute Never，EL1 不可执行。</li>
+<li><strong>nG（bit 11）</strong>：non-Global 标志。置 1 表示此 TLB 项与 ASID 关联，切换地址空间时自动失效。用户空间页必须设置 nG&#x3D;1，内核空间页通常 nG&#x3D;0。</li>
+<li><strong>DBM（bit 51）</strong>：Dirty Bit Modifier，硬件脏页跟踪。当 TCR_EL1.HD&#x3D;1 时，硬件在写操作时自动设置此位，避免软件通过权限模拟脏页跟踪。</li>
+<li><strong>CONT（bit 52）</strong>：Contiguous 提示位。告知 TLB 预取器连续的页表项属于同一连续区域，可用单一 TLB 项覆盖。</li>
+<li><strong>GP（bit 50）</strong>：Guarded Page，用于分支目标识别（BTI&#x2F;PAC）安全特性。</li>
+<li><strong>AttrIndx[2:0]（bits 4:2）</strong>：内存属性索引，指向 MAIR_EL1 寄存器中的 8 个属性字节之一。MAIR_EL1 预设了 Normal Memory、Device Memory 等属性组合，AttrIndx 选择使用哪种。</li>
+</ul>
+<h3 id="输出地址字段"><a href="#输出地址字段" class="headerlink" title="输出地址字段"></a>输出地址字段</h3><p>页表项中的物理地址部分（Output Address）并非完整的物理地址，而是对齐到块&#x2F;页大小的物理地址高位。例如在 4KB 页的 PTE 中，bits[47:12] 表示物理页帧号（假设物理地址宽度为 48 位）。</p>
+<h2 id="5-2-5-页大小支持"><a href="#5-2-5-页大小支持" class="headerlink" title="5.2.5 页大小支持"></a>5.2.5 页大小支持</h2><p>ARM64 支持三种页大小，均在编译时选定，运行时不可混用：</p>
+<ul>
+<li><strong>4KB</strong>：默认配置，兼容性最好。页内偏移 12 位，每级页表索引 9 位。适合通用工作负载。</li>
+<li><strong>16KB</strong>：页内偏移 14 位，每级页表索引 11 位。更大的页表项密度意味着更少的页表级数即可覆盖相同的地址空间，TLB 覆盖率提升。适合数据库等需要精细内存管理且 TLB 压力大的场景。缺点是内存开销略大（每个页表页容纳的项数不变但页更大）。</li>
+<li><strong>64KB</strong>：页内偏移 16 位。默认即是大页，TLB 覆盖率极高。适合大内存系统（如数百 GB 以上），减少了页表遍历开销。但在内存碎片化环境中可能浪费更多物理内存。</li>
+</ul>
+<h2 id="5-2-6-内核虚拟内存布局常量"><a href="#5-2-6-内核虚拟内存布局常量" class="headerlink" title="5.2.6 内核虚拟内存布局常量"></a>5.2.6 内核虚拟内存布局常量</h2><p>Linux 内核在 <code>arch/arm64/include/asm/memory.h</code> 中定义了虚拟内存布局的关键常量：</p>
+<ul>
+<li><strong>PAGE_OFFSET</strong>：线性映射区的起始虚拟地址，计算方式为 <code>-(1UL &lt;&lt; VA_BITS)</code>。以 48 位 VA 为例，<code>PAGE_OFFSET = 0xFFFF800000000000</code>。线性映射区从此处开始，向上延伸覆盖所有物理内存。</li>
+<li><strong>MODULES_VADDR</strong>：模块区域的起始地址，位于内核空间最底部，紧邻地址空间中点。模块区域大小为 2GB（<code>MODULES_VSIZE</code>）。</li>
+<li><strong>VMALLOC_START &#x2F; VMALLOC_END</strong>：vmalloc 区域的起止地址。此区域用于 <code>vmalloc()</code>、<code>vmap()</code>、<code>ioremap()</code> 等动态映射。其大小取决于线性映射区和 vmemmap 区域之后剩余的地址空间。</li>
+<li><strong>VMEMMAP_START</strong>：vmemmap 区域的起始地址。每个物理页帧对应一个 <code>struct page</code> 结构体，vmemmap 将这些结构体连续排列在虚拟地址空间中。起始地址通常为 <code>PAGE_OFFSET - VMEMMAP_SIZE</code>。</li>
+<li><strong>KIMAGE_VOFFSET</strong>：内核镜像虚拟地址与物理地址之间的偏移量。由于内核镜像通过 kimage 方式加载，其虚拟地址并非简单的线性映射关系，需要此偏移量进行转换。</li>
+</ul>
+<p>这些常量共同定义了 ARM64 内核的虚拟地址空间骨架，所有内核子系统都依赖此布局进行地址转换和内存分配。</p>
+<h2 id="5-2-7-ASID（地址空间标识符）"><a href="#5-2-7-ASID（地址空间标识符）" class="headerlink" title="5.2.7 ASID（地址空间标识符）"></a>5.2.7 ASID（地址空间标识符）</h2><p>ARM64 的 ASID 机制是其 TLB 管理的核心优化之一：</p>
+<ul>
+<li>硬件 ASID 长度为 8 位或 16 位，由 TCR_EL1.AS 配置。8 位 ASID 提供 256 个硬件标识符，16 位 ASID 提供 65536 个。</li>
+<li>ASID 编码在 TTBR0_EL1 的高位中（bits[63:48] 或 bits[63:56]），与页表基址共存于同一寄存器。</li>
+<li>当 nG&#x3D;1 的页表项被加载到 TLB 时，TLB 项被标记为与当前 ASID 关联。后续查找时，硬件自动比对 ASID，仅当 ASID 匹配时才使用该 TLB 项。</li>
+</ul>
+<p>这与 x86_64 的做法形成对比。x86_64 在每次上下文切换时必须重载 CR3 并刷新非全局 TLB 项，而 ARM64 只需切换 TTBR0（其中编码了新进程的 ASID），若新旧进程 ASID 不同，硬件自动隔离 TLB 项，无需刷新。这极大地减少了上下文切换的开销。</p>
+<p>Linux 内核的 ARM64 ASID 分配器（<code>arch/arm64/mm/context.c</code>）管理着硬件 ASID 到软件进程上下文的映射。当硬件 ASID 耗尽时（进程数超过 ASID 容量），分配器会执行全局 TLB 无效化并重新分配 ASID，这一过程称为 ASID 版本翻转（version rollover）。</p>
+<h2 id="5-2-8-大页支持"><a href="#5-2-8-大页支持" class="headerlink" title="5.2.8 大页支持"></a>5.2.8 大页支持</h2><p>ARM64 Linux 支持两种大页机制：</p>
+<h3 id="透明大页（块映射）"><a href="#透明大页（块映射）" class="headerlink" title="透明大页（块映射）"></a>透明大页（块映射）</h3><p>在页表遍历过程中，如果某一层级的描述符直接指向一个大的物理连续块而非下一级页表，就形成了块映射（block mapping），即大页：</p>
+<table>
+<thead>
+<tr>
+<th>页大小</th>
+<th>PMD 级大页</th>
+<th>PUD 级大页</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4KB</td>
+<td>2MB</td>
+<td>1GB</td>
+</tr>
+<tr>
+<td>16KB</td>
+<td>32MB</td>
+<td>16GB</td>
+</tr>
+<tr>
+<td>64KB</td>
+<td>512MB</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p>例如在 4KB 页 + 4 级页表配置下，PMD 层级的块映射覆盖 2MB 连续物理内存（512 个 4KB 页），PUD 层级的块映射覆盖 1GB 连续物理内存（512 个 2MB 块）。</p>
+<h3 id="连续页（Contiguous-Pages）"><a href="#连续页（Contiguous-Pages）" class="headerlink" title="连续页（Contiguous Pages）"></a>连续页（Contiguous Pages）</h3><p>ARM64 还支持 Contiguous 页机制：16 个连续的 PTE 或 PMD 可以被标记为 Contiguous（设置 CONT 位），TLB 硬件将其作为单个 TLB 项处理。这等效于将 TLB 覆盖率提升 16 倍：</p>
+<ul>
+<li>4KB 页 + CONT：16 x 4KB &#x3D; 64KB 的 TLB 覆盖</li>
+<li>2MB 大页 + CONT：16 x 2MB &#x3D; 32MB 的 TLB 覆盖</li>
+</ul>
+<p>Contiguous 机制对软件透明：应用程序无需特殊系统调用，内核在分配连续物理页时自动设置 CONT 位。这提供了一种介于普通页和透明大页之间的轻量级 TLB 优化手段。</p>
+<hr>
+<p>ARM64 的虚拟内存架构通过 TTBR0&#x2F;TTBR1 分割实现了内核与用户空间的硬件级隔离，通过灵活的多级页表配置适配从嵌入式到大服务器的广泛场景，通过 ASID 机制优化了上下文切换性能，通过大页和 Contiguous 页减少了 TLB 压力。这些设计共同构成了 ARM64 Linux 内存管理的硬件基础。</p>
+<h1 id="5-3-ARM64-异常向量与中断处理"><a href="#5-3-ARM64-异常向量与中断处理" class="headerlink" title="5.3 ARM64 异常向量与中断处理"></a>5.3 ARM64 异常向量与中断处理</h1><p>ARM64 架构采用精简的异常向量表设计，仅包含 16 个入口，通过硬件向量基址寄存器（VBAR_EL1）与软件宏配合完成从异常进入到返回的全流程。本章以 Linux 7.0 内核源码为主线，逐一剖析异常向量表、异常入口保存、系统调用、中断处理、GIC 中断控制器、异常返回、KPTI 页表切换以及 SDEI 机制。</p>
+<h2 id="5-3-1-异常向量表"><a href="#5-3-1-异常向量表" class="headerlink" title="5.3.1 异常向量表"></a>5.3.1 异常向量表</h2><p>异常向量表定义于 <code>arch/arm64/kernel/entry.S</code>。CPU 通过系统寄存器 VBAR_EL1（Vector Base Address Register）获取向量表的基地址。内核在启动阶段将向量表的地址写入该寄存器，此后所有异常均由硬件自动跳转到表中对应位置。</p>
+<p>向量表共 16 个表项，按照目标异常级别（EL）和栈指针选择分为 4 组，每组 4 种异常类型：</p>
+<table>
+<thead>
+<tr>
+<th>组别</th>
+<th>Sync</th>
+<th>IRQ</th>
+<th>FIQ</th>
+<th>SError</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EL1t（使用 SP_EL0）</td>
+<td>el1t_sync</td>
+<td>el1t_irq</td>
+<td>el1t_fiq</td>
+<td>el1t_error</td>
+</tr>
+<tr>
+<td>EL1h（使用 SP_EL1）</td>
+<td>el1h_sync</td>
+<td>el1h_irq</td>
+<td>el1h_fiq</td>
+<td>el1h_error</td>
+</tr>
+<tr>
+<td>EL0（64 位用户态）</td>
+<td>el0t_64_sync</td>
+<td>el0t_64_irq</td>
+<td>el0t_64_fiq</td>
+<td>el0t_64_error</td>
+</tr>
+<tr>
+<td>EL0（32 位兼容态）</td>
+<td>el0t_32_sync</td>
+<td>el0t_32_irq</td>
+<td>el0t_32_fiq</td>
+<td>el0t_32_error</td>
+</tr>
+</tbody></table>
+<p>内核运行在 EL1 并使用 SP_EL1，因此 <strong>EL1h 组是内核自身异常的主路径</strong>；EL0_64 和 EL0_32 分别服务于 64 位和 32 位兼容用户态程序。每个表项占用 128 字节（0x80 对齐），保证向量之间有足够空间嵌入跳转指令。</p>
+<p>与 x86 架构对比：x86 定义了 256 个 IDT（中断描述符表）表项，覆盖大量硬件中断向量与异常号；ARM64 仅通过 16 个向量入口，将中断号的解析工作交给软件（主要是 GIC 驱动）完成，体现了精简指令集的设计哲学。</p>
+<h2 id="5-3-2-异常类型"><a href="#5-3-2-异常类型" class="headerlink" title="5.3.2 异常类型"></a>5.3.2 异常类型</h2><p>ARM64 定义了四种异常类型：</p>
+<ul>
+<li><strong>同步异常（Synchronous）</strong>：由当前执行的指令直接触发。典型来源包括：SVC（用户态系统调用）、HVC（虚拟化管理调用）、SMC（安全监控调用）、指令&#x2F;数据中止（page fault）、对齐错误等。同步异常的关键特征是 ESR_EL1（Exception Syndrome Register）中记录了触发原因，便于软件精确诊断。</li>
+<li><strong>IRQ（普通中断请求）</strong>：由外部设备通过中断控制器投递，是常规设备中断的标准通道。</li>
+<li><strong>FIQ（快速中断请求）</strong>：高优先级中断，在 Linux 中通常留给安全世界（TrustZone）使用。GICv3 可以利用优先级机制将 FIQ 映射为伪 NMI（Non-Maskable Interrupt）。</li>
+<li><strong>SError（系统错误）</strong>：异步异常，通常来自 RAS（Reliability, Availability, Serviceability）子系统，表示硬件检测到不可恢复的错误。由于是异步的，SError 可能在指令执行很久之后才被报告。</li>
+</ul>
+<h2 id="5-3-3-异常入口（kernel-entry-宏）"><a href="#5-3-3-异常入口（kernel-entry-宏）" class="headerlink" title="5.3.3 异常入口（kernel_entry 宏）"></a>5.3.3 异常入口（kernel_entry 宏）</h2><p>当异常发生时，CPU 自动完成少量工作：将 PSTATE 保存到 SPSR_EL1，将返回地址保存到 ELR_EL1，切换到对应异常级别的栈指针，然后跳转到向量表项。此后软件接管，执行 <code>kernel_entry</code> 宏完成上下文保存。</p>
+<p><code>kernel_entry</code> 的核心流程：</p>
+<ol>
+<li>将 SP 减去 <code>PT_REGS_SIZE</code>（即 <code>struct pt_regs</code> 的大小），在内核栈上分配保存区域。</li>
+<li>依次将 30 个通用寄存器（X0-X29）保存到 pt_regs 中。由于异常发生时 X29（FP）和 X30（LR）具有特殊语义，它们在栈帧布局中占据固定位置。</li>
+<li>保存 ELR_EL1（返回地址，即异常前的 PC）和 SPSR_EL1（异常前的 PSTATE）。</li>
+<li>若为 EL0 入口，加载当前任务指针（通过 <code>current_thread_info()</code> 获取），并检查 MTE（Memory Tagging Extension）异步错误。</li>
+<li>对于系统调用入口，用户态参数通过 X0-X5 传递，系统调用号存放在 X8 中。</li>
+</ol>
+<p>与 x86 的 <code>PUSH_AND_CLEAR_REGS</code> 对比：x86 通过 push 指令逐个压栈，而 ARM64 采用预先计算偏移量后以 STP（Store Pair）指令批量写入，效率更高。</p>
+<h2 id="5-3-4-系统调用（SVC-0）"><a href="#5-3-4-系统调用（SVC-0）" class="headerlink" title="5.3.4 系统调用（SVC #0）"></a>5.3.4 系统调用（SVC #0）</h2><p>系统调用是用户态请求内核服务的标准机制。ARM64 上的调用流程如下：</p>
+<ol>
+<li>用户程序将系统调用号写入 X8，参数放入 X0-X5。</li>
+<li>执行 <code>SVC #0</code> 指令，CPU 从 EL0 切换到 EL1，跳转到向量表中 EL0_64_sync 入口。</li>
+<li>向量处理代码分发到 <code>el0t_64_sync_handler()</code>，该函数根据 ESR_EL1 判断异常来源为 SVC，调用 <code>el0_svc()</code>。</li>
+<li><code>el0_svc()</code> 调用 <code>do_el0_svc()</code>，进而通过 <code>el0_svc_common()</code> 查找系统调用表（<code>sys_call_table</code>），执行对应的系统调用实现函数。</li>
+<li>返回值写入 X0，通过 <code>kernel_exit</code> 宏恢复上下文并执行 <code>ERET</code> 返回用户态。</li>
+</ol>
+<p>x86 使用 <code>SYSCALL</code> 指令配合 <code>MSR_LSTAR</code> 寄存器实现快速系统调用入口；ARM64 的 SVC 路径统一经过向量表分发，代码路径略长，但设计更加一致。Linux 通过可选的 <code>syscall</code> 扩展优化减少分支开销。</p>
+<h2 id="5-3-5-中断处理（IRQ）"><a href="#5-3-5-中断处理（IRQ）" class="headerlink" title="5.3.5 中断处理（IRQ）"></a>5.3.5 中断处理（IRQ）</h2><p>硬件中断的处理流程以 GIC 投递 IRQ 为起点：</p>
+<ol>
+<li>GIC 向 CPU 发送中断信号，CPU 在当前指令完成后响应，跳转到 EL1h_irq 向量。</li>
+<li><code>kernel_entry</code> 保存完整上下文。</li>
+<li>中断处理函数调用 GIC 驱动，读取 IAR（Interrupt Acknowledge Register，中断确认寄存器），获得硬件中断号（IRQ number）。此读操作同时表示 CPU 已确认该中断。</li>
+<li>根据中断号查找对应的设备驱动处理程序（通过内核通用 IRQ 框架 <code>generic_handle_irq</code>），执行设备特定的中断服务程序。</li>
+<li>中断处理完成后，向 GIC 写入 EOI（End of Interrupt），通知中断控制器本次处理结束。</li>
+<li><code>kernel_exit</code> 恢复上下文并返回被中断的代码。</li>
+</ol>
+<p>若中断发生在内核态（EL1），返回后继续执行被中断的内核代码；若发生在用户态（EL0），返回前还需检查是否需要重新调度（<code>need_resched</code>）和是否有待处理信号。</p>
+<h2 id="5-3-6-GIC-通用中断控制器"><a href="#5-3-6-GIC-通用中断控制器" class="headerlink" title="5.3.6 GIC 通用中断控制器"></a>5.3.6 GIC 通用中断控制器</h2><p>ARM 平台的中断控制器为 GIC（Generic Interrupt Controller），其发展经历了多个版本：</p>
+<ul>
+<li><strong>GICv2</strong>：由 Distributor（分发器）和 CPU Interface（CPU 接口）两部分组成。Distributor 负责中断路由和优先级仲裁，CPU Interface 负责与单个 CPU 核心交互。GICv2 最多支持 8 个 CPU 核心。</li>
+<li><strong>GICv3&#x2F;GICv4</strong>：引入了可扩展架构，支持数千个 CPU 核心。新增 LPI（Locality-specific Peripheral Interrupts，局部外设中断），通过 ITS（Interrupt Translation Service，中断转换服务）实现基于消息的中断（MSI）路由。GICv4 在 GICv3 基础上增加了直接虚拟中断注入，减少虚拟化场景下的 VM Exit 开销。</li>
+<li><strong>优先级机制</strong>：GIC 支持多级中断优先级（至少 16 级，GICv3 可达 256 级）。Linux 利用优先级差异实现伪 NMI：将部分中断配置为最高优先级，使其在内核关闭普通中断（<code>DAIF.I</code> 位）时仍能被响应，用于硬锁检测（lockdep）和 kgdb 等调试功能。</li>
+</ul>
+<h2 id="5-3-7-异常返回（kernel-exit-宏）"><a href="#5-3-7-异常返回（kernel-exit-宏）" class="headerlink" title="5.3.7 异常返回（kernel_exit 宏）"></a>5.3.7 异常返回（kernel_exit 宏）</h2><p>异常返回是异常入口的逆过程。<code>kernel_exit</code> 宏负责：</p>
+<ol>
+<li>从 pt_regs 中恢复所有通用寄存器（X0-X29）。</li>
+<li>恢复 ELR_EL1（返回地址）和 SPSR_EL1（处理器状态）。</li>
+<li>执行 <code>ERET</code>（Exception Return）指令。该指令由硬件原子完成：将 ELR_EL1 写入 PC，将 SPSR_EL1 写入 PSTATE，同时完成异常级别切换。</li>
+</ol>
+<p>若返回目标是 EL0（用户态），还需额外处理：</p>
+<ul>
+<li>切换到用户态栈指针。</li>
+<li>应用 SSBD（Speculative Store Bypass Disable）缓解措施（若硬件需要）。</li>
+<li>执行 KPTI 页表切换，将内核页表替换为用户页表。</li>
+</ul>
+<h2 id="5-3-8-KPTI-蹦床页"><a href="#5-3-8-KPTI-蹦床页" class="headerlink" title="5.3.8 KPTI 蹦床页"></a>5.3.8 KPTI 蹦床页</h2><p>KPTI（Kernel Page Table Isolation，内核页表隔离）是针对 Meltdown 类侧信道攻击的缓解措施，通过在用户态运行时移除内核地址空间映射来防止推测执行泄露内核数据。</p>
+<p>当 <code>CONFIG_UNMAP_KERNEL_AT_EL0</code> 启用时，内核为每个进程维护两套页表：一套完整映射内核空间（内核态使用），一套仅映射少量蹦床代码（用户态使用）。蹦床页同时映射在两张页表中，充当切换桥梁。</p>
+<ul>
+<li><strong>异常入口</strong>：CPU 从用户态进入内核态时，在蹦床页中切换 TTBR0_EL1，从用户页表切换到内核页表，刷新 TLB 后跳转到内核主体代码。</li>
+<li><strong>异常出口</strong>：返回用户态前，再次通过蹦床页将 TTBR0_EL1 切回用户页表。</li>
+</ul>
+<p>x86 使用 CR3 寄存器切换实现类似功能（KAISER&#x2F;PAGE_TABLE_ISOLATION），原理相同但 ARM64 的 TTBR0&#x2F;TTBR1 硬件分离设计使得地址空间隔离更为自然。</p>
+<h2 id="5-3-9-SDEI（软件委托异常接口）"><a href="#5-3-9-SDEI（软件委托异常接口）" class="headerlink" title="5.3.9 SDEI（软件委托异常接口）"></a>5.3.9 SDEI（软件委托异常接口）</h2><p>SDEI（Software Delegated Exception Interface）是 ARM 定义的固件到操作系统的事件通知机制。固件通过 SMC（Secure Monitor Call）或 HVC（Hypervisor Call）向操作系统投递事件，操作系统在独立的栈上执行预注册的处理函数。</p>
+<p>SDEI 的典型应用场景包括：</p>
+<ul>
+<li><strong>RAS 事件</strong>：固件检测到硬件错误，通过 SDEI 通知操作系统执行错误恢复或记录日志。</li>
+<li><strong>PMU 事件</strong>：性能监控单元的固件级事件通知。</li>
+<li><strong>固件事件</strong>：如固件更新完成、安全状态变更等。</li>
+</ul>
+<p>SDEI 定义了两种优先级：普通（Normal）和关键（Critical）。关键优先级事件可以在普通优先级事件处理过程中抢占执行。每种优先级拥有独立的专用栈，确保事件处理不会破坏被中断上下文的栈空间。</p>
+<p>SDEI 在概念上与 x86 的 NMI（Non-Maskable Interrupt）最为接近——二者都提供了一种不可屏蔽的高优先级通知通道，但 SDEI 基于 ARM 固件调用机制（SMC&#x2F;HVC），而 x86 NMI 是由硬件中断控制器直接投递的。</p>
+<h1 id="5-4-ARM64-内核启动：从-primary-entry-到-start-kernel"><a href="#5-4-ARM64-内核启动：从-primary-entry-到-start-kernel" class="headerlink" title="5.4 ARM64 内核启动：从 primary_entry 到 start_kernel"></a>5.4 ARM64 内核启动：从 primary_entry 到 start_kernel</h1><p>ARM64 架构的内核启动流程与 x86_64 截然不同。它没有实模式、没有保护模式过渡、没有 16 位代码，整个启动路径干净利落。从引导加载程序跳转到 <code>primary_entry</code> 开始，经过身份映射建立、异常级别切换、MMU 使能，最终进入架构无关的 <code>start_kernel</code>。</p>
+<h2 id="5-4-1-启动入口前提条件"><a href="#5-4-1-启动入口前提条件" class="headerlink" title="5.4.1 启动入口前提条件"></a>5.4.1 启动入口前提条件</h2><p>ARM64 Linux 内核对引导加载程序（UEFI 或 U-Boot）提出了一组严格的入场要求：</p>
+<ul>
+<li><strong>MMU 必须关闭</strong>（MMU must be OFF）。内核在启动早期需要以物理地址直接运行，自行建立页表后再开启 MMU。</li>
+<li><strong>D-cache 必须关闭</strong>（D-cache must be OFF）。数据缓存若处于开启状态，可能导致内核映像的内存视图与实际物理内存不一致。</li>
+<li><strong>I-cache 可以开启也可以关闭</strong>。指令缓存的状态不影响启动正确性。</li>
+<li><strong>X0 &#x3D; 设备树（DTB&#x2F;FDT）的物理地址</strong>。ARM64 不像 x86 那样通过低内存传递启动参数，而是将设备树 blob 的地址放在寄存器 X0 中传递。</li>
+<li><strong>X1、X2、X3 保留，必须为 0</strong>。</li>
+<li><strong>CPU 必须处于 EL1 或 EL2</strong>。通常引导加载程序运行在 EL2（Hypervisor 异常级别），内核会在启动早期将其降级到 EL1。</li>
+</ul>
+<h2 id="5-4-2-primary-entry-——-启动第一站"><a href="#5-4-2-primary-entry-——-启动第一站" class="headerlink" title="5.4.2 primary_entry —— 启动第一站"></a>5.4.2 primary_entry —— 启动第一站</h2><p><code>primary_entry</code> 是内核映像的入口点，定义在 <code>arch/arm64/kernel/head.S</code> 中。它按顺序调用一系列子程序，逐步完成启动环境初始化：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">primary_entry:</span><br><span class="line">    bl  record_mmu_state         // 检测 MMU 状态，结果保存到 x19</span><br><span class="line">    bl  preserve_boot_args       // 保存 x0(DTB指针) 到 x21，x0-x3 存入 boot_args[]</span><br><span class="line">    bl  __pi_create_init_idmap   // 创建初始身份映射页表</span><br><span class="line">    mov  x0, x20                 // 传递启动标志</span><br><span class="line">    bl  init_kernel_el           // 检测异常级别，若在 EL2 则配置并降级到 EL1</span><br><span class="line">    mov  x0, x20</span><br><span class="line">    bl  __cpu_setup              // 配置 SCTLR、TCR、MAIR 等系统寄存器</span><br><span class="line">    b   __primary_switch         // 使能 MMU，重定位内核</span><br></pre></td></tr></table></figure></div>
+
+<p>各步骤的职责：</p>
+<ol>
+<li><p><strong>record_mmu_state</strong>：读取当前 MMU 状态（虽然前提要求 MMU 关闭，但内核仍做防御性检查），将结果记录在 x19 中供后续使用。</p>
+</li>
+<li><p><strong>preserve_boot_args</strong>：将 X0 中的 DTB 物理地址保存到 X21（整个启动过程中 X21 始终持有该指针），同时将 X0-X3 写入 <code>boot_args[]</code> 数组，供后续 C 代码查询。</p>
+</li>
+<li><p><strong>__pi_create_init_idmap</strong>：创建初始身份映射（identity mapping），使物理地址与虚拟地址形成一对一映射。这是 MMU 开启前必须完成的准备工作——没有页表就无法启用 MMU。</p>
+</li>
+</ol>
+<h2 id="5-4-3-init-kernel-el-——-异常级别检测与切换"><a href="#5-4-3-init-kernel-el-——-异常级别检测与切换" class="headerlink" title="5.4.3 init_kernel_el —— 异常级别检测与切换"></a>5.4.3 init_kernel_el —— 异常级别检测与切换</h2><p>ARM64 的异常级别（Exception Level）决定了 CPU 的特权等级。引导加载程序通常在 EL2 启动内核，而内核主体运行在 EL1。<code>init_kernel_el</code> 负责检测当前级别并在必要时执行降级：</p>
+<p><strong>流程如下：</strong></p>
+<ol>
+<li>读取 <code>CurrentEL</code> 寄存器获取当前异常级别。</li>
+<li>若处于 <strong>EL2</strong>：<ul>
+<li>配置 <code>HCR_EL2</code>（Hypervisor Configuration Register），设置虚拟化相关控制位。</li>
+<li>将 hyp stub 向量表地址写入 <code>VBAR_EL2</code>。</li>
+<li>清除 <code>SCTLR_EL2</code> 的高 32 位。</li>
+<li>将目标 EL1 入口地址写入 <code>ELR_EL1</code>，并设置 <code>SPSR_EL1</code> 记录返回后的处理器状态。</li>
+<li>执行 <code>ERET</code> 指令，CPU 从 EL2 安全降级到 EL1。</li>
+</ul>
+</li>
+<li>若处于 <strong>EL1</strong>：直接继续执行。</li>
+<li>返回值（X0）携带启动模式标志：<code>BOOT_CPU_MODE_EL1</code> 或 <code>BOOT_CPU_MODE_EL2</code>。</li>
+</ol>
+<p>这个过程体现了 ARM64 的设计哲学：异常级别切换通过系统寄存器配置 + ERET 指令完成，而非 x86 中通过 far jump 切换段描述符的复杂方式。</p>
+<h2 id="5-4-4-cpu-setup-——-处理器配置"><a href="#5-4-4-cpu-setup-——-处理器配置" class="headerlink" title="5.4.4 __cpu_setup —— 处理器配置"></a>5.4.4 __cpu_setup —— 处理器配置</h2><p>在 MMU 开启之前，<code>__cpu_setup</code> 对 CPU 的关键系统寄存器进行配置：</p>
+<ul>
+<li><strong>SCTLR_EL1</strong>（System Control Register）：设置各种控制位，如对齐检查、缓存策略等。</li>
+<li><strong>TCR_EL1</strong>（Translation Control Register）：配置页表 walks 的属性，包括物理地址大小、虚拟地址空间划分（TTBR0&#x2F;TTBR1）等。</li>
+<li><strong>MAIR_EL1</strong>（Memory Attribute Indirection Register）：定义内存属性（如 Normal Cacheable、Device nGnRnE 等），供页表项中的属性索引引用。</li>
+</ul>
+<p>这些寄存器的值将在 MMU 使能后立即生效，因此必须在 MMU 开启前完成配置。</p>
+<h2 id="5-4-5-primary-switch-——-使能-MMU"><a href="#5-4-5-primary-switch-——-使能-MMU" class="headerlink" title="5.4.5 __primary_switch —— 使能 MMU"></a>5.4.5 __primary_switch —— 使能 MMU</h2><p>这是启动流程中最关键的时刻：MMU 从关闭状态切换到开启状态，内核从物理地址运行切换到虚拟地址运行。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">__primary_switch:</span><br><span class="line">    // 将 reserved_pg_dir 加载到 TTBR0/TTBR1</span><br><span class="line">    // 通过设置 SCTLR_EL1.M 位使能 MMU</span><br><span class="line">    bl  __pi_early_map_kernel    // 映射并重定位内核</span><br><span class="line">    b   __primary_switched</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li>使用 <code>reserved_pg_dir</code> 作为初始页表基址。这是编译时预留的页表目录，包含内核映像的身份映射和虚拟地址映射。</li>
+<li>将 SCTLR_EL1 的 M 位置 1，MMU 正式使能。从此刻起，所有地址访问都经过 MMU 转换。</li>
+<li><code>__pi_early_map_kernel</code> 完成内核的正式映射和重定位（如果需要的话，处理 KASLR 偏移）。</li>
+</ul>
+<h2 id="5-4-6-primary-switched-——-汇编阶段的收尾"><a href="#5-4-6-primary-switched-——-汇编阶段的收尾" class="headerlink" title="5.4.6 __primary_switched —— 汇编阶段的收尾"></a>5.4.6 __primary_switched —— 汇编阶段的收尾</h2><p>MMU 使能后，内核运行在虚拟地址空间中。<code>__primary_switched</code> 完成最后的汇编级初始化工作：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">__primary_switched:</span><br><span class="line">    // 设置 init_task 为当前任务</span><br><span class="line">    adr_l  x0, init_task</span><br><span class="line">    msr    sp_el0, x0            // current 宏依赖 sp_el0 指向当前 task_struct</span><br><span class="line"></span><br><span class="line">    // 加载异常向量表</span><br><span class="line">    adr_l  x0, vectors</span><br><span class="line">    msr    vbar_el1, x0          // 异常/中断从此进入内核向量表</span><br><span class="line"></span><br><span class="line">    // 保存 FDT 指针</span><br><span class="line">    str    x21, [x0]             // x21 → __fdt_pointer</span><br><span class="line"></span><br><span class="line">    // 计算 kimage_voffset（内核虚拟地址与物理地址的偏移量）</span><br><span class="line">    // 调用 kasan_early_init（地址消毒器早期初始化）</span><br><span class="line">    // 调用 finalise_el2（完成 EL2 相关的最终配置）</span><br><span class="line"></span><br><span class="line">    // 跳转到架构无关的通用启动入口</span><br><span class="line">    b      start_kernel</span><br></pre></td></tr></table></figure></div>
+
+<p>关键操作解读：</p>
+<ul>
+<li><strong>设置 init_task</strong>：ARM64 巧妙地利用 <code>sp_el0</code> 寄存器保存当前进程的 <code>task_struct</code> 指针。此处将 <code>init_task</code>（0 号进程的 task_struct）写入 <code>sp_el0</code>，使得 <code>current</code> 宏能正确工作。</li>
+<li><strong>加载异常向量表</strong>：<code>vectors</code> 是内核的异常向量表基地址，包含同步异常、IRQ、FIQ、SError 等各类异常的处理入口。写入 <code>VBAR_EL1</code> 后，CPU 遇到异常时会跳转到正确的处理程序。</li>
+<li><strong>保存 FDT 指针</strong>：将 X21 中持有（自 <code>preserve_boot_args</code> 起）的设备树物理地址存储到全局变量 <code>__fdt_pointer</code>，供后续设备树解析使用。</li>
+</ul>
+<p>完成这一切后，执行 <code>b start_kernel</code> 跳转到架构无关的通用启动入口。从此，ARM64 特定的汇编启动阶段宣告结束。</p>
+<h2 id="5-4-7-完整启动流程图"><a href="#5-4-7-完整启动流程图" class="headerlink" title="5.4.7 完整启动流程图"></a>5.4.7 完整启动流程图</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Bootloader (UEFI / U-Boot)</span><br><span class="line">  → 将内核 Image 加载到 2MB 对齐的物理地址</span><br><span class="line">  → 设置 X0 = DTB 物理地址, X1-X3 = 0</span><br><span class="line">  → 跳转到 primary_entry</span><br><span class="line">    → record_mmu_state          （检测并记录 MMU 状态）</span><br><span class="line">    → preserve_boot_args        （保存 DTB 指针到 x21）</span><br><span class="line">    → create_init_idmap         （创建初始身份映射页表）</span><br><span class="line">    → init_kernel_el            （EL2 → EL1 降级，若需要）</span><br><span class="line">    → __cpu_setup               （配置 SCTLR/TCR/MAIR）</span><br><span class="line">    → __primary_switch          （使能 MMU，重定位内核）</span><br><span class="line">    → __primary_switched        （设置 init_task、向量表、FDT 指针）</span><br><span class="line">    → start_kernel              （进入架构无关的通用启动流程）</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="5-4-8-ARM64-与-x86-64-启动流程对比"><a href="#5-4-8-ARM64-与-x86-64-启动流程对比" class="headerlink" title="5.4.8 ARM64 与 x86_64 启动流程对比"></a>5.4.8 ARM64 与 x86_64 启动流程对比</h2><p>ARM64 与 x86_64 的内核启动路径差异巨大，根本原因在于两种架构的历史包袱和设计理念不同：</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>ARM64</th>
+<th>x86_64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>启动模式</td>
+<td>直接从 EL1&#x2F;EL2 开始</td>
+<td>从 16 位实模式起步，经历保护模式、长模式</td>
+</tr>
+<tr>
+<td>实模式&#x2F;16 位代码</td>
+<td>无</td>
+<td>必须处理（real-mode header、setup code）</td>
+</tr>
+<tr>
+<td>A20 门</td>
+<td>无概念</td>
+<td>需要使能 A20 地址线</td>
+</tr>
+<tr>
+<td>遗留 BIOS</td>
+<td>无</td>
+<td>依赖 BIOS 调用获取内存等信息</td>
+</tr>
+<tr>
+<td>启动参数传递</td>
+<td>X0 寄存器（DTB 物理地址）</td>
+<td>低内存区域的 boot params &#x2F; cmdline</td>
+</tr>
+<tr>
+<td>内核解压</td>
+<td>引导加载程序负责</td>
+<td>内核内置解压器（bzImage）</td>
+</tr>
+<tr>
+<td>内核映像头</td>
+<td>64 字节扁平头部</td>
+<td>PE 头 + 16 位 setup 代码，结构复杂</td>
+</tr>
+<tr>
+<td>内核映像格式</td>
+<td>单一扁平二进制（Image）</td>
+<td>bzImage（含实模式部分 + 保护模式部分）</td>
+</tr>
+<tr>
+<td>MMU 开启方式</td>
+<td>配置系统寄存器后置位 SCTLR.M</td>
+<td>设置 CR0.PG，需先建立临时页表</td>
+</tr>
+<tr>
+<td>异常&#x2F;中断向量</td>
+<td>VBAR_EL1 指向向量表</td>
+<td>IDT（Interrupt Descriptor Table）</td>
+</tr>
+</tbody></table>
+<p>ARM64 的启动路径更简洁的核心原因：它是一块干净的 64 位架构，没有 x86 数十年积累的向后兼容负担。从加电到内核入口，ARM64 只需做”正确的事”——建立映射、切换异常级别、开启 MMU，然后进入 C 代码世界。5.5 ARM64 UEFI 启动与内核映像格式</p>
+<h2 id="ARM64-内核-Image-头部"><a href="#ARM64-内核-Image-头部" class="headerlink" title="ARM64 内核 Image 头部"></a>ARM64 内核 Image 头部</h2><p>ARM64 内核映像（<code>arch/arm64/boot/Image</code>）的头部为 64 字节，定义在<br><code>arch/arm64/include/asm/image.h</code> 中。该头部同时兼容裸机启动和 UEFI PE 加载，<br>其布局如下：</p>
+<table>
+<thead>
+<tr>
+<th>偏移</th>
+<th>大小</th>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>4 字节</td>
+<td><code>code0</code></td>
+<td><code>MZ</code> 魔数（UEFI PE 头）或跳转指令（裸机）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4 字节</td>
+<td><code>code1</code></td>
+<td>跳转到 <code>primary_entry</code> 的分支指令</td>
+</tr>
+<tr>
+<td>8</td>
+<td>8 字节</td>
+<td><code>text_offset</code></td>
+<td>内核加载地址相对于物理内存起始的偏移</td>
+</tr>
+<tr>
+<td>16</td>
+<td>8 字节</td>
+<td><code>image_size</code></td>
+<td>内核映像的总大小（含 BSS）</td>
+</tr>
+<tr>
+<td>24</td>
+<td>8 字节</td>
+<td><code>flags</code></td>
+<td>标志位：字节序、页大小、物理基址等</td>
+</tr>
+<tr>
+<td>32</td>
+<td>8 字节</td>
+<td><code>res2</code></td>
+<td>保留</td>
+</tr>
+<tr>
+<td>40</td>
+<td>8 字节</td>
+<td><code>res3</code></td>
+<td>保留</td>
+</tr>
+<tr>
+<td>48</td>
+<td>8 字节</td>
+<td><code>res4</code></td>
+<td>保留</td>
+</tr>
+<tr>
+<td>56</td>
+<td>4 字节</td>
+<td><code>magic</code></td>
+<td>魔数 <code>&quot;ARM\x64&quot;</code>（0x644d5241）</td>
+</tr>
+<tr>
+<td>60</td>
+<td>4 字节</td>
+<td><code>pe_offset</code></td>
+<td>PE&#x2F;COFF 头部的偏移量</td>
+</tr>
+</tbody></table>
+<p><code>code0</code> 字段的设计尤为巧妙：当 UEFI 固件的 PE 加载器解析该文件时，它识别开头的 <code>MZ</code> 魔数并按照 PE&#x2F;COFF 格式加载；当裸机引导程序（如 U-Boot）加载时，该字段被解释为一条 <code>b</code> 分支指令，直接跳转到 <code>code1</code>，进而跳转到<code>primary_entry</code>——内核的主入口点。这种双重身份设计使得同一个内核映像可以同时支持两种启动方式。</p>
+<p><code>flags</code> 字段（偏移 24）包含以下关键信息：</p>
+<ul>
+<li><strong>字节序标志</strong>（bit 0）：0 &#x3D; 小端，1 &#x3D; 大端</li>
+<li><strong>页大小</strong>（bits 1-2）：4KB、16KB 或 64KB</li>
+<li><strong>物理基址标志</strong>（bit 3）：<code>text_offset</code> 是否相对于 2MB 对齐的物理基址</li>
+<li><strong>镜像放置</strong>（bits 4-5）：<code>image_size</code> 是否包含 BSS 段</li>
+</ul>
+<h2 id="UEFI-启动流程：EFI-Stub"><a href="#UEFI-启动流程：EFI-Stub" class="headerlink" title="UEFI 启动流程：EFI Stub"></a>UEFI 启动流程：EFI Stub</h2><p>ARM64 内核内嵌了一个 EFI Stub（<code>drivers/firmware/efi/libstub/arm64-stub.c</code>），它作为 UEFI 应用程序运行，负责在 UEFI 环境中完成内核的加载和重定位。</p>
+<p>UEFI 启动流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">UEFI 固件</span><br><span class="line">  → efi_pe_entry()            // EFI Stub 入口，解析 PE 头</span><br><span class="line">    → handle_kernel_image()   // 定位并重定位内核映像</span><br><span class="line">      → primary_entry()       // 跳转到内核主入口</span><br><span class="line">        → init_kernel_el()    // 确认当前异常级别</span><br><span class="line">        → preserve_boot_args() // 保存 bootloader 传递的参数</span><br><span class="line">        → create_idmap()      // 创建初始页表映射</span><br></pre></td></tr></table></figure></div>
+
+<p><code>efi_pe_entry()</code> 是 PE&#x2F;COFF 格式的入口点，UEFI 固件将控制权直接移交此处。该函数利用 UEFI Boot Services 分配内存、加载内核映像，然后跳转到内核的实际入口 <code>primary_entry</code>。EFI Stub 还负责：</p>
+<ul>
+<li>从 UEFI 获取内存映射信息</li>
+<li>处理内核的物理地址随机化（KASLR）</li>
+<li>将 UEFI 的内存映射转换为 Linux 的 <code>memmap</code> 格式</li>
+<li>设置初始的 FDT（如果 UEFI 提供了 DTB）</li>
+</ul>
+<p>与 x86_64 不同，ARM64 没有实模式（real mode）阶段，内核从第一条指令开始就运行在 64 位模式下，这大大简化了启动流程。</p>
+<h2 id="内核映像格式"><a href="#内核映像格式" class="headerlink" title="内核映像格式"></a>内核映像格式</h2><p>ARM64 支持以下内核映像格式：</p>
+<ul>
+<li><strong>Image</strong>：原始未压缩的二进制映像，是最基本的格式</li>
+<li><strong>Image.gz</strong>：gzip 压缩的映像，需要引导程序具备解压能力</li>
+<li><strong>Image.lz4</strong>：LZ4 压缩的映像</li>
+<li><strong>Image.lzma</strong>：LZMA 压缩的映像</li>
+</ul>
+<p><strong>重要区别</strong>：ARM64 没有 <code>zImage</code>。32 位 ARM（ARMv7）支持 <code>zImage</code>——一种内核自带解压器的自解压映像。ARM64 移除了这一机制，解压责任交由引导程序<br>（U-Boot、GRUB 等）承担。这一设计决策简化了内核代码，但要求引导程序具备更强的能力。</p>
+<p>对于纯 UEFI 固件环境，内核提供了 <strong>EFI zboot</strong> 格式（<code>make Image.gz</code> 配合<code>CONFIG_EFI_ZBOOT</code>）。该格式将压缩的内核映像封装为 EFI 应用程序，内含<br>一个微型解压器，由 UEFI 固件直接加载执行。</p>
+<h2 id="DTB（Device-Tree-Blob）"><a href="#DTB（Device-Tree-Blob）" class="headerlink" title="DTB（Device Tree Blob）"></a>DTB（Device Tree Blob）</h2><p>DTB 是 ARM64 平台上描述硬件信息的主要机制之一。它是一棵结构化的二进制树，描述了系统的 CPU、内存布局、总线、设备及其属性。DTB 通常由引导程序传递给内核，存放于寄存器 <code>x0</code> 或 <code>x21</code> 所指向的物理地址。</p>
+<p>DTB 的典型内容包括：</p>
+<ul>
+<li><code>/cpus</code>：CPU 核心数量、频率、启用方法</li>
+<li><code>/memory</code>：物理内存范围</li>
+<li><code>/chosen</code>：内核命令行、initrd 地址</li>
+<li>各设备的兼容字符串（compatible）、寄存器地址（reg）、中断号（interrupts）</li>
+</ul>
+<p>内核在 <code>setup_arch()</code> 中调用 <code>setup_machine_fdt()</code> 解析 DTB：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// arch/arm64/kernel/setup.c</span></span><br><span class="line"><span class="type">void</span> __init <span class="title function_">setup_arch</span><span class="params">(<span class="type">char</span> **cmdline_p)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    setup_machine_fdt(__fdt_pointer);  <span class="comment">// 解析 DTB，匹配机器型号</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>DTB 与 ACPI 是 ARM64 上两种并存的硬件发现机制。DTB 在嵌入式和服务器领域广泛使用，而 ACPI 则在遵循 SBSA&#x2F;SBBR 标准的服务器平台上使用。内核通过<code>CONFIG_EFI_STUB</code> 和 <code>CONFIG_ACPI</code> 同时支持两种机制。</p>
+<h2 id="setup-arch-初始化流程"><a href="#setup-arch-初始化流程" class="headerlink" title="setup_arch() 初始化流程"></a>setup_arch() 初始化流程</h2><p><code>setup_arch()</code> 是 ARM64 架构特定初始化的核心函数，定义在<code>arch/arm64/kernel/setup.c</code> 中。其调用序列为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">setup_arch()</span><br><span class="line">  → kaslr_init()            // 初始化内核地址随机化种子</span><br><span class="line">  → setup_machine_fdt()     // 解析设备树，建立硬件拓扑</span><br><span class="line">  → arm64_memblock_init()   // 初始化 memblock 分配器，建立内存区域</span><br><span class="line">  → paging_init()           // 设置内核页表，映射整个物理内存</span><br><span class="line">  → acpi_boot_table_init()  // 初始化 ACPI（如果存在）</span><br><span class="line">  → acpi_numa_init()        // 初始化 NUMA 拓扑（基于 ACPI SRAT）</span><br><span class="line">  → zone_sizes_init()       // 初始化内存管理区</span><br><span class="line">  -&gt; cpu_read_bootcpu_ops() // 读取启动 CPU 的特性</span><br></pre></td></tr></table></figure></div>
+
+<p><code>kaslr_init()</code> 从 DTB 的 <code>/chosen/kaslr-seed</code> 属性或 EFI 的 RNG 协议获取随机种子，为后续的内核地址空间布局随机化提供熵源。</p>
+<p><code>arm64_memblock_init()</code> 根据 DTB 或 EFI 提供的内存映射，将可用内存区域注册到 memblock 分配器，同时保留内核映像、DTB、initrd 占用的区域。</p>
+<p><code>paging_init()</code> 是最关键的步骤之一，它创建内核的最终页表映射，将虚拟地址空间划分为 TTBR0（用户空间）和 TTBR1（内核空间）两部分，并为内核的线性映射（linear mapping）、vmalloc 区和 fixmap 建立页表项。该函数完成后，内核的虚拟内存子系统即可正常运作。</p>
+<h1 id="5-6-ARM64-多处理器启动-—-PSCI-与-Spin-Table"><a href="#5-6-ARM64-多处理器启动-—-PSCI-与-Spin-Table" class="headerlink" title="5.6 ARM64 多处理器启动 — PSCI 与 Spin Table"></a>5.6 ARM64 多处理器启动 — PSCI 与 Spin Table</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>ARM64 系统通常是多核（SMP）系统。启动时只有主 CPU（boot CPU，也称 CPU 0）被固件唤醒并执行内核代码。其余的从 CPU（secondary CPU）需要由内核在适当的时机显式启动。ARM64 提供了两种从 CPU 启动机制：<strong>PSCI</strong> 和 <strong>Spin Table</strong>。</p>
+<h2 id="方法一：PSCI（Power-State-Coordination-Interface）"><a href="#方法一：PSCI（Power-State-Coordination-Interface）" class="headerlink" title="方法一：PSCI（Power State Coordination Interface）"></a>方法一：PSCI（Power State Coordination Interface）</h2><p>PSCI 是 ARM 标准化的电源状态协调接口，由固件（如 ARM Trusted Firmware，即 ATF&#x2F;TF-A）实现，运行在最高的异常级别 EL3。PSCI 是现代 ARM64 系统<br>（包括所有服务器平台）的标准从 CPU 启动方式。</p>
+<p>PSCI 的启动流程如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">内核 (EL1)</span><br><span class="line">  → cpu_psci_cpu_boot()            // smp_ops 回调</span><br><span class="line">    → psci_ops.cpu_on(target_cpu, secondary_entry)</span><br><span class="line">      → SMC #0                     // 陷入 EL3（TrustZone 固件）</span><br><span class="line">        → ATF/TFA 处理 PSCI_CPU_ON</span><br><span class="line">          → 为目标 CPU 分配电源和时钟</span><br><span class="line">          → 将 secondary_entry 写入目标 CPU 的入口寄存器</span><br><span class="line">          → 向目标 CPU 发出电源启动信号</span><br><span class="line">            → 目标 CPU 从 secondary_entry 开始执行</span><br></pre></td></tr></table></figure></div>
+
+<p>关键函数 <code>cpu_psci_cpu_boot()</code> 定义在 <code>arch/arm64/kernel/psci.c</code> 中，它调用 <code>psci_ops.cpu_on()</code>，后者通过 <code>SMC</code>（Secure Monitor Call）指令陷入 EL3 的 TrustZone 固件。固件负责为目标 CPU 上电、设置入口地址并释放其执行。<code>SMC</code> 调用的参数包括：</p>
+<ul>
+<li>功能 ID：<code>PSCI_CPU_ON</code>（0xC4000003）</li>
+<li>目标 CPU 的 MPIDR（Multiprocessor Affinity Register）</li>
+<li>入点地址：<code>secondary_entry</code> 的物理地址</li>
+<li>上下文 ID：传递给目标 CPU的额外参数</li>
+</ul>
+<p>PSCI 的优势在于它是标准化的、跨厂商的接口，所有 ARM 服务器平台都必须实现。固件在 EL3 层面管理 CPU 电源状态，内核无需了解底层电源控制的具体实现。</p>
+<h2 id="方法二：Spin-Table"><a href="#方法二：Spin-Table" class="headerlink" title="方法二：Spin Table"></a>方法二：Spin Table</h2><p>Spin Table 是一种较简单的从 CPU 启动方式，主要用于嵌入式系统。它在设备树中通过 <code>enable-method = &quot;spin-table&quot;</code> 声明。其工作原理如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">固件阶段：</span><br><span class="line">  1. 固件启动所有 CPU</span><br><span class="line">  2. 从 CPU 在 secondary_holding_pen 处自旋等待</span><br><span class="line">  3. 从 CPU 不断轮询 cpu-release-addr 指向的内存位置</span><br><span class="line"></span><br><span class="line">内核阶段：</span><br><span class="line">  smp_spin_table_cpu_boot()</span><br><span class="line">    → 将 secondary_entry 写入 cpu-release-addr</span><br><span class="line">    → 清除数据缓存（DC CVAU）</span><br><span class="line">    → 执行 SEV 指令（唤醒自旋等待的从 CPU）</span><br><span class="line">      → 从 CPU 检测到地址更新，跳转到 secondary_entry</span><br></pre></td></tr></table></figure></div>
+
+<p><code>secondary_holding_pen</code> 是一段简单的自旋循环代码（定义在<code>arch/arm64/kernel/head.S</code> 中），从 CPU 在此不断检查一个内存地址是否被写入了有效的入口地址。当主 CPU 调用 <code>smp_spin_table_cpu_boot()</code> 将<code>secondary_entry</code> 的地址写入 <code>cpu-release-addr</code> 指向的内存后，从 CPU检测到变化并跳转执行。Spin Table 的缺点是：所有从 CPU 在内核启动前就已上电并自旋，消耗额外功耗；且它不是标准化的接口，兼容性不如 PSCI。</p>
+<h2 id="从-CPU-启动流程"><a href="#从-CPU-启动流程" class="headerlink" title="从 CPU 启动流程"></a>从 CPU 启动流程</h2><p>无论使用 PSCI 还是 Spin Table，从 CPU 的入口点都是 <code>secondary_entry</code>，<br>定义在 <code>arch/arm64/kernel/head.S</code> 中。其执行路径为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">secondary_entry                         // 汇编入口</span><br><span class="line">  → init_kernel_el()                    // 确认当前异常级别</span><br><span class="line">  → __cpu_setup()                       // 配置 CPU 控制寄存器</span><br><span class="line">    → 清除 TLB</span><br><span class="line">    → 设置 SCTLR_EL1（关闭 MMU 等）</span><br><span class="line">    → 设置 TCR_EL1（页表配置）</span><br><span class="line">  → secondary_startup                   // 建立页表映射</span><br><span class="line">    → __enable_mmu()                    // 启用 MMU</span><br><span class="line">      → 将 TTBR1 指向 swapper_pg_dir</span><br><span class="line">      → 设置 SCTLR_EL1.M = 1</span><br><span class="line">    → __secondary_switched              // 切换到 C 语言环境</span><br><span class="line">      → 设置 SP（任务栈）</span><br><span class="line">      → 保存启动参数</span><br><span class="line">      → secondary_start_kernel()        // 跳转到 C 函数</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="secondary-start-kernel-—-C-语言入口"><a href="#secondary-start-kernel-—-C-语言入口" class="headerlink" title="secondary_start_kernel() — C 语言入口"></a>secondary_start_kernel() — C 语言入口</h2><p><code>secondary_start_kernel()</code> 定义在 <code>arch/arm64/kernel/smp.c</code> 中，是从 CPU<br>进入 C 语言运行环境后的主函数：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 简化的调用流程</span></span><br><span class="line">secondary_start_kernel()</span><br><span class="line">  → cpuinfo_store_boot_cpu()    <span class="comment">// 读取并存储 CPU 特性</span></span><br><span class="line">  → check_local_cpu_errata()    <span class="comment">// 检查 CPU 勘误</span></span><br><span class="line">  → check_local_cpu_caps()      <span class="comment">// 验证 CPU 特性与启动 CPU 一致</span></span><br><span class="line">  → enable_cpu_capabilities()   <span class="comment">// 启用从 CPU 的特性</span></span><br><span class="line">  → gic_cpu_init()              <span class="comment">// 初始化 GIC（中断控制器）接口</span></span><br><span class="line">  → cpu_startup_entry()         <span class="comment">// 进入调度器</span></span><br></pre></td></tr></table></figure></div>
+
+<p>该函数的关键职责包括：</p>
+<ol>
+<li><p><strong>CPU 特性验证</strong>：从 CPU 必须与主 CPU 拥有兼容的特性集，否则系统可能不稳定。例如，如果主 CPU 支持某个可选指令集扩展而从 CPU 不支持，内核会禁用该扩展或直接拒绝启动该从 CPU。</p>
+</li>
+<li><p><strong>GIC 初始化</strong>：每个 CPU 核心都有自己的 GIC（Generic Interrupt Controller）CPU 接口。<code>gic_cpu_init()</code> 为当前 CPU 配置中断优先级掩码、中断分组等。</p>
+</li>
+<li><p><strong>系统寄存器配置</strong>：设置 <code>VBAR_EL1</code>（异常向量基址）、<code>TCR_EL1</code>页表控制）、<code>SCTLR_EL1</code>（系统控制）等关键寄存器。</p>
+</li>
+<li><p><strong>进入调度器</strong>：最终调用 <code>cpu_startup_entry(CPUHP_AP_ONLINE_IDLE)</code>，将 CPU 标记为在线并进入 idle 调度循环，等待任务分配。</p>
+</li>
+</ol>
+<h2 id="ARM64-vs-x86-64：多核启动对比"><a href="#ARM64-vs-x86-64：多核启动对比" class="headerlink" title="ARM64 vs x86_64：多核启动对比"></a>ARM64 vs x86_64：多核启动对比</h2><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>x86_64</th>
+<th>ARM64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>启动协议</td>
+<td>SIPI（Start-Up IPI）</td>
+<td>PSCI SMC &#x2F; Spin Table</td>
+</tr>
+<tr>
+<td>固件角色</td>
+<td>BIOS&#x2F;UEFI，启动后不再参与</td>
+<td>ATF（EL3）持续参与电源管理</td>
+</tr>
+<tr>
+<td>初始模式</td>
+<td>实模式（16 位），需转入长模式</td>
+<td>直接 64 位（EL1）</td>
+</tr>
+<tr>
+<td>从 CPU 等待</td>
+<td>通过 APIC 唤醒，无自旋等待</td>
+<td>Spin Table 需自旋，PSCI 不需要</td>
+</tr>
+<tr>
+<td>入口地址</td>
+<td>APIC 提供的低 1MB 内地址</td>
+<td><code>secondary_entry</code> 任意物理地址</td>
+</tr>
+<tr>
+<td>CPU 拓扑</td>
+<td>APIC ID</td>
+<td>MPIDR 寄存器</td>
+</tr>
+</tbody></table>
+<p>x86_64 使用 SIPI（Startup Inter-Processor Interrupt）通过 APIC 向从 CPU发送启动向量，从 CPU 从实模式开始执行一段 trampoline 代码（位于低 1MB 内存），然后切换到保护模式和长模式。相比之下，ARM64 的 PSCI 方案更为简洁：固件在 EL3 管理电源，内核通过 SMC 调用请求启动，从 CPU 直接在 64 位 EL1模式下进入内核入口点，无需经历复杂的模式转换。</p>
+<h1 id="5-7-ARM64-安全特性-—-PAC、BTI、MTE、KPTI"><a href="#5-7-ARM64-安全特性-—-PAC、BTI、MTE、KPTI" class="headerlink" title="5.7 ARM64 安全特性 — PAC、BTI、MTE、KPTI"></a>5.7 ARM64 安全特性 — PAC、BTI、MTE、KPTI</h1><p>ARM64 架构在近年引入了一系列硬件级安全特性，为内核和用户空间提供了比纯软件方案更高效、更强力的防护。这些特性从 ARMv8.3 到 ARMv8.5 逐步引入，Linux 内核通过相应的 <code>CONFIG</code> 选项启用。以下逐一分析。</p>
+<h2 id="1-指针认证（Pointer-Authentication-PAC）"><a href="#1-指针认证（Pointer-Authentication-PAC）" class="headerlink" title="1. 指针认证（Pointer Authentication, PAC）"></a>1. 指针认证（Pointer Authentication, PAC）</h2><p><strong>配置选项</strong>：<code>CONFIG_ARM64_PTR_AUTH</code>、<code>CONFIG_ARM64_PTR_AUTH_KERNEL</code></p>
+<p>指针认证是 ARMv8.3 引入的特性。其核心思想是在指针的空闲高位（用户空间通常是高 16 位，内核空间是高几位）嵌入一个加密签名（PAC，Pointer Authentication Code）。PAC 由指针值、上下文和密钥共同计算得出，使用 QARMA算法。ARM64 定义了五把密钥：</p>
+<table>
+<thead>
+<tr>
+<th>密钥</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>APIAKey</td>
+<td>指令地址签名（签名代码指针、返回地址）</td>
+</tr>
+<tr>
+<td>APIBKey</td>
+<td>指令地址备用密钥</td>
+</tr>
+<tr>
+<td>APDAKey</td>
+<td>数据地址签名（签名数据指针）</td>
+</tr>
+<tr>
+<td>APDBKey</td>
+<td>数据地址备用密钥</td>
+</tr>
+<tr>
+<td>APGAKey</td>
+<td>通用签名</td>
+</tr>
+</tbody></table>
+<p>在函数调用中，PAC 的工作方式如下：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">函数入口（prologue）：</span><br><span class="line">  PACIASP              <span class="comment">// 用 APIAKey + SP 作为上下文签名 LR（返回地址）</span></span><br><span class="line">                       <span class="comment">// 签名后的返回地址存入 LR</span></span><br><span class="line"></span><br><span class="line">函数出口（epilogue）：</span><br><span class="line">  AUTIASP              <span class="comment">// 验证 LR 中的 PAC，若有效则还原原始地址</span></span><br><span class="line">  RET                  <span class="comment">// 返回</span></span><br><span class="line"></span><br><span class="line">若攻击者覆写了栈上的返回地址，AUTIASP 验证失败：</span><br><span class="line">  → 若 CPU 支持 FPAC（ARMv8.<span class="number">6</span>+）：直接触发异常，内核崩溃</span><br><span class="line">  → 否则：PAC 被破坏但返回错误地址，后续访问触发异常</span><br></pre></td></tr></table></figure></div>
+
+<p>内核模式 PAC（<code>CONFIG_ARM64_PTR_AUTH_KERNEL</code>）对内核代码指针进行签名，防止内核返回地址被覆写。编译器在编译内核时自动插入 <code>PACIASP</code>&#x2F;<code>AUTIASP</code>指令对。每把密钥在进程切换时通过 <code>keys-&gt;apia</code> 等字段保存和恢复，确保不同进程使用不同密钥。</p>
+<p><strong>对比 x86_64</strong>：x86 没有直接的硬件指针认证等价物。x86 的控制流完整性（CFI）方案是编译器级别的（如 KCFI、LLVM CFI），通过在间接跳转前检查类型哈希来验证跳转目标。PAC 的优势在于它是硬件实现的，性能开销极低，且密钥由硬件管理，攻击者无法从 EL0&#x2F;EL1 读取。</p>
+<h2 id="2-分支目标识别（Branch-Target-Identification-BTI）"><a href="#2-分支目标识别（Branch-Target-Identification-BTI）" class="headerlink" title="2. 分支目标识别（Branch Target Identification, BTI）"></a>2. 分支目标识别（Branch Target Identification, BTI）</h2><p><strong>配置选项</strong>：<code>CONFIG_ARM64_BTI</code>、<code>CONFIG_ARM64_BTI_KERNEL</code></p>
+<p>BTI 是 ARMv8.5 引入的控制流完整性特性，用于防止间接分支（<code>BR</code>、<code>BLR</code>）跳转到非法目标地址。其机制如下：</p>
+<ul>
+<li>在每个合法的间接分支目标位置放置一条 <strong>BTI 指令</strong>（landing pad），如 <code>BTI c</code>（call target）或 <code>BTI j</code>（jump target）</li>
+<li>CPU 在执行 <code>BR</code>&#x2F;<code>BLR</code> 时检查目标地址是否为 BTI 指令</li>
+<li>若目标不是 BTI 指令或 BTI 类型不匹配，CPU 触发 <strong>Branch Target Exception</strong></li>
+</ul>
+<p>BTI 的启用需要在页表项中设置 <code>PTE_GP</code>（Guarded Page）位。该位告诉 CPU对此页中的间接分支目标进行 BTI 检查。内核通过 <code>BTI_KERNEL</code> 选项为内核代码启用 BTI，编译器在编译时自动在函数入口插入适当的 BTI 指令。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">合法跳转：</span><br><span class="line">  BLR x8          <span class="comment">// 间接调用</span></span><br><span class="line">  → 目标地址处有 <span class="string">&quot;BTI c&quot;</span> → 正常执行</span><br><span class="line"></span><br><span class="line">非法跳转（攻击）：</span><br><span class="line">  BLR x8          <span class="comment">// 攻击者控制 x8</span></span><br><span class="line">  → 目标地址处无 BTI 指令 → 触发 Branch Target Exception → 内核崩溃</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>对比 x86_64</strong>：Intel CET IBT（Indirect Branch Tracking）的机制几乎完全相同——在合法目标处放置 <code>ENDBR64</code> 指令，CPU 检查间接跳转目标是否以<code>ENDBR64</code> 开头。两者在概念上是对等的。</p>
+<h2 id="3-内存标签扩展（Memory-Tagging-Extension-MTE）"><a href="#3-内存标签扩展（Memory-Tagging-Extension-MTE）" class="headerlink" title="3. 内存标签扩展（Memory Tagging Extension, MTE）"></a>3. 内存标签扩展（Memory Tagging Extension, MTE）</h2><p><strong>配置选项</strong>：<code>CONFIG_ARM64_MTE</code></p>
+<p>MTE 是 ARMv8.5 引入的硬件内存安全特性，用于检测内存安全漏洞（缓冲区溢出、释放后使用等）。其原理如下：</p>
+<ul>
+<li>物理内存按 <strong>16 字节粒度</strong>（granule）划分，每个粒度关联一个 <strong>4 位标签</strong>（共 16 种标签值，0-15）</li>
+<li>指针的高位字节（利用 TBI——Top Byte Ignore 特性）中存储一个 <strong>4 位指针标签</strong></li>
+<li>每次内存访问时，CPU 自动比较指针标签与内存标签：<ul>
+<li><strong>匹配</strong>：正常访问</li>
+<li><strong>不匹配</strong>：触发标签检查故障（Tag Check Fault）</li>
+</ul>
+</li>
+</ul>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">正常访问：</span><br><span class="line">  指针标签 = <span class="number">5</span>, 内存标签 = <span class="number">5</span> → 匹配 → 正常读写</span><br><span class="line"></span><br><span class="line">缓冲区溢出：</span><br><span class="line">  指针标签 = <span class="number">5</span>, 越界后的内存标签 = <span class="number">3</span> → 不匹配 → 触发故障</span><br><span class="line"></span><br><span class="line">释放后使用：</span><br><span class="line">  分配时：指针标签 = <span class="number">7</span>, 内存标签 = <span class="number">7</span></span><br><span class="line">  释放时：内存标签改为 <span class="number">0</span>（或随机值）</span><br><span class="line">  再次访问：指针标签 = <span class="number">7</span>, 内存标签 = <span class="number">0</span> → 不匹配 → 触发故障</span><br></pre></td></tr></table></figure></div>
+
+<p>MTE 支持两种检查模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>精度</th>
+<th>性能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>同步（Synchronous）</td>
+<td>高，精确报告出错指令</td>
+<td>开销较大（约 5-10%）</td>
+<td>安全敏感场景</td>
+</tr>
+<tr>
+<td>异步（Asynchronous）</td>
+<td>低，延迟报告出错</td>
+<td>开销较小（约 1-3%）</td>
+<td>性能敏感场景</td>
+</tr>
+</tbody></table>
+<p><code>GCR_EL1</code>（Tag Control Register）控制标签生成策略，内核可以通过设置<code>GCR_EL1.EXCLUDE</code> 位掩码来排除某些标签值，使随机生成的标签集中在特定范围内，从而提高检测概率。内核还通过 <code>CONFIG_KASAN_SW_TAGS</code> 和 <code>CONFIG_KASAN_HW_TAGS</code> 将 MTE 集成到 KASAN（Kernel Address SANitizer）中，用于内核自身的内存安全检测。</p>
+<p><strong>对比 x86_64</strong>：x86 没有硬件内存标签的等价特性。x86 上的内存安全检测主要依赖软件方案：KASAN（基于影子内存）、KFENCE（基于采样检测）、ASAN（用户空间）。MTE 的硬件实现使其性能开销远低于软件方案。</p>
+<h2 id="4-KPTI（Kernel-Page-Table-Isolation）"><a href="#4-KPTI（Kernel-Page-Table-Isolation）" class="headerlink" title="4. KPTI（Kernel Page Table Isolation）"></a>4. KPTI（Kernel Page Table Isolation）</h2><p><strong>配置选项</strong>：<code>CONFIG_UNMAP_KERNEL_AT_EL0</code></p>
+<p>ARM64 的 KPTI 机制与 x86_64 的 KPTI 目标相同：防止 Meltdown 类旁路攻击在用户态读取内核内存。ARM64 的实现利用了其双 TTBR（Translation Table Base Register）架构：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">返回用户空间（EL0）时：</span><br><span class="line">  → 将 TTBR0_EL1 指向一块预分配的<span class="string">&quot;零页&quot;</span>页表</span><br><span class="line">  → 该页表仅映射了 trampoline 页和用户空间</span><br><span class="line">  → 内核映射完全不可访问</span><br><span class="line"></span><br><span class="line">进入内核（EL1）时：</span><br><span class="line">  → 将 TTBR0_EL1 恢复为完整的内核页表</span><br><span class="line">  → trampoline 代码负责切换 TTBR0 并刷新 TLB</span><br></pre></td></tr></table></figure></div>
+
+<p>关键设计是 <strong>trampoline 页</strong>：这是一页同时映射在用户页表和内核页表中的代码，包含异常入口&#x2F;出口的 TTBR 切换逻辑。当用户态触发系统调用或中断时，CPU 先进入 trampoline 页（在用户页表中有映射），trampoline 代码切换 TTBR0 到内核页表，然后跳转到内核的实际异常处理代码。</p>
+<p><strong>对比 x86_64</strong>：x86 使用单一 <code>CR3</code> 寄存器，KPTI 通过在 <code>sysret</code>&#x2F;<code>iret</code>返回用户态时将 <code>CR3</code> 切换到用户页表实现。ARM64 使用双 <code>TTBR0</code>&#x2F;<code>TTBR1</code>架构，只需切换 <code>TTBR0</code> 即可隔离内核映射（<code>TTBR1</code> 始终指向内核页表，但在 EL0 时不被使用），因此 ARM64 的 KPTI 开销通常低于 x86。</p>
+<h2 id="5-E0PD（E0-Prevent-Data）"><a href="#5-E0PD（E0-Prevent-Data）" class="headerlink" title="5. E0PD（E0 Prevent Data）"></a>5. E0PD（E0 Prevent Data）</h2><p><strong>配置选项</strong>：<code>CONFIG_ARM64_E0PD</code>E0PD 是 ARMv8.5 引入的特性，作为 KPTI 的轻量级替代方案。它不真正取消内核映射，而是让 EL0 对通过 <code>TTBR1</code>（内核地址空间）的访问产生 <strong>恒定时间的故障</strong>，防止攻击者通过测量访问延迟来探测内核地址映射。<code>TCR_EL1</code> 的 <code>E0PD0</code> 和 <code>E0PD1</code> 位分别控制 <code>TTBR0</code> 和 <code>TTBR1</code> 地址空间的 E0PD 行为。当 E0PD 启用时，无论目标地址是否映射，EL0 的访问都返回故障，且响应时间相同，从而消除了基于时序的旁路攻击面。</p>
+<h2 id="6-PAN（Privileged-Access-Never）与-UAO（User-Access-Override）"><a href="#6-PAN（Privileged-Access-Never）与-UAO（User-Access-Override）" class="headerlink" title="6. PAN（Privileged Access Never）与 UAO（User Access Override）"></a>6. PAN（Privileged Access Never）与 UAO（User Access Override）</h2><p><strong>PAN</strong> 通过 <code>SCTLR_EL1.PAN</code> 位实现：当该位置 1 时，EL1（内核）对 EL0（用户空间）页面的数据访问被阻止，触发权限故障。这防止内核意外访问用户空间内存（如通过悬挂指针）。</p>
+<p><strong>UAO</strong>（User Access Override）提供临时豁免机制：<code>SCTLR_EL1.PAN</code> 置位时，<code>copy_to_user()</code>&#x2F;<code>copy_from_user()</code> 等合法的内核-用户数据拷贝操作通过设置 <code>PSTATE.UAO</code> 位临时允许访问，操作完成后立即清除。对于不支持 PAN 硬件的 CPU，内核通过 <code>CONFIG_ARM64_SW_TTBR0_PAN</code> 提供软件模拟：在进入内核时将 <code>TTBR0</code> 切换为空页表，<code>copy_from_user()</code> 时临时恢复原始 <code>TTBR0</code>，达到类似的隔离效果。</p>
+<p><strong>对比 x86_64</strong>：x86 的 <code>SMAP</code>（Supervisor Mode Access Prevention，通过 <code>CR4.SMAP</code> 启用）与 PAN 功能等价。x86 通过 <code>RFLAGS.AC</code> 标志位的临时置位（<code>stac</code>&#x2F;<code>clac</code> 指令）来允许特定的用户空间访问，对应 ARM64 的 UAO。</p>
+<h2 id="7-影子调用栈（Shadow-Call-Stack）"><a href="#7-影子调用栈（Shadow-Call-Stack）" class="headerlink" title="7. 影子调用栈（Shadow Call Stack）"></a>7. 影子调用栈（Shadow Call Stack）</h2><p><strong>配置选项</strong>：<code>CONFIG_SHADOW_CALL_STACK</code></p>
+<p>ARM64 的影子调用栈使用 <code>x18</code> 寄存器作为影子栈指针。函数调用时：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">函数入口（prologue）：</span><br><span class="line">  STR LR, [X18], #8         // 将返回地址压入影子栈，x18 递增</span><br><span class="line"></span><br><span class="line">函数出口（epilogue）：</span><br><span class="line">  LDR X9, [X18, #-8]!       // 从影子栈弹出返回地址</span><br><span class="line">  CMP X9, LR                 // 比较影子栈值与当前 LR</span><br><span class="line">  B.NE __scs_check_failed    // 不匹配则崩溃</span><br><span class="line">  MOV LR, X9</span><br><span class="line">  RET</span><br></pre></td></tr></table></figure></div>
+
+<p>影子调用栈与 PAC 互补：PAC 保护单个返回地址不被篡改，影子调用栈保护整个调用链。即使攻击者绕过了 PAC 修改了栈上的返回地址，影子栈上的副本仍可用于检测篡改。</p>
+<p><strong>对比 x86_64</strong>：Intel CET 的影子栈是硬件实现的（CPU 自动将返回地址压入影子栈），而 ARM64 的影子调用栈是软件实现的（编译器插入指令），但利用了<code>x18</code> 寄存器不会被常规函数调用修改的特性，性能开销较低。</p>
+<h1 id="5-8-ARM64-与-x86-64-内核对比"><a href="#5-8-ARM64-与-x86-64-内核对比" class="headerlink" title="5.8 ARM64 与 x86_64 内核对比"></a>5.8 ARM64 与 x86_64 内核对比</h1><p>ARM64 与 x86_64 是当前 Linux 内核支持的两大主流 64 位架构。它们在设计哲学上截然不同：x86_64 继承了 CISC 的复杂历史，ARM64 则是基于 RISC 原则的全新设计。本章从多个维度系统对比两种架构在 Linux 内核中的实现差异。</p>
+<h2 id="1-架构基础对比"><a href="#1-架构基础对比" class="headerlink" title="1. 架构基础对比"></a>1. 架构基础对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>指令集</td>
+<td>CISC，变长编码（1-15 字节）</td>
+<td>RISC，定长 32 位编码</td>
+</tr>
+<tr>
+<td>通用寄存器</td>
+<td>16 个（RAX-R15）</td>
+<td>31 个（X0-X30）+ SP</td>
+</tr>
+<tr>
+<td>内存模型</td>
+<td>Load + Operate（<code>ADD [mem], 1</code>）</td>
+<td>Load&#x2F;Store 严格分离</td>
+</tr>
+<tr>
+<td>特权模型</td>
+<td>Ring 0-3（4 级）</td>
+<td>EL0-EL3（4 级）</td>
+</tr>
+<tr>
+<td>页表基址</td>
+<td>CR3（单寄存器）</td>
+<td>TTBR0 + TTBR1（双寄存器）</td>
+</tr>
+<tr>
+<td>系统调用</td>
+<td><code>SYSCALL</code>&#x2F;<code>SYSRET</code>（MSR 寄存器）</td>
+<td><code>SVC</code>（异常向量）</td>
+</tr>
+<tr>
+<td>中断控制器</td>
+<td>APIC&#x2F;IOAPIC</td>
+<td>GIC（Generic Interrupt Controller）</td>
+</tr>
+<tr>
+<td>固件接口</td>
+<td>BIOS&#x2F;UEFI</td>
+<td>UEFI + DTB</td>
+</tr>
+<tr>
+<td>端序</td>
+<td>仅小端</td>
+<td>小端&#x2F;大端（可配置）</td>
+</tr>
+</tbody></table>
+<p>x86_64 的变长指令编码（1-15 字节）允许高密度的指令编码，但译码逻辑复杂。ARM64 的定长 32 位编码简化了译码流水线，有利于提高指令译码吞吐量。在<br>寄存器方面，ARM64 提供了 31 个通用寄存器（x86_64 仅 16 个），减少了函数调用中的栈溢出（spill）次数。ARM64 的 Load&#x2F;Store 架构要求所有运算在寄存器间完成，内存操作只能通过专用的 Load&#x2F;Store 指令，这与 x86_64 的”内存操作数 + 运算”合一模式形成鲜明对比。</p>
+<h2 id="2-启动流程对比"><a href="#2-启动流程对比" class="headerlink" title="2. 启动流程对比"></a>2. 启动流程对比</h2><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>x86_64</th>
+<th>ARM64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CPU 复位</td>
+<td>实模式，从 <code>0xFFFFFFF0</code> 执行</td>
+<td>EL3&#x2F;EL2，从固件入口执行</td>
+</tr>
+<tr>
+<td>引导程序</td>
+<td>GRUB2 加载 <code>bzImage</code></td>
+<td>U-Boot&#x2F;GRUB 加载 <code>Image</code></td>
+</tr>
+<tr>
+<td>16 位设置代码</td>
+<td>有（<code>setup_header</code>）</td>
+<td>无（直接 64 位入口）</td>
+</tr>
+<tr>
+<td>模式转换</td>
+<td>实模式→保护模式→长模式</td>
+<td>EL2→EL1（或直接 EL1）</td>
+</tr>
+<tr>
+<td>自解压</td>
+<td>内核内嵌解压器</td>
+<td>引导程序负责解压</td>
+</tr>
+<tr>
+<td>硬件描述</td>
+<td>E820 内存映射</td>
+<td>DTB 或 ACPI</td>
+</tr>
+<tr>
+<td>内核入口</td>
+<td><code>startup_64</code>（压缩内核）</td>
+<td><code>primary_entry</code></td>
+</tr>
+</tbody></table>
+<p>x86_64 的启动流程承载了从 16 位实时代到 64 位长模式的历史包袱。CPU 复位后从实模式（16 位）开始，需要经过实模式→保护模式（32 位）→长模式（64 位）两次模式转换。内核映像内嵌了 16 位设置代码和自解压器，GRUB2 需要配合<code>setup_header</code> 协议加载内核。</p>
+<p>ARM64 的启动流程则干净得多：CPU 复位后直接在最高异常级别（通常 EL3 或 EL2）以 64 位模式运行，固件（如 ATF）完成初始化后，将异常级别降至 EL1 并跳转到内核入口。内核映像没有自解压器，解压由引导程序完成。</p>
+<h2 id="3-内存管理对比"><a href="#3-内存管理对比" class="headerlink" title="3. 内存管理对比"></a>3. 内存管理对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>虚拟地址位数</td>
+<td>48 位（4 级）或 57 位（5 级）</td>
+<td>39-52 位（2-5 级，可配置）</td>
+</tr>
+<tr>
+<td>页大小</td>
+<td>4KB、2MB、1GB</td>
+<td>4KB、16KB、64KB</td>
+</tr>
+<tr>
+<td>页表分裂</td>
+<td>单 CR3 指向统一页表</td>
+<td>TTBR0（用户）+ TTBR1（内核）</td>
+</tr>
+<tr>
+<td>地址空间标识</td>
+<td>PCID（CR3 低 12 位）</td>
+<td>ASID（TTBR0 低 16 位）</td>
+</tr>
+<tr>
+<td>不可执行位</td>
+<td>Bit 63（XD&#x2F;NX）</td>
+<td>UXN&#x2F;PXN 位（分离用户&#x2F;特权）</td>
+</tr>
+<tr>
+<td>脏位（Dirty）</td>
+<td>硬件自动设置（Bit 6）</td>
+<td>DBM 位（可选，ARMv8.1）</td>
+</tr>
+<tr>
+<td>访问标志</td>
+<td>硬件自动设置（Bit 5）</td>
+<td>AF 位（硬件或软件设置）</td>
+</tr>
+</tbody></table>
+<p>ARM64 的双 TTBR 架构是一个显著优势：<code>TTBR0</code> 专用于用户空间（低地址），<code>TTBR1</code> 专用于内核空间（高地址），两者完全独立。这意味着 <code>switch_mm()</code>（进程切换）只需更新 <code>TTBR0</code>，而内核映射通过 <code>TTBR1</code> 保持不变。x86_64使用单一 <code>CR3</code>，每次 <code>switch_mm()</code> 都会同时影响用户和内核映射。</p>
+<p>ARM64 将不可执行位分为 <code>UXN</code>（User Execute Never）和 <code>PXN</code>（PrivilegedExecute Never）两个独立位，提供了比 x86_64 单一 NX 位更细粒度的控制。例如，内核可以将一个页面设置为用户不可执行但特权可执行，或反之。</p>
+<p>在脏页管理方面，x86_64 的硬件脏位（PTE bit 6）由 CPU 在写入时自动设置，ARM64 则通过 <code>DBM</code>（Dirty Bit Modifier，ARMv8.1）位实现类似功能，但也可以选择软件方式管理。</p>
+<h2 id="4-安全特性对比"><a href="#4-安全特性对比" class="headerlink" title="4. 安全特性对比"></a>4. 安全特性对比</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>x86_64</th>
+<th>ARM64</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>控制流完整性</td>
+<td>KCFI（编译器，类型哈希）</td>
+<td>PAC（硬件加密签名）+ BTI（硬件）</td>
+</tr>
+<tr>
+<td>栈保护</td>
+<td>Canary（软件）</td>
+<td>SCS（x18 影子栈）+ PAC</td>
+</tr>
+<tr>
+<td>内存标签</td>
+<td>无（使用 KFENCE 软件方案）</td>
+<td>MTE（硬件 4 位标签）</td>
+</tr>
+<tr>
+<td>内核页表隔离</td>
+<td>CR3 切换</td>
+<td>TTBR0 切换</td>
+</tr>
+<tr>
+<td>特权访问保护</td>
+<td>SMAP（CR4.SMAP）</td>
+<td>PAN（SCTLR_EL1.PAN）&#x2F; TTBR0 交换</td>
+</tr>
+<tr>
+<td>执行防止</td>
+<td>SMEP（CR4.SMEP）</td>
+<td>UXN&#x2F;PXN 位</td>
+</tr>
+<tr>
+<td>影子栈</td>
+<td>Intel CET（硬件自动）</td>
+<td>软件影子栈（x18 寄存器）</td>
+</tr>
+</tbody></table>
+<p>ARM64 在安全特性的硬件化程度上领先于 x86_64。PAC 提供的加密签名保护比KCFI 的类型哈希检查更难伪造；MTE 提供的硬件内存标签是 x86 完全没有的能力；BTI 与 Intel CET IBT 概念对等但实现细节不同。</p>
+<p>x86_64 在影子栈方面有一定优势：Intel CET 的硬件影子栈由 CPU 自动管理返回地址的压栈和出栈，性能开销极低。ARM64 的软件影子栈需要编译器插入额外的 Load&#x2F;Store 指令，开销略高。</p>
+<h2 id="5-性能考量"><a href="#5-性能考量" class="headerlink" title="5. 性能考量"></a>5. 性能考量</h2><p>两种架构的性能特征源于其设计哲学差异：</p>
+<p><strong>指令密度与吞吐量</strong>：</p>
+<ul>
+<li>x86_64 的变长编码在代码密度上通常占优，常用指令可以用更少的字节表示</li>
+<li>ARM64 的定长编码牺牲了代码密度，但换来了更高的译码吞吐量——译码器无需确定指令边界，可以并行译码多条指令</li>
+</ul>
+<p><strong>内存序模型</strong>：</p>
+<ul>
+<li>x86_64 采用 <strong>TSO</strong>（Total Store Order），保证较强的内存序：Store 操作对所有 CPU 按序可见，Load 操作可以重排序但不越过 Store</li>
+<li>ARM64 采用 <strong>弱内存序</strong>（Weakly Ordered），CPU 可以自由重排 Load 和 Store操作以获得更高性能。内核必须使用显式内存屏障：<ul>
+<li><code>DMB</code>（Data Memory Barrier）：确保屏障前的内存操作在屏障后可见</li>
+<li><code>DSB</code>（Data Synchronization Barrier）：等待所有内存操作完成</li>
+<li><code>ISB</code>（Instruction Synchronization Barrier）：刷新流水线，确保后续<br>指令看到之前的系统寄存器修改</li>
+</ul>
+</li>
+</ul>
+<p>这意味着 ARM64 内核代码中需要插入更多的内存屏障指令（通过 <code>smp_wmb()</code>、<code>smp_rmb()</code>、<code>smp_mb()</code> 等宏），而 x86_64 上这些宏大部分是空操作（NOP）。ARM64 的弱序模型在无竞争场景下性能更优，但增加了编程的复杂性。</p>
+<p><strong>功耗效率</strong>：<br>ARM64 的简洁指令集和较低的控制逻辑复杂度使其在功耗效率上天然优于 x86_64。这是 ARM 在移动和嵌入式领域占据主导地位的根本原因，也是 ARM 服务器（如AWS Graviton、Ampere Altra）在数据中心获得竞争力的关键因素之一。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-04</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-05-28 18:15:43</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-05-28 18:40:00
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/05/28/Linux内核分析之基础知识-04/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-05/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-05</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-03/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-03</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "not-lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "jelasin/jelasin.github.io",
+                    "data-repo-id": "R_kgDOKVydDA",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOKVydDM4CZe2W",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-04</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#5-1-ARM64-%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0-%E2%80%94%E2%80%94-%E5%AF%84%E5%AD%98%E5%99%A8%E3%80%81%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB%E4%B8%8E%E7%B3%BB%E7%BB%9F%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">5.1 ARM64 架构概述 —— 寄存器、异常级别与系统寄存器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-ARM64-%E5%AF%84%E5%AD%98%E5%99%A8%E6%96%87%E4%BB%B6"><span class="nav-text">1. ARM64 寄存器文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E9%80%9A%E7%94%A8%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88X0-X30-W0-W30%EF%BC%89"><span class="nav-text">1.1 通用寄存器（X0-X30 &#x2F; W0-W30）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E9%9B%B6%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88XZR-WZR%EF%BC%89"><span class="nav-text">1.2 零寄存器（XZR &#x2F; WZR）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E6%A0%88%E6%8C%87%E9%92%88%EF%BC%88SP%EF%BC%89"><span class="nav-text">1.3 栈指针（SP）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8%EF%BC%88PC%EF%BC%89"><span class="nav-text">1.4 程序计数器（PC）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E5%A4%84%E7%90%86%E5%99%A8%E7%8A%B6%E6%80%81%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88PSTATE%EF%BC%89"><span class="nav-text">1.5 处理器状态寄存器（PSTATE）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-NEON-SIMD-%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88V0-V31%EF%BC%89"><span class="nav-text">1.6 NEON&#x2F;SIMD 寄存器（V0-V31）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-7-SVE-%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88Z0-Z31-P0-P15%EF%BC%89"><span class="nav-text">1.7 SVE 寄存器（Z0-Z31, P0-P15）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB%EF%BC%88Exception-Levels-EL0-EL3%EF%BC%89"><span class="nav-text">2. 异常级别（Exception Levels, EL0-EL3）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%90%84%E7%BA%A7%E5%88%AB%E7%9A%84%E8%A7%92%E8%89%B2"><span class="nav-text">2.1 各级别的角色</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Linux-%E8%BF%90%E8%A1%8C%E7%9A%84%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB"><span class="nav-text">2.2 Linux 运行的异常级别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB%E7%9A%84%E5%85%B3%E9%94%AE%E7%B3%BB%E7%BB%9F%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">2.3 异常级别的关键系统寄存器</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%85%B3%E9%94%AE%E7%B3%BB%E7%BB%9F%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3. 关键系统寄存器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-SCTLR-EL1-%E2%80%94%E2%80%94-%E7%B3%BB%E7%BB%9F%E6%8E%A7%E5%88%B6%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.1 SCTLR_EL1 —— 系统控制寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-TCR-EL1-%E2%80%94%E2%80%94-%E7%BF%BB%E8%AF%91%E6%8E%A7%E5%88%B6%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.2 TCR_EL1 —— 翻译控制寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-TTBR0-EL1-%E4%B8%8E-TTBR1-EL1-%E2%80%94%E2%80%94-%E9%A1%B5%E8%A1%A8%E5%9F%BA%E5%9D%80%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.3 TTBR0_EL1 与 TTBR1_EL1 —— 页表基址寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-VBAR-EL1-%E2%80%94%E2%80%94-%E5%90%91%E9%87%8F%E5%9F%BA%E5%9D%80%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.4 VBAR_EL1 —— 向量基址寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-MAIR-EL1-%E2%80%94%E2%80%94-%E5%86%85%E5%AD%98%E5%B1%9E%E6%80%A7%E9%97%B4%E6%8E%A5%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.5 MAIR_EL1 —— 内存属性间接寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-6-ID-AA64-%E7%B3%BB%E5%88%97-%E2%80%94%E2%80%94-CPU-%E7%89%B9%E6%80%A7%E6%A0%87%E8%AF%86%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-text">3.6 ID_AA64* 系列 —— CPU 特性标识寄存器</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E8%BF%87%E7%A8%8B%E8%B0%83%E7%94%A8%E7%BA%A6%E5%AE%9A%EF%BC%88AAPCS64%EF%BC%89"><span class="nav-text">4. 过程调用约定（AAPCS64）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AF%84%E5%AD%98%E5%99%A8%E8%A7%92%E8%89%B2%E5%88%86%E9%85%8D"><span class="nav-text">4.1 寄存器角色分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E5%8F%82%E6%95%B0%E4%BC%A0%E9%80%92%E4%B8%8E%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-text">4.2 参数传递与返回值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E6%A0%88%E5%B8%A7%E5%B8%83%E5%B1%80"><span class="nav-text">4.3 栈帧布局</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-ARM64-%E4%B8%8E-x86-64-%E7%9A%84%E6%9C%AC%E8%B4%A8%E6%9E%B6%E6%9E%84%E5%B7%AE%E5%BC%82"><span class="nav-text">5. ARM64 与 x86_64 的本质架构差异</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-Load-Store-%E6%9E%B6%E6%9E%84"><span class="nav-text">5.1 Load&#x2F;Store 架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%9B%BA%E5%AE%9A%E9%95%BF%E5%BA%A6%E6%8C%87%E4%BB%A4"><span class="nav-text">5.2 固定长度指令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E6%9D%A1%E4%BB%B6%E6%89%A7%E8%A1%8C%E6%A8%A1%E5%9E%8B"><span class="nav-text">5.3 条件执行模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-%E6%97%A0%E5%88%86%E6%AE%B5%E6%9C%BA%E5%88%B6"><span class="nav-text">5.4 无分段机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB-vs-%E4%BF%9D%E6%8A%A4%E7%8E%AF"><span class="nav-text">5.5 异常级别 vs 保护环</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-1-TTBR0-TTBR1-%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E5%88%86%E5%89%B2"><span class="nav-text">5.2.1 TTBR0&#x2F;TTBR1 地址空间分割</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8C%E5%AF%84%E5%AD%98%E5%99%A8%E6%9C%BA%E5%88%B6"><span class="nav-text">双寄存器机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCR-EL1-%E7%9A%84%E6%8E%A7%E5%88%B6%E4%BD%9C%E7%94%A8"><span class="nav-text">TCR_EL1 的控制作用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-2-%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E5%B8%83%E5%B1%80"><span class="nav-text">5.2.2 虚拟地址空间布局</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-3-%E9%A1%B5%E8%A1%A8%E5%B1%82%E7%BA%A7%EF%BC%88CONFIG-PGTABLE-LEVELS%EF%BC%89"><span class="nav-text">5.2.3 页表层级（CONFIG_PGTABLE_LEVELS）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-4-%E9%A1%B5%E8%A1%A8%E9%A1%B9%E7%A1%AC%E4%BB%B6%E6%A0%BC%E5%BC%8F"><span class="nav-text">5.2.4 页表项硬件格式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E5%AD%97%E6%AE%B5"><span class="nav-text">关键字段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BE%93%E5%87%BA%E5%9C%B0%E5%9D%80%E5%AD%97%E6%AE%B5"><span class="nav-text">输出地址字段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-5-%E9%A1%B5%E5%A4%A7%E5%B0%8F%E6%94%AF%E6%8C%81"><span class="nav-text">5.2.5 页大小支持</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-6-%E5%86%85%E6%A0%B8%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E5%B8%B8%E9%87%8F"><span class="nav-text">5.2.6 内核虚拟内存布局常量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-7-ASID%EF%BC%88%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4%E6%A0%87%E8%AF%86%E7%AC%A6%EF%BC%89"><span class="nav-text">5.2.7 ASID（地址空间标识符）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2-8-%E5%A4%A7%E9%A1%B5%E6%94%AF%E6%8C%81"><span class="nav-text">5.2.8 大页支持</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%8F%E6%98%8E%E5%A4%A7%E9%A1%B5%EF%BC%88%E5%9D%97%E6%98%A0%E5%B0%84%EF%BC%89"><span class="nav-text">透明大页（块映射）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E7%BB%AD%E9%A1%B5%EF%BC%88Contiguous-Pages%EF%BC%89"><span class="nav-text">连续页（Contiguous Pages）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-3-ARM64-%E5%BC%82%E5%B8%B8%E5%90%91%E9%87%8F%E4%B8%8E%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="nav-text">5.3 ARM64 异常向量与中断处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-1-%E5%BC%82%E5%B8%B8%E5%90%91%E9%87%8F%E8%A1%A8"><span class="nav-text">5.3.1 异常向量表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-2-%E5%BC%82%E5%B8%B8%E7%B1%BB%E5%9E%8B"><span class="nav-text">5.3.2 异常类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-3-%E5%BC%82%E5%B8%B8%E5%85%A5%E5%8F%A3%EF%BC%88kernel-entry-%E5%AE%8F%EF%BC%89"><span class="nav-text">5.3.3 异常入口（kernel_entry 宏）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-4-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%EF%BC%88SVC-0%EF%BC%89"><span class="nav-text">5.3.4 系统调用（SVC #0）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-5-%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86%EF%BC%88IRQ%EF%BC%89"><span class="nav-text">5.3.5 中断处理（IRQ）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-6-GIC-%E9%80%9A%E7%94%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8"><span class="nav-text">5.3.6 GIC 通用中断控制器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-7-%E5%BC%82%E5%B8%B8%E8%BF%94%E5%9B%9E%EF%BC%88kernel-exit-%E5%AE%8F%EF%BC%89"><span class="nav-text">5.3.7 异常返回（kernel_exit 宏）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-8-KPTI-%E8%B9%A6%E5%BA%8A%E9%A1%B5"><span class="nav-text">5.3.8 KPTI 蹦床页</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-3-9-SDEI%EF%BC%88%E8%BD%AF%E4%BB%B6%E5%A7%94%E6%89%98%E5%BC%82%E5%B8%B8%E6%8E%A5%E5%8F%A3%EF%BC%89"><span class="nav-text">5.3.9 SDEI（软件委托异常接口）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-4-ARM64-%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%EF%BC%9A%E4%BB%8E-primary-entry-%E5%88%B0-start-kernel"><span class="nav-text">5.4 ARM64 内核启动：从 primary_entry 到 start_kernel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-1-%E5%90%AF%E5%8A%A8%E5%85%A5%E5%8F%A3%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6"><span class="nav-text">5.4.1 启动入口前提条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-2-primary-entry-%E2%80%94%E2%80%94-%E5%90%AF%E5%8A%A8%E7%AC%AC%E4%B8%80%E7%AB%99"><span class="nav-text">5.4.2 primary_entry —— 启动第一站</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-3-init-kernel-el-%E2%80%94%E2%80%94-%E5%BC%82%E5%B8%B8%E7%BA%A7%E5%88%AB%E6%A3%80%E6%B5%8B%E4%B8%8E%E5%88%87%E6%8D%A2"><span class="nav-text">5.4.3 init_kernel_el —— 异常级别检测与切换</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-4-cpu-setup-%E2%80%94%E2%80%94-%E5%A4%84%E7%90%86%E5%99%A8%E9%85%8D%E7%BD%AE"><span class="nav-text">5.4.4 __cpu_setup —— 处理器配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-5-primary-switch-%E2%80%94%E2%80%94-%E4%BD%BF%E8%83%BD-MMU"><span class="nav-text">5.4.5 __primary_switch —— 使能 MMU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-6-primary-switched-%E2%80%94%E2%80%94-%E6%B1%87%E7%BC%96%E9%98%B6%E6%AE%B5%E7%9A%84%E6%94%B6%E5%B0%BE"><span class="nav-text">5.4.6 __primary_switched —— 汇编阶段的收尾</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-7-%E5%AE%8C%E6%95%B4%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="nav-text">5.4.7 完整启动流程图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-4-8-ARM64-%E4%B8%8E-x86-64-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="nav-text">5.4.8 ARM64 与 x86_64 启动流程对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ARM64-%E5%86%85%E6%A0%B8-Image-%E5%A4%B4%E9%83%A8"><span class="nav-text">ARM64 内核 Image 头部</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#UEFI-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%EF%BC%9AEFI-Stub"><span class="nav-text">UEFI 启动流程：EFI Stub</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E6%98%A0%E5%83%8F%E6%A0%BC%E5%BC%8F"><span class="nav-text">内核映像格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DTB%EF%BC%88Device-Tree-Blob%EF%BC%89"><span class="nav-text">DTB（Device Tree Blob）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#setup-arch-%E5%88%9D%E5%A7%8B%E5%8C%96%E6%B5%81%E7%A8%8B"><span class="nav-text">setup_arch() 初始化流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-6-ARM64-%E5%A4%9A%E5%A4%84%E7%90%86%E5%99%A8%E5%90%AF%E5%8A%A8-%E2%80%94-PSCI-%E4%B8%8E-Spin-Table"><span class="nav-text">5.6 ARM64 多处理器启动 — PSCI 与 Spin Table</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9APSCI%EF%BC%88Power-State-Coordination-Interface%EF%BC%89"><span class="nav-text">方法一：PSCI（Power State Coordination Interface）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9ASpin-Table"><span class="nav-text">方法二：Spin Table</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8E-CPU-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-text">从 CPU 启动流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#secondary-start-kernel-%E2%80%94-C-%E8%AF%AD%E8%A8%80%E5%85%A5%E5%8F%A3"><span class="nav-text">secondary_start_kernel() — C 语言入口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ARM64-vs-x86-64%EF%BC%9A%E5%A4%9A%E6%A0%B8%E5%90%AF%E5%8A%A8%E5%AF%B9%E6%AF%94"><span class="nav-text">ARM64 vs x86_64：多核启动对比</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-7-ARM64-%E5%AE%89%E5%85%A8%E7%89%B9%E6%80%A7-%E2%80%94-PAC%E3%80%81BTI%E3%80%81MTE%E3%80%81KPTI"><span class="nav-text">5.7 ARM64 安全特性 — PAC、BTI、MTE、KPTI</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%8C%87%E9%92%88%E8%AE%A4%E8%AF%81%EF%BC%88Pointer-Authentication-PAC%EF%BC%89"><span class="nav-text">1. 指针认证（Pointer Authentication, PAC）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%88%86%E6%94%AF%E7%9B%AE%E6%A0%87%E8%AF%86%E5%88%AB%EF%BC%88Branch-Target-Identification-BTI%EF%BC%89"><span class="nav-text">2. 分支目标识别（Branch Target Identification, BTI）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%86%85%E5%AD%98%E6%A0%87%E7%AD%BE%E6%89%A9%E5%B1%95%EF%BC%88Memory-Tagging-Extension-MTE%EF%BC%89"><span class="nav-text">3. 内存标签扩展（Memory Tagging Extension, MTE）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-KPTI%EF%BC%88Kernel-Page-Table-Isolation%EF%BC%89"><span class="nav-text">4. KPTI（Kernel Page Table Isolation）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-E0PD%EF%BC%88E0-Prevent-Data%EF%BC%89"><span class="nav-text">5. E0PD（E0 Prevent Data）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-PAN%EF%BC%88Privileged-Access-Never%EF%BC%89%E4%B8%8E-UAO%EF%BC%88User-Access-Override%EF%BC%89"><span class="nav-text">6. PAN（Privileged Access Never）与 UAO（User Access Override）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%BD%B1%E5%AD%90%E8%B0%83%E7%94%A8%E6%A0%88%EF%BC%88Shadow-Call-Stack%EF%BC%89"><span class="nav-text">7. 影子调用栈（Shadow Call Stack）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-8-ARM64-%E4%B8%8E-x86-64-%E5%86%85%E6%A0%B8%E5%AF%B9%E6%AF%94"><span class="nav-text">5.8 ARM64 与 x86_64 内核对比</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80%E5%AF%B9%E6%AF%94"><span class="nav-text">1. 架构基础对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="nav-text">2. 启动流程对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%AF%B9%E6%AF%94"><span class="nav-text">3. 内存管理对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%AE%89%E5%85%A8%E7%89%B9%E6%80%A7%E5%AF%B9%E6%AF%94"><span class="nav-text">4. 安全特性对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%80%A7%E8%83%BD%E8%80%83%E9%87%8F"><span class="nav-text">5. 性能考量</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/main.js" ></script>
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Typed.min.js" ></script>
+
+
+
+
+
+
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+
+
+	
+</body>
+
+</html>

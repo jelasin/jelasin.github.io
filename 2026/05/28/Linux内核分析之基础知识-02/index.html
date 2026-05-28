@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/05/28/linux内核分析之基础知识-02/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-02">
+<meta property="og:url" content="https://jelasin.github.io/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-02/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-05-28T08:45:21.000Z">
+<meta property="article:modified_time" content="2026-05-28T10:40:00.240Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-02 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.json"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-circle-info fa-beat-fade\" style=\"--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;\" ></i>","start":"2023/9/20 11:45:14","statistics":true,"customize":"关山初度尘未洗，策马扬鞭再奋蹄。","icp":{"enable":false,"number":null,"url":null}},"footerStart":"2023/9/20 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">16</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-02</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-05-28 16:45:21</span>
+        <span class="mobile">2026-05-28 16:45:21</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-05-28 18:40</span>
+            <span class="mobile">2026-05-28 18:40</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="3-1-start-kernel-总览"><a href="#3-1-start-kernel-总览" class="headerlink" title="3.1 start_kernel() 总览"></a>3.1 start_kernel() 总览</h1><h2 id="函数定位"><a href="#函数定位" class="headerlink" title="函数定位"></a>函数定位</h2><p><code>start_kernel()</code> 定义在 <code>init/main.c</code> 的第 1006 行至第 1218 行，是内核通用初始化的总入口。当 x86_64 的体系结构引导代码在 <code>head64.c</code> 中完成长模式切换、早期页表建立、内核解压等工作后，<code>x86_64_start_reservations()</code> 将控制权转交给 <code>start_kernel()</code>。从此刻起，代码路径不再受限于特定体系结构，而是进入所有平台共享的通用初始化流程。</p>
+<h2 id="为什么需要理解初始化顺序"><a href="#为什么需要理解初始化顺序" class="headerlink" title="为什么需要理解初始化顺序"></a>为什么需要理解初始化顺序</h2><p><code>start_kernel()</code> 中约 200 个函数调用构成了一个精密的依赖链。理解这个顺序对于内核开发者至关重要：添加新的初始化逻辑时，必须将其放置在其依赖项之后、依赖它的模块之前。放错位置可能导致空指针崩溃、死锁或静默的数据损坏。我们将这 200 多个调用归纳为五个阶段，逐一分析其依赖关系和设计理由。</p>
+<hr>
+<h2 id="第一阶段：早期引导（中断禁用）"><a href="#第一阶段：早期引导（中断禁用）" class="headerlink" title="第一阶段：早期引导（中断禁用）"></a>第一阶段：早期引导（中断禁用）</h2><p>本阶段建立内核运行的最低限度基础设施。此时系统中断仍然关闭，任何外部事件都无法打断执行。</p>
+<h3 id="set-task-stack-end-magic-init-task"><a href="#set-task-stack-end-magic-init-task" class="headerlink" title="set_task_stack_end_magic(&amp;init_task)"></a>set_task_stack_end_magic(&amp;init_task)</h3><p><code>init_task</code> 是内核编译时静态创建的第一个（也是此刻唯一的）进程描述符，即 PID 0 的 idle 进程。此调用在 <code>init_task</code> 的内核栈底部写入一个魔数（magic number）<code>STACK_END_MAGIC</code>（值为 <code>0x57AC6E9D</code>）。这是一个栈溢出检测机制——如果栈被写穿，这个魔数会被覆盖，内核在后续检查中即可发现栈溢出问题。这是第一个初始化调用，因为后续几乎所有操作都需要内核栈。</p>
+<h3 id="smp-setup-processor-id"><a href="#smp-setup-processor-id" class="headerlink" title="smp_setup_processor_id()"></a>smp_setup_processor_id()</h3><p>在 SMP（对称多处理器）系统中，此函数确定当前正在执行引导代码的 CPU 的 ID。对于 x86_64 平台，引导处理器（BSP）的 ID 通常为 0。此信息在后续的 per-CPU 变量初始化和 CPU 热插拔回调中都会用到。必须在其他任何涉及 CPU 身份的操作之前完成。</p>
+<h3 id="boot-cpu-init"><a href="#boot-cpu-init" class="headerlink" title="boot_cpu_init()"></a>boot_cpu_init()</h3><p>此函数将引导处理器标记为活跃（active）、在线（online）和已存在（present）。它设置 CPU 状态掩码位图（<code>cpu_online_mask</code>、<code>cpu_active_mask</code> 等），使得后续代码可以通过 <code>cpu_online()</code> 等宏查询 CPU 状态。在 SMP 启动流程中，这是第一个被激活的 CPU，其他 CPU 要等到 <code>smp_init()</code> 时才会被唤醒。</p>
+<h3 id="pr-notice-“-s”-linux-banner"><a href="#pr-notice-“-s”-linux-banner" class="headerlink" title="pr_notice(“%s”, linux_banner)"></a>pr_notice(“%s”, linux_banner)</h3><p>打印 Linux 内核版本横幅，例如 <code>&quot;Linux version 7.0.0 ...&quot;</code>. 这通常是控制台上出现的第一条内核消息。横幅包含内核版本号、编译器版本、编译用户和时间戳。在此时打印，是因为 printk 的基础设施已在体系结构代码中初始化，而更早的输出则依赖 <code>early_printk</code>。</p>
+<h3 id="setup-arch-command-line"><a href="#setup-arch-command-line" class="headerlink" title="setup_arch(&amp;command_line)"></a>setup_arch(&amp;command_line)</h3><p>这是整个通用初始化中最重要的体系结构相关调用。对于 x86_64，它完成以下工作：</p>
+<ul>
+<li>解析 BIOS&#x2F;UEFI 传递的内存映射（e820 表）</li>
+<li>建立完整的内核页表（从早期页表扩展为最终页表）</li>
+<li>初始化 <code>memblock</code> 内存分配器</li>
+<li>解析内核命令行参数中的体系结构特定选项</li>
+<li>检测并映射 PCI 设备的 MMIO 空间</li>
+<li>初始化 Local APIC 和 IO APIC</li>
+<li>设置 DMA 区域和内存区域划分（ZONE_DMA、ZONE_DMA32、ZONE_NORMAL）</li>
+</ul>
+<p>注意 <code>command_line</code> 参数通过指针回传——<code>setup_arch()</code> 会修改它，将平台无关的参数留下供后续通用代码解析。此函数的复杂度极高，在 x86_64 上涉及数千行代码。它必须在所有内存和硬件相关初始化之前完成。</p>
+<h3 id="mm-core-init-early"><a href="#mm-core-init-early" class="headerlink" title="mm_core_init_early()"></a>mm_core_init_early()</h3><p>建立内存管理的核心数据结构。此函数初始化 <code>pglist_data</code> 节点、<code>zone</code> 区域列表，并设置 <code>memblock</code> 到伙伴系统的过渡准备。在 <code>setup_arch()</code> 之后调用是因为需要先知道物理内存的布局信息。</p>
+<h3 id="jump-label-init-与-static-call-init"><a href="#jump-label-init-与-static-call-init" class="headerlink" title="jump_label_init() 与 static_call_init()"></a>jump_label_init() 与 static_call_init()</h3><p>这两个调用初始化内核的静态分支优化基础设施。<code>jump_label</code>（跳转标签）是内核的零开销条件分支机制，被 <code>static_key</code> 广泛使用，用于在不修改代码的情况下动态开启&#x2F;关闭内核特性。<code>static_call</code> 是类似的机制，用于间接函数调用的优化。它们必须在任何使用 <code>static_key</code> 或 <code>static_call</code> 的子系统之前初始化。调度器和追踪系统大量依赖这些机制。</p>
+<h3 id="setup-per-cpu-areas"><a href="#setup-per-cpu-areas" class="headerlink" title="setup_per_cpu_areas()"></a>setup_per_cpu_areas()</h3><p>为每个可能的 CPU 分配独立的 per-CPU 内存区域。per-CPU 变量是内核实现无锁并发的重要机制——每个 CPU 拥有自己的变量副本，因此访问时无需加锁。此函数必须在使用任何 per-CPU 变量之前调用。由于前面已经通过 <code>boot_cpu_init()</code> 确定了引导处理器 ID，此函数可以正确地为 BSP 设置 per-CPU 区域的指针。</p>
+<h3 id="parse-early-param"><a href="#parse-early-param" class="headerlink" title="parse_early_param()"></a>parse_early_param()</h3><p>解析内核命令行中的”早期参数”。某些参数必须在通用初始化早期就生效，例如 <code>mem=</code>（限制可用内存大小）、<code>maxcpus=</code>（限制启动的 CPU 数量）、<code>debug</code>（启用调试输出）等。这些参数如果延迟解析，将导致后续初始化行为无法被用户控制。此函数必须在 <code>setup_arch()</code> 之后，因为 <code>setup_arch()</code> 可能已经添加了额外的命令行参数。</p>
+<hr>
+<h2 id="第二阶段：核心子系统（中断仍禁用）"><a href="#第二阶段：核心子系统（中断仍禁用）" class="headerlink" title="第二阶段：核心子系统（中断仍禁用）"></a>第二阶段：核心子系统（中断仍禁用）</h2><p>在第一阶段建立了内存和 CPU 的基本框架后，本阶段初始化内核最核心的几个子系统。中断仍然禁用，这些子系统需要在一个不受打扰的稳定环境中建立自己的数据结构。</p>
+<h3 id="sched-init-——调度器初始化"><a href="#sched-init-——调度器初始化" class="headerlink" title="sched_init()——调度器初始化"></a>sched_init()——调度器初始化</h3><p>初始化 CFS（完全公平调度器）的核心数据结构：分配每个 CPU 的运行队列（<code>rq</code>）、初始化调度域（scheduling domain）的基础结构、设置 init_task 的调度类为 <code>idle_class</code>。注意此时调度器虽然初始化了，但并未真正开始调度——因为中断仍然禁用，没有时钟中断来触发调度。调度器必须先于 RCU 初始化，因为 RCU 的宽限期检测需要调度器的上下文切换通知。</p>
+<h3 id="rcu-init-——RCU-机制初始化"><a href="#rcu-init-——RCU-机制初始化" class="headerlink" title="rcu_init()——RCU 机制初始化"></a>rcu_init()——RCU 机制初始化</h3><p>RCU（Read-Copy-Update）是内核中最复杂的同步机制之一。<code>rcu_init()</code> 建立 RCU 的宽限期检测状态机、初始化 per-CPU 的 <code>rcu_data</code> 结构、注册 RCU 的软中断回调。RCU 被内核几乎所有子系统使用——从文件系统到网络栈再到设备驱动——因此必须尽早初始化。但它在 <code>sched_init()</code> 之后，因为某些 RCU 变体（如可抢占 RCU）需要调度器的支持。</p>
+<h3 id="early-irq-init-与-init-IRQ"><a href="#early-irq-init-与-init-IRQ" class="headerlink" title="early_irq_init() 与 init_IRQ()"></a>early_irq_init() 与 init_IRQ()</h3><p>这两个函数建立中断描述符基础设施。<code>early_irq_init()</code> 分配中断描述符数组（<code>irq_desc</code>）并初始化 radix tree 用于管理硬件中断号到 Linux IRQ 号的映射。<code>init_IRQ()</code> 在 x86_64 上设置 IDT（中断描述符表）中除预定义异常外的所有硬件中断门，并初始化中断控制器驱动。中断子系统必须在定时器子系统之前就绪，因为定时器依赖中断来通知内核定时事件。</p>
+<h3 id="tick-init-timers-init-hrtimers-init"><a href="#tick-init-timers-init-hrtimers-init" class="headerlink" title="tick_init(), timers_init(), hrtimers_init()"></a>tick_init(), timers_init(), hrtimers_init()</h3><p><code>tick_init()</code> 初始化 tick 设备层，注册 tick 广播设备。<code>timers_init()</code> 初始化经典定时器轮（timer wheel），用于低精度定时。<code>hrtimers_init()</code> 初始化高精度定时器子系统。这三者构成时间子系统的定时器层次：tick 是基础时钟脉冲，timers 提供毫秒级定时，hrtimers 提供纳秒级精度。它们必须在中断子系统之后初始化，因为定时器中断需要通过 IRQ 框架注册和处理。</p>
+<h3 id="timekeeping-init-与-time-init"><a href="#timekeeping-init-与-time-init" class="headerlink" title="timekeeping_init() 与 time_init()"></a>timekeeping_init() 与 time_init()</h3><p><code>timekeeping_init()</code> 初始化时间保持子系统，设置系统时钟基准，读取 CMOS&#x2F;HPET&#x2F;定时硬件获取当前墙上时钟时间。<code>time_init()</code> 在 x86_64 上探测并初始化时钟源设备（TSC、HPET、ACPI PM Timer 等），选择最佳时钟源并注册时钟事件设备。时间子系统是后续许多功能的基础——调度器的时间片、超时机制、文件系统时间戳都依赖它。</p>
+<hr>
+<h2 id="第三阶段：开启中断"><a href="#第三阶段：开启中断" class="headerlink" title="第三阶段：开启中断"></a>第三阶段：开启中断</h2><p>经过前两个阶段，系统已经具备了处理中断的基本条件：中断控制器已初始化、中断描述符已建立、时钟源已就绪。现在可以安全地开启中断了。</p>
+<h3 id="early-boot-irqs-disabled-false"><a href="#early-boot-irqs-disabled-false" class="headerlink" title="early_boot_irqs_disabled &#x3D; false"></a>early_boot_irqs_disabled &#x3D; false</h3><p>将全局标志 <code>early_boot_irqs_disabled</code> 设为 <code>false</code>。这个标志在调试和断言中使用——某些代码路径会检查此标志，以确认自己是否在中断禁用的早期引导阶段被调用。锁依赖检测器（lockdep）也使用此标志来判断是否应该记录锁的获取&#x2F;释放。</p>
+<h3 id="local-irq-enable-——中断终于开启！"><a href="#local-irq-enable-——中断终于开启！" class="headerlink" title="local_irq_enable()——中断终于开启！"></a>local_irq_enable()——中断终于开启！</h3><p>执行 <code>sti</code> 指令（x86_64 上），正式开启本地 CPU 的中断。这是引导过程中的一个里程碑时刻——从此刻起，CPU 可以响应外部硬件事件：定时器中断开始到来、网卡可以触发接收中断、键盘输入可以被捕获。中断开启后，定时器子系统开始正常工作，为后续初始化提供超时和调度支持。</p>
+<h3 id="console-init-——控制台输出就绪"><a href="#console-init-——控制台输出就绪" class="headerlink" title="console_init()——控制台输出就绪"></a>console_init()——控制台输出就绪</h3><p>初始化控制台子系统，使内核消息能够输出到 VGA 文本模式控制台或帧缓冲设备。在此之前，所有 <code>printk</code> 输出都存储在内核日志缓冲区中，但不会显示在屏幕上。<code>console_init()</code> 注册第一个控制台驱动，将缓冲区中的积压消息刷新到屏幕。从这一刻起，用户可以在控制台上看到内核的初始化进度输出。</p>
+<hr>
+<h2 id="第四阶段：后期核心子系统"><a href="#第四阶段：后期核心子系统" class="headerlink" title="第四阶段：后期核心子系统"></a>第四阶段：后期核心子系统</h2><p>中断开启后，内核可以安全地初始化那些可能需要睡眠、等待或使用更复杂同步机制的子系统。</p>
+<h3 id="lockdep-init-与-locking-selftest"><a href="#lockdep-init-与-locking-selftest" class="headerlink" title="lockdep_init() 与 locking_selftest()"></a>lockdep_init() 与 locking_selftest()</h3><p><code>lockdep</code> 是内核的锁依赖检测器，用于在运行时发现潜在的死锁。<code>lockdep_init()</code> 初始化其核心数据结构——锁类的哈希表、依赖图、栈跟踪缓存。<code>locking_selftest()</code> 运行一系列预设的锁场景，验证 lockdep 自身能否正确检测出死锁模式。Lockdep 必须在大部分核心锁被使用之前初始化，否则将错过早期的锁依赖信息。但由于 lockdep 本身需要 per-CPU 变量和内存分配，它不能放得太早。</p>
+<h3 id="pid-idr-init-cred-init-fork-init"><a href="#pid-idr-init-cred-init-fork-init" class="headerlink" title="pid_idr_init(), cred_init(), fork_init()"></a>pid_idr_init(), cred_init(), fork_init()</h3><p>这三个函数建立进程管理的核心基础设施：</p>
+<ul>
+<li><strong>pid_idr_init()</strong>：初始化 PID 分配器，使用 IDR（Integer ID Resource）数据结构管理 PID 号的分配和回收。每个进程需要一个唯一的 PID，PID 0 已被 <code>init_task</code> 占用。</li>
+<li><strong>cred_init()</strong>：初始化凭证（credentials）缓存，用于分配 <code>struct cred</code> 结构。凭证包含进程的 UID、GID、capabilities 等安全属性。</li>
+<li><strong>fork_init()</strong>：设置进程创建的基础参数，计算最大线程数（基于可用内存），分配 <code>task_struct</code> 的 slab 缓存。此后 <code>kernel_thread()</code> 和 <code>fork</code> 系统调用才能工作。</li>
+</ul>
+<p>这三者必须在 <code>rest_init()</code> 之前完成，因为 <code>rest_init()</code> 需要调用 <code>kernel_thread()</code> 来创建 init 和 kthreadd 进程。</p>
+<h3 id="security-init"><a href="#security-init" class="headerlink" title="security_init()"></a>security_init()</h3><p>初始化 Linux 安全模块（LSM）框架。LSM 提供了一系列钩子点，允许安全模块在关键操作（如文件访问、网络连接、进程创建）中进行访问控制决策。此函数注册所有编译时选定的安全模块（如 SELinux、AppArmor、Smack），并调用它们的初始化函数。安全初始化必须在进程创建和文件系统挂载之前完成，以确保安全策略从一开始就生效。</p>
+<h3 id="vfs-caches-init"><a href="#vfs-caches-init" class="headerlink" title="vfs_caches_init()"></a>vfs_caches_init()</h3><p>初始化虚拟文件系统的核心缓存：dentry 缓存（目录项缓存）和 inode 缓存。这两个缓存大幅加速了路径名查找和文件元数据访问。此函数还初始化 <code>mount</code> 哈希表和文件对象缓存。VFS 是挂载根文件系统的前提条件——没有 dentry 和 inode 缓存，文件系统无法运作。</p>
+<h3 id="cgroup-init"><a href="#cgroup-init" class="headerlink" title="cgroup_init()"></a>cgroup_init()</h3><p>初始化控制组（cgroup）子系统。cgroup 是 Linux 的资源隔离和限制机制，被容器技术（Docker、Kubernetes）广泛使用。<code>cgroup_init()</code> 注册所有 cgroup 子系统控制器（CPU、内存、IO、PID 等），初始化 cgroup 层级结构，并创建根 cgroup。它需要 VFS 已就绪，因为 cgroup 通过 cgroupfs（伪文件系统）向用户空间暴露接口。</p>
+<hr>
+<h2 id="第五阶段：收尾与过渡"><a href="#第五阶段：收尾与过渡" class="headerlink" title="第五阶段：收尾与过渡"></a>第五阶段：收尾与过渡</h2><h3 id="rest-init-——从内核态到用户空间的跃迁"><a href="#rest-init-——从内核态到用户空间的跃迁" class="headerlink" title="rest_init()——从内核态到用户空间的跃迁"></a>rest_init()——从内核态到用户空间的跃迁</h3><p><code>rest_init()</code> 是 <code>start_kernel()</code> 的最后一个调用，也是最关键的一个——它完成从”单线程初始化模式”到”多任务运行模式”的跃迁。其核心工作如下：</p>
+<ol>
+<li><strong>创建 kernel_init 线程</strong>（通过 <code>kernel_thread()</code>）——这个线程最终成为 PID 1 的 init 进程。它负责挂载根文件系统、执行 <code>/sbin/init</code>，启动整个用户空间。</li>
+<li><strong>创建 kthreadd 线程</strong>——成为 PID 2。这是内核线程的守护进程，所有后续通过 <code>kthread_create()</code> 创建的内核线程都由它管理。</li>
+<li><strong>调用 schedule()</strong>——触发第一次调度。调度器选择 <code>kernel_init</code> 线程运行，init 进程开始执行其初始化序列。</li>
+<li><strong>当前 CPU 进入 idle 循环</strong>——<code>start_kernel()</code> 的调用上下文（即 PID 0 的 idle 进程）进入 <code>cpu_idle_loop()</code>，在没有其他可运行进程时执行 <code>hlt</code> 指令以节能。</li>
+</ol>
+<p><code>rest_init()</code> 必须是最后一个调用，因为它改变了系统的运行模型——在此之前是单线程顺序执行，此后是多任务并发执行。所有需要在单线程环境下完成的初始化都必须在此调用之前完成。</p>
+<h1 id="3-2-setup-arch-—-x86-架构相关初始化"><a href="#3-2-setup-arch-—-x86-架构相关初始化" class="headerlink" title="3.2 setup_arch() — x86 架构相关初始化"></a>3.2 setup_arch() — x86 架构相关初始化</h1><h2 id="3-2-1-概述"><a href="#3-2-1-概述" class="headerlink" title="3.2.1 概述"></a>3.2.1 概述</h2><p>在 <code>start_kernel()</code> 执行的早期阶段，体系结构无关的通用初始化逻辑尚未大规模展开之前，内核需要先完成与具体硬件平台紧密相关的底层配置工作。这项任务在 x86_64 平台上由 <code>setup_arch()</code> 函数承担，其源码位于 <code>arch/x86/kernel/setup.c</code>。</p>
+<p>函数原型如下：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> __init <span class="title function_">setup_arch</span><span class="params">(<span class="type">char</span> **cmdline_p)</span></span><br></pre></td></tr></table></figure></div>
+
+<p><code>__init</code> 标注表明该函数仅在内核初始化期间执行，其代码占用的内存在初始化完成后会被回收释放。参数 <code>cmdline_p</code> 是一个指向字符指针的指针，<code>setup_arch()</code> 通过它将处理完毕的内核命令行字符串地址返回给调用者 <code>start_kernel()</code>。</p>
+<p><code>setup_arch()</code> 是整个 x86 平台初始化过程中最为关键的枢纽函数之一。它的工作内容涵盖了从引导加载器传递的数据解析、物理内存映射的建立、硬件子系统的探测与初始化，一直到页表、中断控制器、定时器等核心基础设施的就绪。可以说，理解了 <code>setup_arch()</code> 的执行流程，就把握住了 x86 平台从裸硬件走向可运行内核的完整脉络。</p>
+<h2 id="3-2-2-引导数据的接收与解析"><a href="#3-2-2-引导数据的接收与解析" class="headerlink" title="3.2.2 引导数据的接收与解析"></a>3.2.2 引导数据的接收与解析</h2><h3 id="No-Execute-位配置"><a href="#No-Execute-位配置" class="headerlink" title="No-Execute 位配置"></a>No-Execute 位配置</h3><p><code>setup_arch()</code> 首先调用 <code>x86_configure_nx()</code> 对处理器的 NX（No-Execute）位支持进行配置。NX 位是现代处理器提供的一种硬件安全特性，允许操作系统将内存页面标记为不可执行，从而有效防范缓冲区溢出等攻击手段中将数据段当作代码执行的安全威胁。该函数在早期即被调用，以便后续的内存映射建立过程能够正确考虑执行权限的设置。</p>
+<h3 id="解析引导加载器数据"><a href="#解析引导加载器数据" class="headerlink" title="解析引导加载器数据"></a>解析引导加载器数据</h3><p>接下来，<code>parse_setup_data()</code> 负责解析引导加载器（如 GRUB）通过 <code>setup_data</code> 链表传递给内核的附加信息。在现代 Linux 启动协议中，引导加载器可以将多种类型的数据（如 EFI 信息、设备树、随机种子等）以链表的形式挂接到 <code>setup_data</code> 字段上。该函数遍历这条链表，逐一识别并处理各类数据项。</p>
+<p><code>copy_bootdata()</code> 则负责将引导加载器填充的 <code>boot_params</code> 结构体（即经典的 zero-page 数据）复制到内核的合法内存区域中，并对其中的关键字段进行有效性验证。<code>boot_params</code> 结构体承载了引导阶段积累的大量硬件信息，包括 E820 内存映射、视频模式参数、EFI 表地址等，是内核了解当前硬件环境的重要数据来源。</p>
+<p>随后，<code>x86_report_nx()</code> 将 NX 位的最终配置状态通过内核日志输出，便于开发者确认系统是否启用了此项安全特性。</p>
+<h2 id="3-2-3-内存探测与管理"><a href="#3-2-3-内存探测与管理" class="headerlink" title="3.2.3 内存探测与管理"></a>3.2.3 内存探测与管理</h2><h3 id="E820-内存映射处理"><a href="#E820-内存映射处理" class="headerlink" title="E820 内存映射处理"></a>E820 内存映射处理</h3><p>E820 内存映射是 x86 平台上获取物理内存布局的标准机制。在传统 BIOS 系统中，引导加载器通过调用 BIOS 中断 <code>INT 0x15, AX=0xE820</code> 获取物理地址空间的区域分布信息。每个内存区域条目包含起始地址、长度和类型三个关键字段。类型字段标识了该区域是可用 RAM、已保留、ACPI 数据还是其他特殊用途的内存。</p>
+<p><code>e820__memory_setup()</code> 是处理 E820 内存映射的核心函数。它首先从 <code>boot_params</code> 中提取 BIOS 提供的原始内存映射数据，然后将其整理填充到内核的 <code>e820_table</code> 结构中。在此过程中，内核还会对内存映射进行一系列的修正和清理工作：合并相邻的同类型区域、删除零长度的无效条目、处理已知的 BIOS 错误报告等。最终形成的 <code>e820_table</code> 是内核管理物理内存的基础数据结构，后续所有的内存分配和保留操作都以此为依据。</p>
+<h3 id="内存区域的保留"><a href="#内存区域的保留" class="headerlink" title="内存区域的保留"></a>内存区域的保留</h3><p>在获得完整的内存映射之后，内核需要将若干特殊用途的内存区域标记为”已保留”，以防止它们被通用分配器错误分配使用。<code>e820__reserve_setup_data()</code> 将引导加载器传递的 <code>setup_data</code> 链表所在的物理内存区域进行保留。</p>
+<p><code>trim_platform_memory_low_region()</code> 对物理内存底部（通常低于 1MB）的特定区域进行裁剪处理。这部分低地址内存中包含了 BIOS 数据区、实模式代码等关键结构，必须加以保护。<code>trim_snb_memory()</code> 则是针对 Intel Sandy Bridge 处理器系列的一个硬件缺陷规避措施，该系列处理器的某些内存地址范围存在已知问题，内核需要将这些区域从可用内存池中排除。</p>
+<h3 id="memblock-子系统的填充"><a href="#memblock-子系统的填充" class="headerlink" title="memblock 子系统的填充"></a>memblock 子系统的填充</h3><p><code>memblock</code> 是内核在伙伴系统（buddy system）建立之前使用的早期内存分配器。<code>memblock_x86_fill()</code> 将 E820 内存映射中标记为可用的 RAM 区域添加到 memblock 的 <code>memory</code> 集合中，为后续的早期内存分配操作提供可用内存池。而 <code>memblock_find_dma_reserve()</code> 则专门计算并标记需要为 ISA DMA（直接内存访问）保留的内存区域，确保 DMA 操作所需的低地址内存不会被其他用途占用。</p>
+<p><code>memblock_set_current_limit()</code> 设置了 memblock 分配器当前允许分配的物理地址上限。在初始化早期，由于内核页表尚未完全建立，memblock 只能在已映射的地址范围内进行分配。随着页表逐步完善，这个限制会逐步放宽。</p>
+<h2 id="3-2-4-内核内存布局的建立"><a href="#3-2-4-内核内存布局的建立" class="headerlink" title="3.2.4 内核内存布局的建立"></a>3.2.4 内核内存布局的建立</h2><h3 id="页表初始化"><a href="#页表初始化" class="headerlink" title="页表初始化"></a>页表初始化</h3><p><code>init_mem_mapping()</code> 是内核建立早期页表映射的关键函数。在 x86_64 架构上，它负责为内核映像本身以及所有可用的物理内存建立适当的页表映射关系。这包括：</p>
+<ul>
+<li>确保内核代码段、数据段的映射具有正确的权限属性（只读、可执行、不可写等）</li>
+<li>使用大页（2MB 或 1GB）映射尽可能多的物理内存，以减少 TLB（Translation Lookaside Buffer） miss 带来的性能开销</li>
+<li>为直接物理内存映射区（direct mapping area，即 <code>PAGE_OFFSET</code> 开始的区域）建立线性映射</li>
+</ul>
+<h3 id="实模式内存保留"><a href="#实模式内存保留" class="headerlink" title="实模式内存保留"></a>实模式内存保留</h3><p><code>reserve_real_mode()</code> 为实模式跳板代码（real-mode trampoline）保留物理内存。在 x86 平台上，内核在某些场景下（如系统挂起&#x2F;恢复、AP 处理器启动）需要切换回实模式执行代码。为此，内核在物理内存的低地址区域（1MB 以下）保留了一段空间，用于存放实模式跳板代码及其所需的数据结构。</p>
+<h2 id="3-2-5-平台特定的子系统初始化"><a href="#3-2-5-平台特定的子系统初始化" class="headerlink" title="3.2.5 平台特定的子系统初始化"></a>3.2.5 平台特定的子系统初始化</h2><h3 id="ACPI-初始化"><a href="#ACPI-初始化" class="headerlink" title="ACPI 初始化"></a>ACPI 初始化</h3><p><code>acpi_boot_init()</code> 启动 ACPI（Advanced Configuration and Power Interface）子系统的引导阶段初始化。在 x86_64 平台上，ACPI 是硬件资源配置和电源管理的核心机制。该函数定位并解析 ACPI 表（如 RSDP、RSDT&#x2F;XSDT、 MADT、DMAR 等），从中提取多处理器信息、中断路由、NUMA 拓扑、IOMMU 配置等关键数据，为后续的设备驱动和电源管理功能奠定基础。</p>
+<h3 id="x86-init-抽象层"><a href="#x86-init-抽象层" class="headerlink" title="x86_init 抽象层"></a>x86_init 抽象层</h3><p>x86 架构的一个显著特点是它需要支持多种不同的运行平台：传统的 PC 兼容机、Xen 虚拟化环境、Intel MID（Mobile Internet Device）平台等。为了在同一份内核代码中优雅地处理这些差异，内核引入了 <code>x86_init_ops</code> 结构体，定义在 <code>arch/x86/include/asm/x86_init.h</code> 中。</p>
+<p><code>struct x86_init_ops</code> 将平台特定的初始化操作抽象为一系列函数指针集合，组织为多个子结构体：</p>
+<ul>
+<li><strong>x86_init.paging</strong>：页表相关的初始化操作。标准 PC 平台在此提供 <code>native_pagetable_init()</code>，而 Xen 虚拟化环境则替换为适合半虚拟化（paravirtualized）环境的实现。</li>
+<li><strong>x86_init.irqs</strong>：中断控制器的初始化操作。不同平台可能使用不同的中断控制器（如标准的 APIC 体系或虚拟化环境中的事件通道机制）。</li>
+<li><strong>x86_init.timers</strong>：定时器初始化操作。不同硬件平台可能使用不同的定时器设备（HPET、PIT、TSC 等）作为系统时钟源。</li>
+<li><strong>x86_init.oem</strong>：OEM 特定的平台钩子函数。</li>
+<li><strong>x86_init.hyper</strong>：虚拟化管理程序相关的操作。</li>
+</ul>
+<p>这种基于函数指针表的抽象设计，使得 <code>setup_arch()</code> 中的核心流程能够保持统一，而平台差异则通过在初始化早期替换相应的函数指针来消弭。当内核运行在标准 PC 硬件上时，这些函数指针指向默认的 “native” 实现；当运行在 Xen Dom0 或 DomU 环境中时，Xen 的初始化代码会将它们替换为对应的虚拟化实现。</p>
+<h3 id="TSC-校准"><a href="#TSC-校准" class="headerlink" title="TSC 校准"></a>TSC 校准</h3><p><code>tsc_init()</code> 完成 TSC（Time Stamp Counter，时间戳计数器）的初始化与校准工作。TSC 是 x86 处理器内部的一个高精度计数器，在现代内核中被广泛用作高精度时间测量的基础。该函数检测 TSC 的特性（如是否恒定频率、是否可靠），确定其运行频率，并评估其是否适合作为内核时钟源设备使用。TSC 的质量直接影响系统时间keeping 的精度和性能。</p>
+<h2 id="3-2-6-早期参数解析与命令行返回"><a href="#3-2-6-早期参数解析与命令行返回" class="headerlink" title="3.2.6 早期参数解析与命令行返回"></a>3.2.6 早期参数解析与命令行返回</h2><p>在完成上述所有架构相关的初始化工作之后，<code>setup_arch()</code> 调用 <code>kernel_parse_early_param()</code>（对应早期参数的 <code>early_param()</code> 宏定义的回调函数）处理需要在内核初始化更早阶段生效的命令行参数。这些早期参数通常涉及内存布局调整、调试选项设置等必须在通用初始化开始之前完成配置的选项。</p>
+<p>最后，函数执行：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">*cmdline_p = boot_command_line;</span><br></pre></td></tr></table></figure></div>
+
+<p>将经过处理的内核命令行字符串指针通过输出参数返回给 <code>start_kernel()</code>。此后，<code>start_kernel()</code> 的后续代码以及其他子系统就可以通过这个指针访问完整的内核命令行参数。</p>
+<h1 id="3-3-早期内存管理初始化"><a href="#3-3-早期内存管理初始化" class="headerlink" title="3.3 早期内存管理初始化"></a>3.3 早期内存管理初始化</h1><p>在 <code>start_kernel()</code> 的执行流程中，内存管理子系统的初始化是最关键的环节之一。x86_64 架构下，内核需要从最原始的物理内存状态逐步建立起完整的页表映射、伙伴分配器和_zone_管理机制。本节将深入分析从 <code>mm_core_init_early()</code> 到 <code>mm_core_init()</code> 的完整初始化路径。</p>
+<h2 id="mm-core-init-early-—-超早期内存初始化"><a href="#mm-core-init-early-—-超早期内存初始化" class="headerlink" title="mm_core_init_early() — 超早期内存初始化"></a>mm_core_init_early() — 超早期内存初始化</h2><p><code>mm_core_init_early()</code> 是内存管理初始化的第一步，在_slab_分配器可用之前就被调用。此时内核还没有任何通用的内存分配能力，只能依赖静态分配的数据结构和编译期预留的内存区域。</p>
+<p>该函数的核心职责包括：</p>
+<ul>
+<li><strong>引导内存数据结构初始化</strong>：设置 <code>pg_data_t</code> 节点的基本信息，将 <code>memblock</code> 分配器置于可用状态。</li>
+<li><strong>早期页表构建</strong>：在 x86_64 上，<code>startup_64</code> 阶段的汇编代码已经建立了一个最小化的内核页表（使用 2MB 大页），<code>mm_core_init_early()</code> 会在此基础上进一步扩展映射范围，确保整个内核镜像和命令行参数区域都被正确映射。</li>
+<li><strong>物理内存区域记录</strong>：解析 BIOS 提供的_e820_内存映射表，将所有可用的物理内存范围登记到 <code>struct e820_table</code> 中。这一数据结构后续会传递给 <code>memblock</code> 子系统。</li>
+</ul>
+<p>在 x86_64 平台上，内核被映射到 <code>0xffffffff80000000</code>（即 <code>-2G</code> 位置，使用 <code>__START_KERNEL_map</code> 宏定义），而直接映射区（<code>PAGE_OFFSET</code>）则从 <code>0xffff888000000000</code> 开始，覆盖整个物理地址空间。</p>
+<h2 id="memblock-分配器：-slab-之前的临时分配器"><a href="#memblock-分配器：-slab-之前的临时分配器" class="headerlink" title="memblock 分配器：_slab_之前的临时分配器"></a>memblock 分配器：_slab_之前的临时分配器</h2><p>在伙伴系统和_slab_分配器建立之前，内核需要一个临时的内存分配机制来满足启动期间的内存需求。<code>memblock</code> 就是承担这一角色的分配器。</p>
+<h3 id="memblock-的核心数据结构"><a href="#memblock-的核心数据结构" class="headerlink" title="memblock 的核心数据结构"></a>memblock 的核心数据结构</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">memblock</span> &#123;</span></span><br><span class="line">    <span class="type">bool</span> bottom_up;</span><br><span class="line">    <span class="type">phys_addr_t</span> current_limit;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> <span class="title">memory</span>;</span>    <span class="comment">// 可用内存区域</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> <span class="title">reserved</span>;</span>  <span class="comment">// 已保留区域</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>memblock.memory</code> 记录所有可用的物理内存区域，<code>memblock.reserved</code> 记录已被分配或保留的区域。分配操作的本质是从 <code>memory</code> 中找到一个满足条件的空闲区间，然后将其标记到 <code>reserved</code> 中。</p>
+<h3 id="关键-API"><a href="#关键-API" class="headerlink" title="关键 API"></a>关键 API</h3><ul>
+<li><strong><code>memblock_add(base, size)</code></strong>：向 <code>memblock.memory</code> 添加一段新的可用内存区域。在解析_e820_表时，每一段 <code>E820_TYPE_RAM</code> 区域都会通过此函数注册。</li>
+<li><strong><code>memblock_reserve(base, size)</code></strong>：将一段物理内存标记为已保留。内核镜像本身（<code>_text</code> 到 <code>_end</code>）、引导加载器传递的数据、<em>initrd</em> 等都通过此函数保留。</li>
+<li><strong><code>memblock_alloc(size, align)</code></strong>：分配指定大小的物理内存。内部实现调用 <code>memblock_alloc_range()</code>，从 <code>memory</code> 区域中找到一段不在 <code>reserved</code> 中的连续空间，然后将其添加到 <code>reserved</code> 列表。</li>
+</ul>
+<p><code>memblock</code> 采用首次适应（first-fit）算法，按地址升序搜索可用区域。由于启动期间的分配请求数量有限（通常几百到几千次），线性搜索的性能完全可以接受。</p>
+<h3 id="memblock-到伙伴系统的过渡"><a href="#memblock-到伙伴系统的过渡" class="headerlink" title="memblock 到伙伴系统的过渡"></a>memblock 到伙伴系统的过渡</h3><p>当伙伴系统初始化完成后，<code>memblock</code> 分配的所有内存需要被正式纳入伙伴系统的管理。<code>memblock_free_all()</code> 函数遍历 <code>memblock.memory</code> 中所有未被 <code>reserved</code> 的区域，以单个页面（4KB）为单位逐一释放到伙伴系统的空闲链表中。这一过程标志着系统从临时分配器永久切换到正式的内存管理框架。</p>
+<h2 id="mm-core-init-—-完整内存管理初始化"><a href="#mm-core-init-—-完整内存管理初始化" class="headerlink" title="mm_core_init() — 完整内存管理初始化"></a>mm_core_init() — 完整内存管理初始化</h2><p><code>mm_core_init()</code>（在早期内核版本中称为 <code>mem_init()</code>）是内存管理子系统全面初始化的入口。它完成以下关键工作：</p>
+<h3 id="伙伴分配器初始化"><a href="#伙伴分配器初始化" class="headerlink" title="伙伴分配器初始化"></a>伙伴分配器初始化</h3><p>伙伴分配器（Buddy Allocator）是 Linux 物理页面管理的核心算法。初始化过程如下：</p>
+<ol>
+<li><strong><em>zone</em> 结构初始化</strong>：x86_64 平台通常包含三个_zone_：<code>ZONE_DMA32</code>（低于 4GB 的内存，服务于 32 位_DMA_ 设备）、<code>ZONE_NORMAL</code>（直接映射区）和 <code>ZONE_DEVICE</code>（持久内存）。每个_zone_ 的 <code>free_area</code> 数组被初始化为空链表。</li>
+<li><strong>页面位图建立</strong>：为每个物理页面创建 <code>struct page</code> 实例，存储在 <code>mem_map</code> 数组（或稀疏内存模型下的 <code>section_mem_map</code>）中。</li>
+<li><strong>空闲页面入链</strong>：通过 <code>free_low_memory_core_early()</code> 将所有空闲页面按_order_ 放入伙伴系统的空闲链表。</li>
+</ol>
+<h3 id="每-zone-水位线设置"><a href="#每-zone-水位线设置" class="headerlink" title="每_zone_水位线设置"></a>每_zone_水位线设置</h3><p>每个_zone_ 维护三道水位线：</p>
+<ul>
+<li><strong><code>min</code> 水位线</strong>：紧急保留水位，低于此值时只有 <code>PF_MEMALLOC</code> 标志的分配请求才能成功。</li>
+<li><strong><code>low</code> 水位线</strong>：唤醒 <code>kswapd</code> 后台回收线程的阈值。</li>
+<li><strong><code>high</code> 水位线</strong>：<code>kswapd</code> 回收的目标水位，达到此值后 <code>kswapd</code> 停止回收。</li>
+</ul>
+<p>水位线的计算由 <code>setup_per_zone_wmarks()</code> 完成，基准值通过 <code>/proc/sys/vm/min_free_kbytes</code> 控制，默认根据物理内存总量按比例计算。</p>
+<h2 id="页表终结化：init-mem-mapping"><a href="#页表终结化：init-mem-mapping" class="headerlink" title="页表终结化：init_mem_mapping()"></a>页表终结化：init_mem_mapping()</h2><p><code>init_mem_mapping()</code> 负责建立完整的内核直接映射区页表。在 x86_64 上，该函数：</p>
+<ol>
+<li>遍历所有物理内存范围（从_e820_表获取），为每一段物理内存建立 <code>PAGE_SIZE</code>（4KB）粒度的页表映射。</li>
+<li>使用大页（2MB 或 1GB）优化映射，减少_TLB_ miss 的影响。内核通过 <code>try_pud_mapping()</code> 和 <code>try_pmd_mapping()</code> 尝试使用更大的页尺寸。</li>
+<li>调用 <code>__flush_tlb_all()</code> 刷新_TLB_，确保新页表对所有 CPU 可见。</li>
+</ol>
+<h2 id="早期-ioremap"><a href="#早期-ioremap" class="headerlink" title="早期_ioremap_"></a>早期_ioremap_</h2><p>在正常的 <code>ioremap()</code> 机制可用之前（因为它需要_slab_分配器），内核通过_fixmap_ 机制提供临时的_i&#x2F;o_ 映射能力。<code>early_ioremap_init()</code> 在_fixmap_ 区域中预留了一组固定大小的槽位（<code>FIX_BTMAPS_SLOTS</code>，通常 8 个），每个槽位可以映射若干页面。</p>
+<p><code>early_ioremap()</code> 的实现通过修改_fixmap_ 对应的_PTE_ 表项来建立临时映射，<code>early_iounmap()</code> 则清除这些表项。这种机制在启动期间被广泛用于访问_PCI_ 配置空间、<em>ACPI</em> 表和设备寄存器。</p>
+<h1 id="3-4-调度器初始化"><a href="#3-4-调度器初始化" class="headerlink" title="3.4 调度器初始化"></a>3.4 调度器初始化</h1><p>调度器是 Linux 内核最核心的子系统之一，负责决定哪个任务在哪个 CPU 上运行、运行多长时间。在 <code>start_kernel()</code> 的执行流程中，调度器的初始化由 <code>sched_init()</code> 完成，定义在 <code>kernel/sched/core.c</code> 中。本节将详细分析调度器从无到有的初始化过程。</p>
+<h2 id="sched-init-的调用时机"><a href="#sched-init-的调用时机" class="headerlink" title="sched_init() 的调用时机"></a>sched_init() 的调用时机</h2><p><code>sched_init()</code> 在 <code>start_kernel()</code> 中相对靠前的位置被调用——在内存管理初始化完成之后、中断子系统初始化之前。这个位置的选择不是随意的：调度器需要 <code>struct page</code> 和基本的内存分配能力来创建_per-CPU_ 运行队列，但此时中断尚未开启，不涉及任何上下文切换。</p>
+<h2 id="运行队列初始化"><a href="#运行队列初始化" class="headerlink" title="运行队列初始化"></a>运行队列初始化</h2><p>调度器的核心数据结构是_per-CPU_ 运行队列 <code>struct rq</code>，定义在 <code>kernel/sched/sched.h</code> 中。每个 CPU 都拥有一个独立的 <code>rq</code> 实例：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DEFINE_PER_CPU_SHARED_ALIGNED(<span class="keyword">struct</span> rq, runqueues);</span><br></pre></td></tr></table></figure></div>
+
+<p><code>sched_init()</code> 对每个 CPU 的 <code>rq</code> 执行以下初始化：</p>
+<ul>
+<li><strong>自旋锁初始化</strong>：<code>rq-&gt;lock</code> 用于保护运行队列的并发访问。虽然此时只有一个 CPU 在运行，但锁机制必须提前就绪，因为 <code>smp_init()</code> 之后其他 CPU 会并发访问调度器。</li>
+<li><strong>时间统计字段归零</strong>：<code>rq-&gt;clock</code>、<code>rq-&gt;clock_task</code> 等时间戳初始化为 0。</li>
+<li><strong>负载跟踪重置</strong>：<code>rq-&gt;cfs</code>（CFS 运行队列）的负载统计信息清零。</li>
+<li><strong>空闲任务指针</strong>：<code>rq-&gt;idle</code> 在此处设为 <code>NULL</code>，稍后由 <code>init_idle()</code> 设置为每个 CPU 的_idle_ 任务。</li>
+</ul>
+<h2 id="调度类层次建立"><a href="#调度类层次建立" class="headerlink" title="调度类层次建立"></a>调度类层次建立</h2><p>Linux 调度器采用模块化的调度类（scheduling class）设计，每个调度类实现一组标准操作接口（<code>sched_class</code>）。调度类按优先级从高到低排列：</p>
+<ol>
+<li><strong><code>stop_sched_class</code></strong>：停机调度类，最高优先级。用于 CPU 热插拔等需要完全停止 CPU 的场景。<code>stop</code> 任务是不可抢占的，一个 CPU 上同一时刻只能有一个 <code>stop</code> 任务在运行。</li>
+<li><strong><code>dl_sched_class</code></strong>：截止时间调度类，实现_POSIX_ Sporadic Server 策略，保证任务的绝对截止时间。</li>
+<li><strong><code>rt_sched_class</code></strong>：实时调度类，实现 <code>SCHED_FIFO</code> 和 <code>SCHED_RR</code> 策略。实时任务严格按优先级调度。</li>
+<li><strong><code>fair_sched_class</code></strong>：公平调度类（CFS），管理所有普通进程。这是绝大多数任务所处的调度类。</li>
+<li><strong><code>idle_sched_class</code></strong>：空闲调度类，最低优先级。每个 CPU 的_idle_ 任务属于此类，仅在没有其他任务可运行时执行。</li>
+</ol>
+<p><code>sched_init()</code> 为每个 <code>rq</code> 初始化所有调度类对应的子运行队列，并建立调度类之间的链式关系（通过 <code>sched_class-&gt;next</code> 指针），使得调度器在选择下一个任务时可以按优先级遍历。</p>
+<h2 id="CFS-带宽控制初始化"><a href="#CFS-带宽控制初始化" class="headerlink" title="CFS 带宽控制初始化"></a>CFS 带宽控制初始化</h2><p>CFS 带宽控制（bandwidth control）允许为_cgroup_ 中的任务组设置 CPU 使用上限。<code>sched_init()</code> 调用 <code>init_cfs_bandwidth()</code> 来初始化全局带宽控制的数据结构：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">init_cfs_bandwidth</span><span class="params">(<span class="keyword">struct</span> cfs_bandwidth *cfs_b)</span></span><br><span class="line">&#123;</span><br><span class="line">    raw_spin_lock_init(&amp;cfs_b-&gt;lock);</span><br><span class="line">    cfs_b-&gt;runtime = <span class="number">0</span>;</span><br><span class="line">    cfs_b-&gt;quota = RUNTIME_INF;  <span class="comment">// 默认无限制</span></span><br><span class="line">    cfs_b-&gt;period = ns_to_ktime(default_cfs_period());</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>带宽控制的核心参数是 <code>quota</code>（一个周期内允许使用的纳秒数）和 <code>period</code>（周期长度，默认 100ms）。当任务组的累计运行时间超过 <code>quota</code> 时，该组内的任务会被限流（throttled），直到下一个周期开始。</p>
+<h2 id="init-task：零号进程"><a href="#init-task：零号进程" class="headerlink" title="init_task：零号进程"></a>init_task：零号进程</h2><p><code>init_task</code> 是内核中第一个——也是最特殊的一个——任务描述符。它不是由 <code>fork()</code> 创建的，而是静态定义的全局变量：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> <span class="title">init_task</span> =</span> &#123;</span><br><span class="line">    .state      = TASK_RUNNING,</span><br><span class="line">    .prio       = MAX_PRIO - <span class="number">20</span>,  <span class="comment">// 普通优先级</span></span><br><span class="line">    .static_prio = <span class="number">120</span>,</span><br><span class="line">    .normal_prio = <span class="number">120</span>,</span><br><span class="line">    .policy     = SCHED_NORMAL,</span><br><span class="line">    .cpus_ptr   = &amp;init_task.cpus_mask,</span><br><span class="line">    .cpus_mask  = CPU_MASK_ALL,</span><br><span class="line">    .nr_cpus_allowed = NR_CPUS,</span><br><span class="line">    .mm         = <span class="literal">NULL</span>,   <span class="comment">// 内核线程无用户地址空间</span></span><br><span class="line">    .active_mm  = <span class="literal">NULL</span>,</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>init_task</code> 的 PID 为 0，也被称为 <code>swapper</code> 或_idle_ 任务。在引导 CPU 上，它就是 <code>start_kernel()</code> 当前执行的上下文。每个 CPU 后来都会获得自己的_idle_ 任务（通过 <code>fork_idle()</code> 创建），但引导 CPU 的_idle_ 任务始终是这个静态定义的 <code>init_task</code>。</p>
+<h2 id="调度器激活时机"><a href="#调度器激活时机" class="headerlink" title="调度器激活时机"></a>调度器激活时机</h2><p><code>sched_init()</code> 完成后，调度器的数据结构已经就绪，但调度器尚未真正”激活”——此时系统中只有一个任务（<code>init_task</code>），没有其他任务可以切换，中断也未开启。</p>
+<p>调度器真正开始工作是 <code>local_irq_enable()</code> 被调用之后。当中断发生时，中断处理程序返回时会检查 <code>TIF_NEED_RESCHED</code> 标志，如果设置则调用 <code>schedule()</code> 进行任务切换。但在 <code>start_kernel()</code> 执行期间，这个标志不会被设置，因为此时不存在任何竞争 CPU 的任务。</p>
+<p>进入 <code>rest_init()</code> 后，<code>kernel_init</code>（PID 1）和 <code>kthreadd</code>（PID 2）被创建，此时调度器才真正开始管理多个任务的交替执行。引导 CPU 在 <code>cpu_startup_entry()</code> 中进入_idle_ 循环，等待调度器选中其他可运行任务。</p>
+<h1 id="3-5-RCU-初始化"><a href="#3-5-RCU-初始化" class="headerlink" title="3.5 RCU 初始化"></a>3.5 RCU 初始化</h1><p>RCU（Read-Copy-Update，读-拷贝-更新）是 Linux 内核中最独特也最重要的同步机制之一。与自旋锁或互斥锁不同，RCU 允许读者不加任何锁、不使用原子操作、甚至不使用内存屏障就能访问共享数据，从而实现极低的读端开销。本节将分析 RCU 在启动阶段的初始化过程。</p>
+<h2 id="RCU-的基本原理"><a href="#RCU-的基本原理" class="headerlink" title="RCU 的基本原理"></a>RCU 的基本原理</h2><p>在深入初始化细节之前，有必要简述 RCU 的核心思想：</p>
+<ol>
+<li><strong>发布-订阅模型</strong>：写者通过 <code>rcu_assign_pointer()</code> 原子地发布新的数据指针，读者通过 <code>rcu_dereference()</code> 获取指针。两者配合确保读者不会看到部分更新的数据结构。</li>
+<li><strong>宽限期（Grace Period）</strong>：写者修改或删除共享数据后，必须等待所有已有的读者退出临界区，这段时间称为宽限期。宽限期结束后，旧数据可以安全释放。</li>
+<li><strong>回调机制</strong>：宽限期的检测由内核基础设施完成。数据发布者调用 <code>call_rcu()</code> 注册一个回调函数，当宽限期结束时，该回调在软中断上下文中被调用来释放旧数据。</li>
+</ol>
+<p>RCU 特别适合读多写少的场景。内核中大量数据结构（如进程描述符链表、网络路由表、文件系统_dentry_ 缓存等）都依赖 RCU 进行保护。</p>
+<h2 id="rcu-init-的实现"><a href="#rcu-init-的实现" class="headerlink" title="rcu_init() 的实现"></a>rcu_init() 的实现</h2><p><code>rcu_init()</code> 定义在 <code>kernel/rcu/tree.c</code> 中（对应可抢占 RCU 的_TREE RCU_ 实现），是 RCU 子系统的初始化入口。其主要工作如下：</p>
+<h3 id="rcu-state-结构初始化"><a href="#rcu-state-结构初始化" class="headerlink" title="rcu_state 结构初始化"></a>rcu_state 结构初始化</h3><p><code>struct rcu_state</code> 是 RCU 的全局状态，管理整个宽限期检测机制。x86_64 上默认使用 <code>rcu_state</code>（即 <code>rcu_sched_state</code>）和 <code>rcu_preempt_state</code>（可抢占 RCU）两个实例。初始化内容包括：</p>
+<ul>
+<li><strong>宽限期序号</strong>：<code>rcu_state.gp_seq</code> 初始化为 0，用于跟踪当前宽限期编号。</li>
+<li><strong>RCU 根节点</strong>：<code>rcu_state.node</code> 数组构成一个树形层级结构（rcu_node tree），用于高效聚合多个 CPU 的静止状态（quiescent state）报告。在典型配置下，这棵树有 2-3 层，叶子节点对应一组 CPU。</li>
+<li><strong>内核线程</strong>：为每个 <code>rcu_node</code> 创建 <code>rcu_gp</code> 内核线程（宽限期处理线程）和 <code>rcu_nocb</code> 内核线程（<em>no-callback CPU</em> 的回调处理线程）。</li>
+</ul>
+<h3 id="per-CPU-rcu-data-初始化"><a href="#per-CPU-rcu-data-初始化" class="headerlink" title="per-CPU rcu_data 初始化"></a>per-CPU rcu_data 初始化</h3><p>每个 CPU 拥有 <code>struct rcu_data</code> 实例，记录本 CPU 的 RCU 状态：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DEFINE_PER_CPU(<span class="keyword">struct</span> rcu_data, rcu_data) __aligned(<span class="number">256</span>);</span><br></pre></td></tr></table></figure></div>
+
+<p><code>rcu_init()</code> 中，<code>rcu_init_rdp()</code> 对每个 CPU 的 <code>rcu_data</code> 执行初始化：</p>
+<ul>
+<li><strong>回调链表</strong>：<code>rdp-&gt;cblist</code> 初始化为空。后续通过 <code>call_rcu()</code> 注册的回调会被添加到此链表。</li>
+<li><strong>静止状态检测</strong>：<code>rdp-&gt;cpu_no_qs</code> 标志设为 <code>true</code>，表示尚未观察到静止状态。</li>
+<li><strong>宽限期快照</strong>：<code>rdp-&gt;gp_seq</code> 与全局 <code>rcu_state.gp_seq</code> 同步。</li>
+<li><strong>nocb（no-callback）配置</strong>：如果内核配置了 <code>RCU_NOCB_CPU</code>，则该 CPU 的回调将被卸载到专门的_per-CPU kthread_ 中处理，减少中断延迟。</li>
+</ul>
+<h3 id="时钟源回调注册"><a href="#时钟源回调注册" class="headerlink" title="时钟源回调注册"></a>时钟源回调注册</h3><p>RCU 依赖时钟中断来检测宽限期的进展。<code>rcu_init()</code> 通过 <code>tick_nohz_idle_ret_tick()</code> 和相关接口注册了时钟事件回调。每当 CPU 经历一次上下文切换、进入_idle_ 或从_idle_ 唤醒、或经历一次时钟中断时，RCU 都会得到通知，从而判断该 CPU 是否已经通过了静止状态。</p>
+<h2 id="rcu-scheduler-starting"><a href="#rcu-scheduler-starting" class="headerlink" title="rcu_scheduler_starting()"></a>rcu_scheduler_starting()</h2><p><code>rcu_init()</code> 完成后，RCU 的数据结构已经就绪，但 RCU 并未真正开始追踪宽限期。这是因为此时系统中只有引导 CPU 在运行，且中断尚未开启——不存在并发读者，也不需要宽限期检测。</p>
+<p><code>rcu_scheduler_starting()</code> 在 <code>rest_init()</code> 中被调用，此时调度器即将开始创建内核线程。该函数：</p>
+<ol>
+<li>将 <code>rcu_scheduler_active</code> 从 <code>RCU_SCHEDULER_INACTIVE</code> 设置为 <code>RCU_SCHEDULER_INIT</code>。</li>
+<li>启用宽限期检测逻辑：此后 <code>call_rcu()</code> 注册的回调将在宽限期结束后被真正执行。</li>
+</ol>
+<p>在所有 CPU 都上线（<code>smp_init()</code> 完成）后，<code>rcu_end_inkernel_boot()</code> 将 <code>rcu_scheduler_active</code> 设置为 <code>RCU_SCHEDULER_RUNNING</code>，RCU 进入完全运行状态。</p>
+<h2 id="为什么-RCU-必须在中断之前初始化"><a href="#为什么-RCU-必须在中断之前初始化" class="headerlink" title="为什么 RCU 必须在中断之前初始化"></a>为什么 RCU 必须在中断之前初始化</h2><p>RCU 在 <code>start_kernel()</code> 中的初始化位置非常靠前——早于中断控制器、定时器和调度器的初始化。这看似过早，实则必要：</p>
+<ul>
+<li><strong>中断处理程序使用 RCU</strong>：网络中断、块设备完成中断等大量中断处理程序中调用了 <code>rcu_read_lock()</code> &#x2F; <code>rcu_read_unlock()</code>。如果 RCU 未初始化，这些操作会导致未定义行为。</li>
+<li><strong>定时器回调使用 RCU</strong>：定时器软中断中也会触发 RCU 回调执行。</li>
+<li><strong>调度器使用 RCU</strong>：任务切换时的 <code>context_switch()</code> 调用 <code>rcu_note_context_switch()</code> 来报告静止状态。</li>
+</ul>
+<p>因此，RCU 基础设施必须在中断和调度器启用之前完全就绪，确保任何使用 RCU 的代码路径都能正确运行。</p>
+<h1 id="3-6-中断与时钟初始化"><a href="#3-6-中断与时钟初始化" class="headerlink" title="3.6 中断与时钟初始化"></a>3.6 中断与时钟初始化</h1><p>中断和时钟子系统是操作系统的”脉搏”——没有它们，内核无法响应外部事件，无法进行任务调度，也无法维护时间概念。在 <code>start_kernel()</code> 中，中断和时钟子系统的初始化紧密交织，本节将逐一分析各组件的初始化过程。</p>
+<h2 id="early-irq-init-—-中断描述符预分配"><a href="#early-irq-init-—-中断描述符预分配" class="headerlink" title="early_irq_init() — 中断描述符预分配"></a>early_irq_init() — 中断描述符预分配</h2><p><code>early_irq_init()</code> 是中断子系统的第一个初始化函数，负责为所有可能的中断线（IRQ line）预分配描述符。在 x86_64 上，中断描述符的管理采用稀疏_irq_ 方式（<code>CONFIG_SPARSE_IRQ</code>）：</p>
+<ul>
+<li><strong>irq_desc 树</strong>：使用_radix tree_ 管理中断描述符，键为中断号（IRQ number）。与早期内核中固定大小的数组不同，稀疏方式只为实际使用的中断号分配内存。</li>
+<li><strong>默认数量</strong>：<code>NR_IRQS_LEGACY</code>（通常 16）个_legacy_ IRQ 描述符在此时被预分配，对应 IBM PC 兼容机的传统 ISA 中断线。</li>
+<li><strong>per-CPU 统计</strong>：每个 <code>irq_desc</code> 包含 <code>irq_data</code> 和_per-CPU_ 的中断统计计数器 <code>kstat_irqs</code>。</li>
+</ul>
+<p>此时硬件中断控制器（APIC）尚未初始化，中断描述符只是软件侧的数据结构准备。</p>
+<h2 id="init-IRQ-—-x86-64-中断控制器初始化"><a href="#init-IRQ-—-x86-64-中断控制器初始化" class="headerlink" title="init_IRQ() — x86_64 中断控制器初始化"></a>init_IRQ() — x86_64 中断控制器初始化</h2><p><code>init_IRQ()</code> 是架构相关的中断初始化入口，x86_64 上的调用链如下：</p>
+<h3 id="native-init-IRQ"><a href="#native-init-IRQ" class="headerlink" title="native_init_IRQ()"></a>native_init_IRQ()</h3><p>定义在 <code>arch/x86/kernel/irqinit.c</code> 中，主要完成：</p>
+<ol>
+<li><p><strong>IDT（中断描述符表）完善</strong>：在 <code>startup_64</code> 阶段，汇编代码已经设置了一个最小化的 IDT（仅覆盖异常向量 0-31）。<code>native_init_IRQ()</code> 为剩余的外部中断向量（32-255）设置 IDT 表项。x86_64 上，外部中断向量从 <code>FIRST_EXTERNAL_VECTOR</code>（0x20）到 <code>LAST_EXTERNAL_VECTOR</code>（0xFF）分配。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i = FIRST_EXTERNAL_VECTOR; i &lt; NR_VECTORS; i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (i != IA32_SYSCALL_VECTOR)</span><br><span class="line">        set_intr_gate(i, interrupt[i - FIRST_EXTERNAL_VECTOR]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+</li>
+<li><p><strong>APIC 初始化</strong>：</p>
+<ul>
+<li><strong>Local APIC</strong>：每个 CPU 内部的中断控制器，负责接收中断、分发到 CPU 核心、处理_IPI_（处理器间中断）。<code>lapic_init()</code> 映射 Local APIC 的_MMIO_ 寄存器（x86_64 上默认地址为 <code>0xfee00000</code>），并配置定时器、错误处理等向量。</li>
+<li><strong>I&#x2F;O APIC</strong>：主板上的中断控制器芯片，负责将外部设备的中断信号转发给 Local APIC。<code>io_apic_init()</code> 枚举所有 I&#x2F;O APIC 芯片（通过_ACPI_ MADT 表获取信息），建立中断重定向表。</li>
+</ul>
+</li>
+<li><p><strong>中断芯片设置</strong>：为每个 IRQ 描述符关联对应的 <code>irq_chip</code> 操作结构体。例如，I&#x2F;O APIC 管理的中断线使用 <code>ioapic_chip</code>，它实现了 <code>irq_enable</code>、<code>irq_disable</code>、<code>irq_ack</code>、<code>irq_mask</code> 等底层硬件操作。</p>
+</li>
+</ol>
+<h2 id="tick-init-—-时钟设备框架"><a href="#tick-init-—-时钟设备框架" class="headerlink" title="tick_init() — 时钟设备框架"></a>tick_init() — 时钟设备框架</h2><p><code>tick_init()</code> 注册时钟事件通知机制。<code>tick_notify()</code> 回调会在新时钟设备注册或现有设备状态变化时被调用，决定使用哪个设备作为系统节拍源。</p>
+<p>Linux 内核将时钟硬件抽象为两类设备：</p>
+<ul>
+<li><strong>clock_event_device</strong>：能够产生定时中断的设备（如 Local APIC Timer、HPET），用于驱动调度器节拍和高精度定时器。</li>
+<li><strong>clocksource</strong>：单调递增的高精度计数器（如 TSC、HPET 计数器），用于读取当前时间。</li>
+</ul>
+<h2 id="timers-init-—-经典定时器轮"><a href="#timers-init-—-经典定时器轮" class="headerlink" title="timers_init() — 经典定时器轮"></a>timers_init() — 经典定时器轮</h2><p><code>timers_init()</code> 初始化内核的经典定时器轮（TIMER wheel），定义在 <code>kernel/time/timer.c</code> 中。定时器轮是一个多级哈希表结构：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">层级:  LVL_0    LVL_1    LVL_2    LVL_3    LVL_4    LVL_5    LVL_6</span><br><span class="line">粒度:  1 jiffy  8 jiffy  64 jiffy 512 jiffy 4096     32768    262144</span><br></pre></td></tr></table></figure></div>
+
+<p>每个_slot_ 是一个链表头，存放到期时间落在该范围内的定时器。<code>TIMER wheel</code> 以_jiffy_（默认 1ms 或 4ms，取决于 <code>HZ</code> 配置）为分辨率。虽然精度不高，但对于大多数内核内部定时任务（如超时检测、轮询调度）已经足够。</p>
+<p><code>init_timer_keys()</code> 完成每级每_slot_ 链表的初始化，以及 <code>timer_base</code> 的_per-CPU_ 分配。</p>
+<h2 id="hrtimers-init-—-高精度定时器"><a href="#hrtimers-init-—-高精度定时器" class="headerlink" title="hrtimers_init() — 高精度定时器"></a>hrtimers_init() — 高精度定时器</h2><p><code>hrtimers_init()</code> 初始化高精度定时器子系统（high-resolution timers），定义在 <code>kernel/time/hrtimer.c</code> 中。与经典定时器轮不同，hrtimer 使用红黑树组织定时器，精度可达纳秒级。</p>
+<p>初始化内容包括：</p>
+<ul>
+<li><strong>per-CPU 时钟基础</strong>：每个 CPU 维护多个 <code>hrtimer_clock_base</code>（对应 <code>HRTIMER_BASE_MONOTONIC</code>、<code>HRTIMER_BASE_REALTIME</code> 等时钟基），每个基础包含一棵红黑树。</li>
+<li><strong>高精度模式切换</strong>：当高精度时钟源可用时，hrtimer 可以从”低分辨率模式”切换到”高分辨率模式”（通过 <code>hrtimer_switch_to_hres()</code>），此时系统节拍将变为无节拍（tickless）模式。</li>
+</ul>
+<h2 id="timekeeping-init-—-系统时间维护"><a href="#timekeeping-init-—-系统时间维护" class="headerlink" title="timekeeping_init() — 系统时间维护"></a>timekeeping_init() — 系统时间维护</h2><p><code>timekeeping_init()</code> 初始化系统时钟，包括：</p>
+<ul>
+<li>选择并注册默认 <code>clocksource</code>（通常是 TSC）。</li>
+<li>初始化 <code>timekeeper</code> 结构体，设置 <code>clocksource</code> 到墙上时钟（wall-clock time）的映射参数。</li>
+<li>从_CMOS_ RTC（或 EFI runtime services）读取启动时的墙上时间。</li>
+</ul>
+<h2 id="time-init-—-x86-64-时钟硬件初始化"><a href="#time-init-—-x86-64-时钟硬件初始化" class="headerlink" title="time_init() — x86_64 时钟硬件初始化"></a>time_init() — x86_64 时钟硬件初始化</h2><p><code>time_init()</code> 在 x86_64 上执行平台特定的时钟硬件探测：</p>
+<ol>
+<li><strong>TSC（Time Stamp Counter）初始化</strong>：<code>tsc_init()</code> 检测 TSC 的频率（通过 CPUID 或与已知频率的定时器对比）、检查 TSC 是否可靠（是否在 CPU 频率变化时保持恒定速率、是否在 CPU 间同步）。如果 TSC 质量满足条件，它将被注册为首选 <code>clocksource</code>。</li>
+<li><strong>HPET 初始化</strong>：<code>hpet_init()</code> 探测 High Precision Event Timer，映射其_MMIO_ 寄存器，并将其注册为 <code>clocksource</code> 和 <code>clock_event_device</code>。</li>
+<li><strong>PIT 初始化</strong>：8254 PIT（Programmable Interval Timer）作为最后的后备定时器被设置。</li>
+</ol>
+<p>最终的时钟源优先级通常为：TSC &gt; HPET &gt; PIT。内核会选择质量最高的可用时钟源作为系统时间基准。</p>
+<h1 id="3-7-控制台与早期打印"><a href="#3-7-控制台与早期打印" class="headerlink" title="3.7 控制台与早期打印"></a>3.7 控制台与早期打印</h1><p>在内核启动的漫长过程中，开发者需要一种手段来输出诊断信息。然而控制台的初始化涉及大量依赖（设备驱动、中断、内存管理等），不可能在启动最开始就可用。Linux 内核通过”早期打印”机制和控制台延迟注册策略解决了这一鸡生蛋蛋生鸡的问题。本节将分析从最早的 <code>early_printk</code> 到完整控制台子系统的初始化路径。</p>
+<h2 id="早期打印：boot-console"><a href="#早期打印：boot-console" class="headerlink" title="早期打印：boot console"></a>早期打印：boot console</h2><p>在 <code>console_init()</code> 被调用之前，内核已经需要输出信息了（比如 <code>start_kernel()</code> 开头的版本字符串和命令行参数）。此时可用的打印手段是_early printk_，通过 <code>boot console</code>（bootcon）实现。</p>
+<h3 id="early-printk-的实现"><a href="#early-printk-的实现" class="headerlink" title="early_printk 的实现"></a>early_printk 的实现</h3><p>在 x86_64 上，<code>early_printk</code> 的实现非常原始但有效：</p>
+<ul>
+<li><strong>VGA 文本模式输出</strong>：直接向 VGA 文本缓冲区（物理地址 <code>0xB8000</code>）写入字符。VGA 文本模式缓冲区为 80x25 的字符网格，每个字符占 2 字节（1 字节字符 + 1 字节颜色属性）。<code>early_printk()</code> 通过简单的内存写入将字符逐个送到屏幕上，完全不需要任何驱动程序或中断支持。</li>
+<li><strong>串口输出</strong>：如果内核命令行包含 <code>console=ttyS0</code> 等参数，<code>early_printk()</code> 会向串口寄存器（通常是 <code>0x3F8</code>，COM1）直接写入字节。串口输出同样不依赖中断——采用轮询方式等待发送保持寄存器（THR）空闲后写入下一个字节。</li>
+</ul>
+<p><code>setup_early_printk()</code> 在 <code>start_kernel()</code> 非常早期的位置被调用（甚至在 <code>mm_core_init_early()</code> 之前），确保内核从启动的第一刻起就具备输出能力。</p>
+<h3 id="boot-console-的特点"><a href="#boot-console-的特点" class="headerlink" title="boot console 的特点"></a>boot console 的特点</h3><p>boot console 注册到 <code>console_drivers</code> 链表时带有 <code>CON_BOOT</code> 标志。它的特点包括：</p>
+<ul>
+<li>不支持虚拟终端、不支持滚动、不支持中文或_UTF-8_ 显示。</li>
+<li>输出是同步的、阻塞的——每写一个字符都要等待硬件就绪。</li>
+<li>一旦真正的控制台驱动注册完成，boot console 会被自动注销。</li>
+</ul>
+<h2 id="printk-的消息缓冲"><a href="#printk-的消息缓冲" class="headerlink" title="printk() 的消息缓冲"></a>printk() 的消息缓冲</h2><p><code>printk()</code> 是内核中最常用的日志输出函数。它的实现有一个关键特性：<strong>消息先被存入环形缓冲区，控制台输出是异步的。</strong></p>
+<h3 id="log-buf-环形缓冲区"><a href="#log-buf-环形缓冲区" class="headerlink" title="__log_buf 环形缓冲区"></a>__log_buf 环形缓冲区</h3><p>内核在编译时静态分配了一个环形日志缓冲区：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __LOG_BUF_LEN (1 &lt;&lt; CONFIG_LOG_BUF_SHIFT)  <span class="comment">// 默认 16KB-128KB</span></span></span><br><span class="line"><span class="type">static</span> <span class="type">char</span> __log_buf[__LOG_BUF_LEN];</span><br></pre></td></tr></table></figure></div>
+
+<p><code>printk()</code> 被调用时，消息首先被格式化并写入 <code>__log_buf</code>，同时记录日志级别（<code>KERN_EMERG</code> 到 <code>KERN_DEBUG</code>，共 8 级）和时间戳。即使此时没有可用的控制台，消息也不会丢失——它们安全地存放在缓冲区中，等待控制台驱动就绪后输出。</p>
+<h3 id="消息输出时机"><a href="#消息输出时机" class="headerlink" title="消息输出时机"></a>消息输出时机</h3><p>消息从缓冲区输出到实际控制台的时机取决于：</p>
+<ul>
+<li><strong>控制台是否已注册</strong>：<code>console_init()</code> 之前，只有 boot console 接收输出。</li>
+<li><strong>控制台日志级别</strong>：由 <code>console_loglevel</code> 控制，只有优先级高于此阈值的消息才会输出到控制台。</li>
+<li><strong>是否在中断上下文</strong>：中断上下文中的 <code>printk()</code> 将输出推迟到安全时刻执行。</li>
+</ul>
+<p><code>dmesg</code> 命令读取的就是 <code>__log_buf</code> 中的完整日志（通过 <code>syslog</code> 系统调用），不受控制台日志级别的过滤。</p>
+<h2 id="console-init-—-真正的控制台注册"><a href="#console-init-—-真正的控制台注册" class="headerlink" title="console_init() — 真正的控制台注册"></a>console_init() — 真正的控制台注册</h2><p><code>console_init()</code> 定义在 <code>kernel/printk.c</code> 中，标志着控制台子系统从启动模式切换到正常运行模式。其主要工作包括：</p>
+<h3 id="遍历并注册控制台驱动"><a href="#遍历并注册控制台驱动" class="headerlink" title="遍历并注册控制台驱动"></a>遍历并注册控制台驱动</h3><p>内核维护一个 <code>console_drivers</code> 全局链表。<code>console_init()</code> 调用所有已通过 <code>register_console()</code> 注册的控制台驱动的 <code>-&gt;setup()</code> 回调。常见的控制台驱动包括：</p>
+<ul>
+<li><strong>VGA 文本控制台（<code>vgacon</code>）</strong>：直接操作 VGA 文本模式硬件，支持光标定位、滚动、属性设置。这是传统 x86 平台上最常见的控制台。</li>
+<li><strong>帧缓冲控制台（<code>fbcon</code>）</strong>：建立在帧缓冲设备（<code>fbdev</code>）之上的控制台驱动。它将控制台文本渲染为像素图形，支持更高的分辨率和更多的颜色。</li>
+<li><strong>串口控制台（<code>uartcon</code>）</strong>：通过串口线输出控制台信息，常用于无头服务器和嵌入式设备的调试。</li>
+</ul>
+<h3 id="注销-boot-console"><a href="#注销-boot-console" class="headerlink" title="注销 boot console"></a>注销 boot console</h3><p>当第一个非 <code>CON_BOOT</code> 的控制台驱动成功注册后，内核遍历 <code>console_drivers</code> 链表，移除所有带 <code>CON_BOOT</code> 标志的 boot console。此后所有 <code>printk()</code> 输出都由真正的控制台驱动处理。</p>
+<h2 id="日志级别与打印宏"><a href="#日志级别与打印宏" class="headerlink" title="日志级别与打印宏"></a>日志级别与打印宏</h2><p>内核定义了 8 个日志级别（从高到低）：</p>
+<table>
+<thead>
+<tr>
+<th>级别</th>
+<th>宏</th>
+<th>值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td><code>KERN_EMERG</code></td>
+<td>系统不可用</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>KERN_ALERT</code></td>
+<td>必须立即处理</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>KERN_CRIT</code></td>
+<td>严重错误</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>KERN_ERR</code></td>
+<td>错误</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>KERN_WARNING</code></td>
+<td>警告</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>KERN_NOTICE</code></td>
+<td>正常但值得注意</td>
+<td></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>KERN_INFO</code></td>
+<td>信息</td>
+<td></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>KERN_DEBUG</code></td>
+<td>调试信息</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>为了简化使用，内核提供了一组辅助宏：</p>
+<ul>
+<li><strong><code>pr_debug(fmt, ...)</code></strong>：对应 <code>KERN_DEBUG</code> 级别。如果定义了 <code>CONFIG_DYNAMIC_DEBUG</code>，则运行时可动态控制输出；否则在未启用 <code>DEBUG</code> 宏时编译为空操作。</li>
+<li><strong><code>pr_info(fmt, ...)</code></strong>：对应 <code>KERN_INFO</code> 级别，用于输出常规信息。</li>
+<li><strong><code>pr_warn(fmt, ...)</code></strong>：对应 <code>KERN_WARNING</code> 级别，用于输出警告。</li>
+<li><strong><code>pr_err(fmt, ...)</code></strong>：对应 <code>KERN_ERR</code> 级别，用于输出错误。</li>
+</ul>
+<p>这些宏在格式字符串前自动添加日志级别标记，使得 <code>printk()</code> 可以正确分类和过滤消息。对于设备驱动，还提供了 <code>dev_info()</code>、<code>dev_warn()</code>、<code>dev_err()</code> 等变体，在消息中自动包含设备名称和总线信息。</p>
+<h1 id="3-8-rest-init-—-从内核到用户空间"><a href="#3-8-rest-init-—-从内核到用户空间" class="headerlink" title="3.8 rest_init() — 从内核到用户空间"></a>3.8 rest_init() — 从内核到用户空间</h1><p><code>rest_init()</code> 是 <code>start_kernel()</code> 调用的最后一个函数，也是内核启动过程的真正转折点。在此之前，整个系统只有引导 CPU 在执行单一的控制流（<code>init_task</code>，PID 0）。<code>rest_init()</code> 之后，系统将拥有多个内核线程、全部 CPU 核心在线、并最终通过 <code>/init</code> 程序进入用户空间。本节将详细追踪这一关键转折的每一步。</p>
+<h2 id="rest-init-的整体结构"><a href="#rest-init-的整体结构" class="headerlink" title="rest_init() 的整体结构"></a>rest_init() 的整体结构</h2><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> __init <span class="title function_">rest_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">tsk</span>;</span></span><br><span class="line">    <span class="type">int</span> pid;</span><br><span class="line"></span><br><span class="line">    rcu_scheduler_starting();</span><br><span class="line"></span><br><span class="line">    pid = user_mode_thread(kernel_init, <span class="literal">NULL</span>, CLONE_FS);</span><br><span class="line">    <span class="comment">// PID 1: kernel_init</span></span><br><span class="line"></span><br><span class="line">    pid = kernel_thread(kthreadd, <span class="literal">NULL</span>, <span class="literal">NULL</span>, CLONE_FS | CLONE_FILES);</span><br><span class="line">    <span class="comment">// PID 2: kthreadd</span></span><br><span class="line"></span><br><span class="line">    system_state = SYSTEM_SCHEDULING;</span><br><span class="line"></span><br><span class="line">    rcu_end_inkernel_boot();</span><br><span class="line"></span><br><span class="line">    smp_init();   <span class="comment">// 唤醒所有应用处理器</span></span><br><span class="line"></span><br><span class="line">    sched_init_smp();</span><br><span class="line"></span><br><span class="line">    ksoftirqd_setup();</span><br><span class="line"></span><br><span class="line">    do_pre_smp_initcalls();</span><br><span class="line"></span><br><span class="line">    cpu_startup_entry(CPUHP_ONLINE);  <span class="comment">// 引导 CPU 进入 idle 循环</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>注意：上述代码是概念性的简化版本，不同内核版本中 <code>rest_init()</code> 的具体实现细节有所差异，但核心逻辑不变。</p>
+<h2 id="创建-kernel-init-线程（PID-1）"><a href="#创建-kernel-init-线程（PID-1）" class="headerlink" title="创建 kernel_init 线程（PID 1）"></a>创建 kernel_init 线程（PID 1）</h2><p><code>rest_init()</code> 创建的第一个内核线程是 <code>kernel_init</code>，它将成为系统中 PID 为 1 的进程——即所有用户进程的最终祖先进程：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pid = user_mode_thread(kernel_init, <span class="literal">NULL</span>, CLONE_FS);</span><br></pre></td></tr></table></figure></div>
+
+<p>使用 <code>user_mode_thread()</code> 而非 <code>kernel_thread()</code> 是因为 <code>kernel_init</code> 最终需要切换到用户模式执行 <code>/init</code> 程序。<code>CLONE_FS</code> 标志表示与父进程共享文件系统信息（根目录、当前目录等）。</p>
+<h3 id="kernel-init-的执行流程"><a href="#kernel-init-的执行流程" class="headerlink" title="kernel_init() 的执行流程"></a>kernel_init() 的执行流程</h3><p><code>kernel_init()</code> 函数定义在 <code>init/main.c</code> 中，其核心执行路径为：</p>
+<ol>
+<li><p><strong>等待 kthreadd 就绪</strong>：<code>kernel_init()</code> 首先通过 <code>wait_for_completion(&amp;kthreadd_done)</code> 等待 PID 2 的 <code>kthreadd</code> 线程完成初始化。这是因为后续操作可能需要 <code>kthreadd</code> 来创建辅助内核线程。</p>
+</li>
+<li><p><strong>调用 <code>kernel_init_freeable()</code></strong>：这是 <code>kernel_init</code> 的主要工作函数，包含以下关键步骤：</p>
+<ul>
+<li><p><strong><code>do_pre_smp_initcalls()</code></strong>：执行标记为 <code>early_initcall</code> 的初始化函数。这些函数需要在 SMP 启动之前完成，例如_per-CPU_ 数据的早期设置。</p>
+</li>
+<li><p><strong><code>smp_init()</code></strong>：唤醒所有应用处理器（Application Processors, APs）。引导 CPU（BSP）向每个 AP 发送 <code>INIT</code> IPI，AP 从实模式启动代码开始执行，经过保护模式、长模式的页表设置，最终到达 <code>start_secondary()</code> 并进入_idle_ 循环。此时系统的所有 CPU 核心都已在线。</p>
+</li>
+<li><p><strong><code>do_basic_setup()</code></strong>：这是启动过程中最重要的函数之一，它调用 <code>do_initcalls()</code> 执行所有剩余的_initcall_ 级别：</p>
+<table>
+<thead>
+<tr>
+<th>级别</th>
+<th>宏</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>pure_initcall</code></td>
+<td>最早期初始化</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>core_initcall</code></td>
+<td>核心子系统</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>postcore_initcall</code></td>
+<td>核心后初始化</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>arch_initcall</code></td>
+<td>架构相关</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>subsys_initcall</code></td>
+<td>子系统初始化</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>fs_initcall</code></td>
+<td>文件系统</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>device_initcall</code></td>
+<td>设备驱动</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>late_initcall</code></td>
+<td>延迟初始化</td>
+</tr>
+</tbody></table>
+<p>绝大多数内核模块和驱动程序的初始化入口都在 <code>device_initcall</code> 级别被执行。</p>
+</li>
+<li><p><strong><code>free_initmem()</code></strong>：释放 <code>__init</code> 段的内存。所有标记为 <code>__init</code> 的函数和 <code>__initdata</code> 的数据在启动完成后不再需要，其占用的物理页面被回收并归还给伙伴系统。这通常释放数兆字节的内存。</p>
+</li>
+<li><p><strong>标记只读数据</strong>：<code>mark_rodata_ro()</code> 将内核的只读数据段（<code>.rodata</code>）设置为只读属性，增强安全性。</p>
+</li>
+<li><p><strong><code>system_state = SYSTEM_RUNNING</code></strong>：将系统状态标记为”正常运行”，这会影响锁调试、RCU、睡眠合法性检查等子系统的行为。</p>
+</li>
+</ul>
+</li>
+<li><p><strong>执行 &#x2F;init 程序</strong>：<code>kernel_init()</code> 的最后一步是尝试执行用户空间的 init 程序：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ramdisk_execute_command) &#123;</span><br><span class="line">    <span class="keyword">if</span> (run_init_process(ramdisk_execute_command) == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (execute_command) &#123;</span><br><span class="line">    <span class="keyword">if</span> (run_init_process(execute_command) == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    panic(<span class="string">&quot;Requested init %s failed.&quot;</span>, execute_command);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (!run_init_process(<span class="string">&quot;/sbin/init&quot;</span>) ||</span><br><span class="line">    !run_init_process(<span class="string">&quot;/etc/init&quot;</span>) ||</span><br><span class="line">    !run_init_process(<span class="string">&quot;/bin/init&quot;</span>) ||</span><br><span class="line">    !run_init_process(<span class="string">&quot;/bin/sh&quot;</span>))</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">panic(<span class="string">&quot;No working init found.&quot;</span>);</span><br></pre></td></tr></table></figure></div>
+
+<p>搜索顺序为：<code>rdinit=</code> 参数指定的程序（用于 initrd 场景）、<code>init=</code> 参数指定的程序、然后依次尝试 <code>/sbin/init</code>、<code>/etc/init</code>、<code>/bin/init</code>、<code>/bin/sh</code>。如果全部失败，内核触发_panic_。<code>run_init_process()</code> 内部调用 <code>kernel_execve()</code>，完成从内核态到用户态的切换。</p>
+</li>
+</ol>
+<h2 id="创建-kthreadd-线程（PID-2）"><a href="#创建-kthreadd-线程（PID-2）" class="headerlink" title="创建 kthreadd 线程（PID 2）"></a>创建 kthreadd 线程（PID 2）</h2><p><code>kthreadd</code> 是内核的内核线程守护进程，负责创建和管理所有后续的内核线程：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pid = kernel_thread(kthreadd, <span class="literal">NULL</span>, <span class="literal">NULL</span>, CLONE_FS | CLONE_FILES);</span><br></pre></td></tr></table></figure></div>
+
+<p><code>kthreadd</code> 的实现非常简单——它在一个无限循环中等待请求：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">kthreadd</span><span class="params">(<span class="type">void</span> *unused)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="comment">// 等待创建请求</span></span><br><span class="line">        <span class="keyword">while</span> (list_empty(&amp;kthread_create_list))</span><br><span class="line">            schedule();</span><br><span class="line">        <span class="comment">// 处理创建请求列表</span></span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>当内核其他部分需要创建内核线程时，它们不直接调用 <code>kernel_thread()</code>，而是通过 <code>kthread_create()</code> 向 <code>kthreadd</code> 发送请求。<code>kthreadd</code> 在其上下文中完成实际的线程创建，确保新线程的父进程是 <code>kthreadd</code>（PID 2）而非调用者——这避免了线程创建者退出时的孤儿线程问题。</p>
+<h2 id="引导-CPU-进入-idle-循环"><a href="#引导-CPU-进入-idle-循环" class="headerlink" title="引导 CPU 进入 idle 循环"></a>引导 CPU 进入 idle 循环</h2><p><code>rest_init()</code> 的最后一步，引导 CPU（此时仍在 <code>init_task</code> 上下文中，PID 0）调用 <code>cpu_startup_entry(CPUHP_ONLINE)</code>，最终进入 <code>do_idle()</code> 函数：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">do_idle</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="comment">// 通知调度器进入 idle</span></span><br><span class="line">        <span class="comment">// 检查是否有任务需要运行</span></span><br><span class="line">        <span class="comment">// 如果没有，进入低功耗状态（mwait/halt）</span></span><br><span class="line">        <span class="comment">// 被中断唤醒后重新检查</span></span><br><span class="line">        schedule_idle();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>do_idle()</code> 是一个永远不会返回的循环。当没有其他任务可运行时，CPU 执行 <code>hlt</code>（或 <code>mwait</code>）指令进入低功耗状态。当中断到来时（定时器中断、I&#x2F;O 完成中断等），CPU 被唤醒，调度器选择下一个可运行的任务执行。如果仍然没有任务，CPU 再次进入低功耗状态。</p>
+<p>从此刻起，引导 CPU 的大部分时间都在_idle_ 循环中度过，只在有工作需要处理时短暂醒来。系统的真正工作由 kernel_init（PID 1）启动的用户空间进程和各种内核线程完成。</p>
+<h2 id="启动流程总结"><a href="#启动流程总结" class="headerlink" title="启动流程总结"></a>启动流程总结</h2><p>从 <code>start_kernel()</code> 到用户空间 <code>/init</code> 的完整路径可以概括为：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">start_kernel()</span><br><span class="line">  └─ 各子系统初始化（内存、调度器、RCU、中断、时钟、控制台...）</span><br><span class="line">  └─ rest_init()</span><br><span class="line">       ├─ 创建 kernel_init (PID 1)</span><br><span class="line">       ├─ 创建 kthreadd (PID 2)</span><br><span class="line">       ├─ SMP 启动（唤醒所有 CPU）</span><br><span class="line">       ├─ 执行 initcalls（驱动和模块初始化）</span><br><span class="line">       ├─ 释放 __init 段</span><br><span class="line">       └─ 执行 /init → 进入用户空间</span><br><span class="line"></span><br><span class="line">引导 CPU (PID 0) → cpu_startup_entry() → do_idle() 永久循环</span><br></pre></td></tr></table></figure></div>
+
+<p>至此，内核的启动使命完成，系统进入正常运行状态。</p>
+<h1 id="3-9-initcall-机制与驱动初始化"><a href="#3-9-initcall-机制与驱动初始化" class="headerlink" title="3.9 initcall 机制与驱动初始化"></a>3.9 initcall 机制与驱动初始化</h1><p>内核启动过程中，大量子系统与驱动需要执行各自的初始化函数。如果每个驱动都显式调用注册函数，内核的启动代码将变得难以维护。Linux 采用了一种优雅的解决方案——<strong>initcall 机制</strong>：通过宏定义和链接器脚本，将所有初始化函数的指针收集到特殊的内存区域中，启动时按优先级依次调用，启动完成后释放这些只使用一次的代码所占用的内存。</p>
+<h2 id="3-9-1-什么是-initcall"><a href="#3-9-1-什么是-initcall" class="headerlink" title="3.9.1 什么是 initcall"></a>3.9.1 什么是 initcall</h2><p>initcall 是一类被 <code>__init</code> 修饰的函数，它们在内核启动期间被统一调用。开发者不需要手动调用初始化函数，只需通过宏（如 <code>core_initcall()</code>、<code>device_initcall()</code> 等）将函数注册到对应的 initcall 级别，内核启动时自动按级别顺序执行。</p>
+<p>这些函数指针被放置在特殊的链接器段（linker section）中，从 <code>__initcall0_start</code> 到 <code>__initcall7_start</code>，共 8 个级别。启动完成后，<code>free_initmem()</code> 会回收所有标记为 <code>__init</code> 的代码和数据所占用的内存空间。</p>
+<h2 id="3-9-2-八个-initcall-级别"><a href="#3-9-2-八个-initcall-级别" class="headerlink" title="3.9.2 八个 initcall 级别"></a>3.9.2 八个 initcall 级别</h2><p>Linux 定义了 8 个 initcall 级别，定义在 <code>include/linux/init.h</code> 中，按从低到高的顺序执行：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">级别 0 (pure):   pure_initcall(fn)     — 必须最先执行，极少使用</span><br><span class="line">级别 1 (core):   core_initcall(fn)     — 核心子系统（中断控制器、调度器核心）</span><br><span class="line">级别 2 (post):   postcore_initcall(fn) — 核心之后的设置</span><br><span class="line">级别 3 (arch):   arch_initcall(fn)     — 架构相关驱动</span><br><span class="line">级别 4 (subsys): subsys_initcall(fn)   — 子系统注册（总线类型、网络栈）</span><br><span class="line">级别 5 (fs):     fs_initcall(fn)       — 文件系统初始化</span><br><span class="line">级别 6 (device): device_initcall(fn)   — 绝大多数驱动的 init 函数</span><br><span class="line">级别 7 (late):   late_initcall(fn)     — 最后执行，如 RTC、网络最终配置</span><br></pre></td></tr></table></figure></div>
+
+<p>这种分级设计确保了核心基础设施先于上层驱动初始化。例如，中断子系统（core 级别）必须先于 PCI 驱动（device 级别）完成初始化，否则驱动无法注册中断处理程序。每个级别内部函数的执行顺序取决于链接器将目标文件合并的顺序，因此在同一级别内不应依赖特定的执行先后关系。</p>
+<h2 id="3-9-3-实现原理"><a href="#3-9-3-实现原理" class="headerlink" title="3.9.3 实现原理"></a>3.9.3 实现原理</h2><p>initcall 机制的核心实现在 <code>init/main.c</code> 中，主要涉及以下几个函数：</p>
+<p><strong><code>do_initcalls()</code></strong> 是总调度入口，遍历全部 8 个级别，对每个级别调用 <code>do_initcall_level()</code>。</p>
+<p><strong><code>do_initcall_level()</code></strong> 负责处理单个级别：首先解析该级别可能涉及的模块参数，然后依次调用该级别中的每一个 initcall 函数。</p>
+<p><strong><code>do_one_initcall()</code></strong> 是最终执行单个 initcall 的函数，它不仅调用目标函数，还执行安全性检查：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __init_or_module <span class="title function_">do_one_initcall</span><span class="params">(<span class="type">initcall_t</span> fn)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> count = preempt_count();</span><br><span class="line">    <span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (initcall_blacklisted(fn))</span><br><span class="line">        <span class="keyword">return</span> -EPERM;</span><br><span class="line"></span><br><span class="line">    ret = fn();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 检查抢占计数或中断状态是否被破坏 */</span></span><br><span class="line">    <span class="keyword">if</span> (preempt_count() != count)</span><br><span class="line">        pr_warn(<span class="string">&quot;initcall %pF changed preempt count\n&quot;</span>, fn);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>该函数在调用前后比较 <code>preempt_count()</code> 的值，如果 initcall 函数内部错误地修改了抢占计数或中断状态，内核会打印警告信息。这种调试机制有助于及早发现驱动中的锁泄漏或中断状态不一致等 bug。此外，<code>initcall_blacklisted()</code> 机制允许通过内核命令行参数 <code>initcall_blacklist=</code> 跳过特定的 initcall 函数，便于调试。</p>
+<h2 id="3-9-4-链接器如何收集-initcall"><a href="#3-9-4-链接器如何收集-initcall" class="headerlink" title="3.9.4 链接器如何收集 initcall"></a>3.9.4 链接器如何收集 initcall</h2><p>initcall 机制的关键在于链接器脚本（<code>vmlinux.lds.S</code>）的巧妙运用。每个 initcall 宏在编译时将函数指针放入一个以级别命名的特殊段中：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __define_initcall(fn, id) \</span></span><br><span class="line"><span class="meta">    static initcall_t __initcall_##fn##id \</span></span><br><span class="line"><span class="meta">    __used \</span></span><br><span class="line"><span class="meta">    __attribute__((__section__(<span class="string">&quot;.initcall&quot;</span> #id <span class="string">&quot;.init&quot;</span>))) = fn;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>链接器脚本将这些段按级别顺序排列，并定义边界符号：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">__initcall_start     -- 整个 initcall 区域的起始</span><br><span class="line">__initcall0_start    -- 级别 0 的起始</span><br><span class="line">__initcall1_start    -- 级别 1 的起始</span><br><span class="line">...</span><br><span class="line">__initcall7_start    -- 级别 7 的起始</span><br><span class="line">__initcall_end       -- 整个 initcall 区域的结束</span><br></pre></td></tr></table></figure></div>
+
+<p><code>do_initcalls()</code> 通过遍历 <code>__initcall_start</code> 到 <code>__initcall_end</code> 之间的函数指针数组来执行所有 initcall。内核中使用 <code>initcall_levels[]</code> 数组记录每个级别的起始地址，便于按级别分批执行。</p>
+<h2 id="3-9-5-init-与-initdata"><a href="#3-9-5-init-与-initdata" class="headerlink" title="3.9.5 __init 与 __initdata"></a>3.9.5 <code>__init</code> 与 <code>__initdata</code></h2><p><code>__init</code> 和 <code>__initdata</code> 是内核中非常重要的优化标记：</p>
+<ul>
+<li><strong><code>__init</code></strong> 将函数代码放入 <code>.init.text</code> 段</li>
+<li><strong><code>__initdata</code></strong> 将数据放入 <code>.init.data</code> 段</li>
+</ul>
+<p>这些段在内核启动完成后不再需要。<code>free_initmem()</code> 函数在启动末期回收这些内存，将其归还给伙伴分配器。在典型的服务器系统上，这可以回收数兆字节的内存。</p>
+<p>必须注意：<strong>启动完成后绝对不能调用 <code>__init</code> 函数</strong>。因为该函数的代码已经被释放，调用将导致页面错误（page fault）甚至内核崩溃。内核为此提供了 <code>__initref</code> 注解，允许少数特殊情况下的引用，但需要通过 <code>initcall_debug</code> 等手段仔细验证。</p>
+<h2 id="3-9-6-早期-initcall"><a href="#3-9-6-早期-initcall" class="headerlink" title="3.9.6 早期 initcall"></a>3.9.6 早期 initcall</h2><p>在 SMP（多处理器）启动之前，内核需要执行一些特殊的初始化工作。<code>do_pre_smp_initcalls()</code> 负责在 SMP 拓扑建立之前运行这些早期 initcall。它们通过 <code>early_initcall()</code> 宏定义，在级别上排在所有标准 initcall 之前。</p>
+<p>典型的早期 initcall 例子包括 <code>init_real_mode()</code>——它为 CPU 实模式跳板（trampoline）设置所需的内存区域，这是 AP（应用处理器）启动的基础。由于 AP 启动需要进入实模式获取 SIPI（Startup IPI），这些设置必须在 SMP bringup 之前完成。</p>
+<h2 id="3-9-7-模块的-initcall"><a href="#3-9-7-模块的-initcall" class="headerlink" title="3.9.7 模块的 initcall"></a>3.9.7 模块的 initcall</h2><p>对于可加载模块（loadable module），<code>module_init()</code> 宏扮演了不同角色：</p>
+<ul>
+<li><strong>内建模块（built-in）</strong>：<code>module_init()</code> 被展开为 <code>device_initcall()</code>，函数指针进入 initcall 链表，启动时自动调用</li>
+<li><strong>可加载模块</strong>：函数指针存储在 <code>struct module</code> 中，当模块通过 <code>insmod</code> 或 <code>modprobe</code> 加载时，内核调用该函数完成初始化</li>
+</ul>
+<p>这种统一接口的设计使得驱动代码可以同时支持内建和模块化编译，开发者只需使用 <code>module_init()</code> 一个宏即可，编译配置决定最终行为。与之配合的 <code>module_exit()</code> 仅对可加载模块有效——内建驱动的退出函数在编译时被忽略，因为内建驱动不会在运行时卸载。</p>
+<p>总结而言，initcall 机制是 Linux 内核启动架构的核心组件之一。它通过链接器段、宏定义和分级执行策略，优雅地解决了数百个初始化函数的有序调用问题，同时通过 <code>__init</code> 标记实现了启动内存的自动回收。</p>
+<h1 id="3-10-挂载根文件系统与-exec-init"><a href="#3-10-挂载根文件系统与-exec-init" class="headerlink" title="3.10 挂载根文件系统与 exec &#x2F;init"></a>3.10 挂载根文件系统与 exec &#x2F;init</h1><p>内核启动的最后阶段面临一个经典的”鸡与蛋”问题：内核需要挂载文件系统才能执行 init 进程，但文件系统驱动本身存储在文件系统中。Linux 通过 initramfs（初始内存文件系统）巧妙地解决了这一困境。本节追踪从 initramfs 解包到最终 exec &#x2F;init 的完整路径。</p>
+<h2 id="3-10-1-根文件系统困境"><a href="#3-10-1-根文件系统困境" class="headerlink" title="3.10.1 根文件系统困境"></a>3.10.1 根文件系统困境</h2><p>内核启动的终极目标是启动第一个用户空间进程——init。为此，内核必须挂载一个包含 init 程序的根文件系统。然而这里存在循环依赖：</p>
+<ul>
+<li>挂载文件系统需要对应的文件系统驱动（ext4、xfs 等）</li>
+<li>文件系统驱动可能作为模块存储在文件系统中</li>
+<li>存储设备可能需要先加载 SCSI、NVMe 或 MD&#x2F;DM 驱动</li>
+<li>这些驱动也可能作为模块存储在文件系统中</li>
+</ul>
+<p>解决方案是 <strong>initramfs</strong>——一个打包在内核映像内或由引导加载器（bootloader）加载的微型内存文件系统。它包含足够多的工具和驱动模块来完成真实根文件系统的挂载。</p>
+<h2 id="3-10-2-initramfs-机制"><a href="#3-10-2-initramfs-机制" class="headerlink" title="3.10.2 initramfs 机制"></a>3.10.2 initramfs 机制</h2><p>initramfs 本质上是一个 gzip 压缩的 cpio 归档文件。它有两种来源：</p>
+<ul>
+<li><strong>内建 initramfs</strong>：在内核编译时通过 <code>CONFIG_INITRAMFS_SOURCE</code> 指定，直接链接到内核映像的 <code>__initramfs_start</code> 到 <code>__initramfs_size</code> 区域</li>
+<li><strong>外部 initrd</strong>：由 GRUB 等 bootloader 从磁盘加载到内存中的 <code>initrd_start</code> 到 <code>initrd_end</code> 区域</li>
+</ul>
+<p>解包工作由 <code>init/initramfs.c</code> 中的 <code>unpack_to_rootfs()</code> 完成。该函数解析 cpio 格式的归档数据，将文件逐个解压到根目录的 tmpfs 文件系统中。cpio 格式被选择是因为它简单、流式处理友好，且无需事先知道归档总大小。</p>
+<p>initramfs 中通常包含以下早期用户空间组件：</p>
+<ul>
+<li><strong>udevd</strong>：设备节点管理守护进程</li>
+<li><strong>modprobe</strong>：内核模块加载工具</li>
+<li><strong>mount</strong> 及文件系统检查工具</li>
+<li><strong>lvm &#x2F; dmsetup</strong>：设备映射器工具（用于 LVM、加密卷等）</li>
+<li><strong>NFS 客户端工具</strong>（用于 NFS 根文件系统）</li>
+</ul>
+<p>如果内核命令行指定了 <code>rdinit=</code> 参数，内核将从 initramfs 中执行指定的程序而非默认的 <code>/init</code>。这使得 initramfs 可以执行复杂的引导逻辑，例如询问用户密码来解锁加密的根分区。</p>
+<h2 id="3-10-3-根文件系统挂载流程"><a href="#3-10-3-根文件系统挂载流程" class="headerlink" title="3.10.3 根文件系统挂载流程"></a>3.10.3 根文件系统挂载流程</h2><p>根文件系统的挂载流程在 <code>init/main.c</code> 的 <code>kernel_init_freeable()</code> 函数中编排，主要步骤如下：</p>
+<p><strong>第一步：解包 initramfs</strong></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (initrd_start &amp;&amp; !IS_ENABLED(CONFIG_INITRAMFS_FORCE)) &#123;</span><br><span class="line">    unpack_to_rootfs((<span class="type">char</span> *)initrd_start, initrd_end - initrd_start);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>如果 <code>initrd_start</code> 已设置（bootloader 加载了 initrd），则调用 <code>unpack_to_rootfs()</code> 将其解包到内存中。</p>
+<p><strong>第二步：等待异步设备就绪</strong></p>
+<p>内核等待设备映射器（device-mapper）和 MD 软件 RAID 完成初始化。这是通过 <code>wait_for_device_probe()</code> 和异步探测机制实现的。某些存储设备（特别是网络块设备和加密设备）需要额外的准备时间。</p>
+<p><strong>第三步：挂载真实根文件系统</strong></p>
+<p>如果 initramfs 中的 <code>/init</code> 程序（通常是一个脚本或 systemd）已经完成工作，它会通过 <code>switch_root</code> 系统调用切换到真实根文件系统。如果内核直接负责挂载（未使用 initramfs 或 initramfs 未提供 <code>/init</code>），则调用 <code>mount_root()</code> 完成挂载。</p>
+<h2 id="3-10-4-do-mount-root-与-mount-root"><a href="#3-10-4-do-mount-root-与-mount-root" class="headerlink" title="3.10.4 do_mount_root() 与 mount_root()"></a>3.10.4 do_mount_root() 与 mount_root()</h2><p><code>mount_root()</code> 负责根据内核命令行参数找到并挂载真实的根文件系统。它支持多种设备指定方式：</p>
+<ul>
+<li><strong>设备路径</strong>：<code>root=/dev/sda1</code> — 直接指定设备节点</li>
+<li><strong>PARTUUID</strong>：<code>root=PARTUUID=12345678-...</code> — 按 GPT 分区 UUID 查找</li>
+<li><strong>UUID</strong>：<code>root=UUID=abc123-def456-...</code> — 按文件系统 UUID 查找</li>
+<li><strong>LABEL</strong>：<code>root=LABEL=rootfs</code> — 按文件系统标签查找</li>
+<li><strong>NFS</strong>：<code>root=/dev/nfs nfsroot=192.168.1.1:/export/root</code> — 网络根文件系统</li>
+</ul>
+<p>相关的内核命令行参数包括：</p>
+<ul>
+<li><code>rootfstype=ext4</code>：指定文件系统类型</li>
+<li><code>rootflags=data=journal</code>：传递挂载选项</li>
+<li><code>ro</code>：以只读方式挂载（默认行为，fsck 安全）</li>
+<li><code>rw</code>：以读写方式挂载</li>
+</ul>
+<p><code>do_mount_root()</code> 最终调用 <code>kern_mount()</code> 或 <code>do_mount()</code> 系统调用来完成实际的挂载操作。挂载成功后，内核通过 <code>devtmpfs_mount()</code> 确保设备节点可用。</p>
+<h2 id="3-10-5-exec-init：从内核到用户空间"><a href="#3-10-5-exec-init：从内核到用户空间" class="headerlink" title="3.10.5 exec &#x2F;init：从内核到用户空间"></a>3.10.5 exec &#x2F;init：从内核到用户空间</h2><p>根文件系统挂载完成后，内核开始寻找并执行 init 程序。这是启动过程中最具里程碑意义的时刻——内核从此不再是主角，控制权交给用户空间的 PID 1 进程。</p>
+<p>查找顺序严格定义在 <code>kernel_init_freeable()</code> 中：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (execute_command)</span><br><span class="line">    run_init_process(execute_command);  <span class="comment">/* init= 内核参数 */</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (!try_to_run_init_process(<span class="string">&quot;/sbin/init&quot;</span>) ||</span><br><span class="line">    !try_to_run_init_process(<span class="string">&quot;/etc/init&quot;</span>) ||</span><br><span class="line">    !try_to_run_init_process(<span class="string">&quot;/bin/init&quot;</span>) ||</span><br><span class="line">    !try_to_run_init_process(<span class="string">&quot;/bin/sh&quot;</span>))</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">panic(<span class="string">&quot;No working init found.&quot;</span>);</span><br></pre></td></tr></table></figure></div>
+
+<p>内核首先检查 <code>init=</code> 内核命令行参数是否指定了自定义的 init 路径（如 <code>init=/bin/systemd</code> 或 <code>init=/bin/bash</code>）。如果指定了，则直接执行该程序。否则依次尝试 <code>/sbin/init</code>、<code>/etc/init</code>、<code>/bin/init</code> 和 <code>/bin/sh</code>。如果所有路径都失败，内核进入 <code>panic()</code>——此时系统无法继续启动。</p>
+<p><code>run_init_process()</code> 和 <code>try_to_run_init_process()</code> 内部调用 <code>kernel_execve()</code> 系统调用。这是一个关键的过渡点：当前内核线程（PID 1，名为 “init”）通过 <code>kernel_execve()</code> 将自身替换为一个用户空间进程。该系统调用不会返回——它将当前任务的地址空间从内核空间切换到用户空间，开始执行 init 程序的入口点。</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">run_init_process</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *init_filename)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span> *<span class="type">const</span> *p;</span><br><span class="line"></span><br><span class="line">    argv_init[<span class="number">0</span>] = init_filename;</span><br><span class="line">    pr_info(<span class="string">&quot;Run %s as init process\n&quot;</span>, init_filename);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> kernel_execve(init_filename, argv_init, envp_init);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>至此，PID 1 从一个内核线程蜕变为用户空间进程。在大多数现代 Linux 发行版中，这个进程是 <strong>systemd</strong>（<code>/sbin/init</code> 通常是到 <code>/lib/systemd/systemd</code> 的符号链接）。</p>
+<h2 id="3-10-6-PID-1-的职责"><a href="#3-10-6-PID-1-的职责" class="headerlink" title="3.10.6 PID 1 的职责"></a>3.10.6 PID 1 的职责</h2><p>init 进程（PID 1）在用户空间中拥有特殊地位，承担以下核心职责：</p>
+<p><strong>文件系统挂载</strong>：init 进程负责挂载 <code>/proc</code>、<code>/sys</code>、<code>/dev</code>（devtmpfs）、<code>/tmp</code>、<code>/run</code> 等虚拟和临时文件系统。虽然内核已经挂载了根文件系统，但其余的挂载点由 init 负责处理。</p>
+<p><strong>服务管理</strong>：启动系统服务——网络配置、日志系统（journald&#x2F;syslog）、D-Bus 通信总线、定时任务（cron）、SSH 守护进程等。systemd 通过 <code>.service</code> 单元文件以并行方式启动服务，显著加速启动过程。</p>
+<p><strong>进程回收</strong>：当任何进程的父进程退出后，该进程会被重新分配给 PID 1。当这些”孤儿进程”退出时，PID 1 负责调用 <code>wait()</code> 回收它们的资源，防止产生僵尸进程（zombie）。这是 PID 1 不可推卸的责任。</p>
+<p><strong>信号处理</strong>：PID 1 对信号有特殊行为——内核不会向 PID 1 发送没有注册处理程序的信号。这意味着如果 init 没有为 <code>SIGTERM</code> 注册处理器，那么发送 <code>SIGTERM</code> 给 PID 1 会被内核直接丢弃。这保护了 init 进程免受意外终止。</p>
+<p><strong>系统关机</strong>：init 进程管理系统的关机和重启流程。当收到 <code>SIGTERM</code>（传统 SysVinit）或通过 D-Bus 发出关机请求（systemd）时，init 进程负责优雅地停止所有服务，最终调用 <code>reboot()</code> 系统调用通知内核关机。</p>
+<p>从 <code>start_kernel()</code> 到 <code>kernel_execve()</code>，内核完成了从早期硬件初始化到用户空间启动的全部工作。initcall 机制确保了子系统按正确顺序初始化，initramfs 解决了根文件系统的引导困境，而 <code>kernel_execve()</code> 标志着内核启动阶段的终结和用户空间时代的开始。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-02</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-05-28 16:45:21</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-05-28 18:40:00
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/05/28/Linux内核分析之基础知识-02/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-03/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-03</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-01/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-01</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "not-lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "jelasin/jelasin.github.io",
+                    "data-repo-id": "R_kgDOKVydDA",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOKVydDM4CZe2W",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-02</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#3-1-start-kernel-%E6%80%BB%E8%A7%88"><span class="nav-text">3.1 start_kernel() 总览</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E5%AE%9A%E4%BD%8D"><span class="nav-text">函数定位</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E7%90%86%E8%A7%A3%E5%88%9D%E5%A7%8B%E5%8C%96%E9%A1%BA%E5%BA%8F"><span class="nav-text">为什么需要理解初始化顺序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%98%B6%E6%AE%B5%EF%BC%9A%E6%97%A9%E6%9C%9F%E5%BC%95%E5%AF%BC%EF%BC%88%E4%B8%AD%E6%96%AD%E7%A6%81%E7%94%A8%EF%BC%89"><span class="nav-text">第一阶段：早期引导（中断禁用）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#set-task-stack-end-magic-init-task"><span class="nav-text">set_task_stack_end_magic(&amp;init_task)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#smp-setup-processor-id"><span class="nav-text">smp_setup_processor_id()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#boot-cpu-init"><span class="nav-text">boot_cpu_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pr-notice-%E2%80%9C-s%E2%80%9D-linux-banner"><span class="nav-text">pr_notice(“%s”, linux_banner)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#setup-arch-command-line"><span class="nav-text">setup_arch(&amp;command_line)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#mm-core-init-early"><span class="nav-text">mm_core_init_early()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#jump-label-init-%E4%B8%8E-static-call-init"><span class="nav-text">jump_label_init() 与 static_call_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#setup-per-cpu-areas"><span class="nav-text">setup_per_cpu_areas()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#parse-early-param"><span class="nav-text">parse_early_param()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%98%B6%E6%AE%B5%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%AD%90%E7%B3%BB%E7%BB%9F%EF%BC%88%E4%B8%AD%E6%96%AD%E4%BB%8D%E7%A6%81%E7%94%A8%EF%BC%89"><span class="nav-text">第二阶段：核心子系统（中断仍禁用）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sched-init-%E2%80%94%E2%80%94%E8%B0%83%E5%BA%A6%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">sched_init()——调度器初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rcu-init-%E2%80%94%E2%80%94RCU-%E6%9C%BA%E5%88%B6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">rcu_init()——RCU 机制初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#early-irq-init-%E4%B8%8E-init-IRQ"><span class="nav-text">early_irq_init() 与 init_IRQ()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tick-init-timers-init-hrtimers-init"><span class="nav-text">tick_init(), timers_init(), hrtimers_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#timekeeping-init-%E4%B8%8E-time-init"><span class="nav-text">timekeeping_init() 与 time_init()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E9%98%B6%E6%AE%B5%EF%BC%9A%E5%BC%80%E5%90%AF%E4%B8%AD%E6%96%AD"><span class="nav-text">第三阶段：开启中断</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#early-boot-irqs-disabled-false"><span class="nav-text">early_boot_irqs_disabled &#x3D; false</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#local-irq-enable-%E2%80%94%E2%80%94%E4%B8%AD%E6%96%AD%E7%BB%88%E4%BA%8E%E5%BC%80%E5%90%AF%EF%BC%81"><span class="nav-text">local_irq_enable()——中断终于开启！</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#console-init-%E2%80%94%E2%80%94%E6%8E%A7%E5%88%B6%E5%8F%B0%E8%BE%93%E5%87%BA%E5%B0%B1%E7%BB%AA"><span class="nav-text">console_init()——控制台输出就绪</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E9%98%B6%E6%AE%B5%EF%BC%9A%E5%90%8E%E6%9C%9F%E6%A0%B8%E5%BF%83%E5%AD%90%E7%B3%BB%E7%BB%9F"><span class="nav-text">第四阶段：后期核心子系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#lockdep-init-%E4%B8%8E-locking-selftest"><span class="nav-text">lockdep_init() 与 locking_selftest()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pid-idr-init-cred-init-fork-init"><span class="nav-text">pid_idr_init(), cred_init(), fork_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#security-init"><span class="nav-text">security_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vfs-caches-init"><span class="nav-text">vfs_caches_init()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cgroup-init"><span class="nav-text">cgroup_init()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%BA%94%E9%98%B6%E6%AE%B5%EF%BC%9A%E6%94%B6%E5%B0%BE%E4%B8%8E%E8%BF%87%E6%B8%A1"><span class="nav-text">第五阶段：收尾与过渡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#rest-init-%E2%80%94%E2%80%94%E4%BB%8E%E5%86%85%E6%A0%B8%E6%80%81%E5%88%B0%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E7%9A%84%E8%B7%83%E8%BF%81"><span class="nav-text">rest_init()——从内核态到用户空间的跃迁</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-2-setup-arch-%E2%80%94-x86-%E6%9E%B6%E6%9E%84%E7%9B%B8%E5%85%B3%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.2 setup_arch() — x86 架构相关初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-1-%E6%A6%82%E8%BF%B0"><span class="nav-text">3.2.1 概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-2-%E5%BC%95%E5%AF%BC%E6%95%B0%E6%8D%AE%E7%9A%84%E6%8E%A5%E6%94%B6%E4%B8%8E%E8%A7%A3%E6%9E%90"><span class="nav-text">3.2.2 引导数据的接收与解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#No-Execute-%E4%BD%8D%E9%85%8D%E7%BD%AE"><span class="nav-text">No-Execute 位配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E6%9E%90%E5%BC%95%E5%AF%BC%E5%8A%A0%E8%BD%BD%E5%99%A8%E6%95%B0%E6%8D%AE"><span class="nav-text">解析引导加载器数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-3-%E5%86%85%E5%AD%98%E6%8E%A2%E6%B5%8B%E4%B8%8E%E7%AE%A1%E7%90%86"><span class="nav-text">3.2.3 内存探测与管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#E820-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E5%A4%84%E7%90%86"><span class="nav-text">E820 内存映射处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E5%8C%BA%E5%9F%9F%E7%9A%84%E4%BF%9D%E7%95%99"><span class="nav-text">内存区域的保留</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#memblock-%E5%AD%90%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%A1%AB%E5%85%85"><span class="nav-text">memblock 子系统的填充</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-4-%E5%86%85%E6%A0%B8%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E7%9A%84%E5%BB%BA%E7%AB%8B"><span class="nav-text">3.2.4 内核内存布局的建立</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A1%B5%E8%A1%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">页表初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E6%A8%A1%E5%BC%8F%E5%86%85%E5%AD%98%E4%BF%9D%E7%95%99"><span class="nav-text">实模式内存保留</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-5-%E5%B9%B3%E5%8F%B0%E7%89%B9%E5%AE%9A%E7%9A%84%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.2.5 平台特定的子系统初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ACPI-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">ACPI 初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#x86-init-%E6%8A%BD%E8%B1%A1%E5%B1%82"><span class="nav-text">x86_init 抽象层</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TSC-%E6%A0%A1%E5%87%86"><span class="nav-text">TSC 校准</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-6-%E6%97%A9%E6%9C%9F%E5%8F%82%E6%95%B0%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%91%BD%E4%BB%A4%E8%A1%8C%E8%BF%94%E5%9B%9E"><span class="nav-text">3.2.6 早期参数解析与命令行返回</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-3-%E6%97%A9%E6%9C%9F%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.3 早期内存管理初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mm-core-init-early-%E2%80%94-%E8%B6%85%E6%97%A9%E6%9C%9F%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">mm_core_init_early() — 超早期内存初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#memblock-%E5%88%86%E9%85%8D%E5%99%A8%EF%BC%9A-slab-%E4%B9%8B%E5%89%8D%E7%9A%84%E4%B8%B4%E6%97%B6%E5%88%86%E9%85%8D%E5%99%A8"><span class="nav-text">memblock 分配器：_slab_之前的临时分配器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#memblock-%E7%9A%84%E6%A0%B8%E5%BF%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">memblock 的核心数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE-API"><span class="nav-text">关键 API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#memblock-%E5%88%B0%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BF%87%E6%B8%A1"><span class="nav-text">memblock 到伙伴系统的过渡</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mm-core-init-%E2%80%94-%E5%AE%8C%E6%95%B4%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">mm_core_init() — 完整内存管理初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%99%E4%BC%B4%E5%88%86%E9%85%8D%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">伙伴分配器初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%AF%8F-zone-%E6%B0%B4%E4%BD%8D%E7%BA%BF%E8%AE%BE%E7%BD%AE"><span class="nav-text">每_zone_水位线设置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%B5%E8%A1%A8%E7%BB%88%E7%BB%93%E5%8C%96%EF%BC%9Ainit-mem-mapping"><span class="nav-text">页表终结化：init_mem_mapping()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A9%E6%9C%9F-ioremap"><span class="nav-text">早期_ioremap_</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-4-%E8%B0%83%E5%BA%A6%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.4 调度器初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#sched-init-%E7%9A%84%E8%B0%83%E7%94%A8%E6%97%B6%E6%9C%BA"><span class="nav-text">sched_init() 的调用时机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E9%98%9F%E5%88%97%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">运行队列初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E5%BA%A6%E7%B1%BB%E5%B1%82%E6%AC%A1%E5%BB%BA%E7%AB%8B"><span class="nav-text">调度类层次建立</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CFS-%E5%B8%A6%E5%AE%BD%E6%8E%A7%E5%88%B6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">CFS 带宽控制初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#init-task%EF%BC%9A%E9%9B%B6%E5%8F%B7%E8%BF%9B%E7%A8%8B"><span class="nav-text">init_task：零号进程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E5%BA%A6%E5%99%A8%E6%BF%80%E6%B4%BB%E6%97%B6%E6%9C%BA"><span class="nav-text">调度器激活时机</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-5-RCU-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.5 RCU 初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#RCU-%E7%9A%84%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86"><span class="nav-text">RCU 的基本原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rcu-init-%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-text">rcu_init() 的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#rcu-state-%E7%BB%93%E6%9E%84%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">rcu_state 结构初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#per-CPU-rcu-data-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">per-CPU rcu_data 初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%B6%E9%92%9F%E6%BA%90%E5%9B%9E%E8%B0%83%E6%B3%A8%E5%86%8C"><span class="nav-text">时钟源回调注册</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rcu-scheduler-starting"><span class="nav-text">rcu_scheduler_starting()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-RCU-%E5%BF%85%E9%A1%BB%E5%9C%A8%E4%B8%AD%E6%96%AD%E4%B9%8B%E5%89%8D%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">为什么 RCU 必须在中断之前初始化</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-6-%E4%B8%AD%E6%96%AD%E4%B8%8E%E6%97%B6%E9%92%9F%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.6 中断与时钟初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#early-irq-init-%E2%80%94-%E4%B8%AD%E6%96%AD%E6%8F%8F%E8%BF%B0%E7%AC%A6%E9%A2%84%E5%88%86%E9%85%8D"><span class="nav-text">early_irq_init() — 中断描述符预分配</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#init-IRQ-%E2%80%94-x86-64-%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">init_IRQ() — x86_64 中断控制器初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#native-init-IRQ"><span class="nav-text">native_init_IRQ()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tick-init-%E2%80%94-%E6%97%B6%E9%92%9F%E8%AE%BE%E5%A4%87%E6%A1%86%E6%9E%B6"><span class="nav-text">tick_init() — 时钟设备框架</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#timers-init-%E2%80%94-%E7%BB%8F%E5%85%B8%E5%AE%9A%E6%97%B6%E5%99%A8%E8%BD%AE"><span class="nav-text">timers_init() — 经典定时器轮</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#hrtimers-init-%E2%80%94-%E9%AB%98%E7%B2%BE%E5%BA%A6%E5%AE%9A%E6%97%B6%E5%99%A8"><span class="nav-text">hrtimers_init() — 高精度定时器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#timekeeping-init-%E2%80%94-%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4%E7%BB%B4%E6%8A%A4"><span class="nav-text">timekeeping_init() — 系统时间维护</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#time-init-%E2%80%94-x86-64-%E6%97%B6%E9%92%9F%E7%A1%AC%E4%BB%B6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">time_init() — x86_64 时钟硬件初始化</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-7-%E6%8E%A7%E5%88%B6%E5%8F%B0%E4%B8%8E%E6%97%A9%E6%9C%9F%E6%89%93%E5%8D%B0"><span class="nav-text">3.7 控制台与早期打印</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A9%E6%9C%9F%E6%89%93%E5%8D%B0%EF%BC%9Aboot-console"><span class="nav-text">早期打印：boot console</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#early-printk-%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-text">early_printk 的实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#boot-console-%E7%9A%84%E7%89%B9%E7%82%B9"><span class="nav-text">boot console 的特点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#printk-%E7%9A%84%E6%B6%88%E6%81%AF%E7%BC%93%E5%86%B2"><span class="nav-text">printk() 的消息缓冲</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#log-buf-%E7%8E%AF%E5%BD%A2%E7%BC%93%E5%86%B2%E5%8C%BA"><span class="nav-text">__log_buf 环形缓冲区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E8%BE%93%E5%87%BA%E6%97%B6%E6%9C%BA"><span class="nav-text">消息输出时机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#console-init-%E2%80%94-%E7%9C%9F%E6%AD%A3%E7%9A%84%E6%8E%A7%E5%88%B6%E5%8F%B0%E6%B3%A8%E5%86%8C"><span class="nav-text">console_init() — 真正的控制台注册</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%81%8D%E5%8E%86%E5%B9%B6%E6%B3%A8%E5%86%8C%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%A9%B1%E5%8A%A8"><span class="nav-text">遍历并注册控制台驱动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A8%E9%94%80-boot-console"><span class="nav-text">注销 boot console</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A5%E5%BF%97%E7%BA%A7%E5%88%AB%E4%B8%8E%E6%89%93%E5%8D%B0%E5%AE%8F"><span class="nav-text">日志级别与打印宏</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-8-rest-init-%E2%80%94-%E4%BB%8E%E5%86%85%E6%A0%B8%E5%88%B0%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4"><span class="nav-text">3.8 rest_init() — 从内核到用户空间</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#rest-init-%E7%9A%84%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84"><span class="nav-text">rest_init() 的整体结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA-kernel-init-%E7%BA%BF%E7%A8%8B%EF%BC%88PID-1%EF%BC%89"><span class="nav-text">创建 kernel_init 线程（PID 1）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#kernel-init-%E7%9A%84%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-text">kernel_init() 的执行流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA-kthreadd-%E7%BA%BF%E7%A8%8B%EF%BC%88PID-2%EF%BC%89"><span class="nav-text">创建 kthreadd 线程（PID 2）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%95%E5%AF%BC-CPU-%E8%BF%9B%E5%85%A5-idle-%E5%BE%AA%E7%8E%AF"><span class="nav-text">引导 CPU 进入 idle 循环</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E6%80%BB%E7%BB%93"><span class="nav-text">启动流程总结</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-9-initcall-%E6%9C%BA%E5%88%B6%E4%B8%8E%E9%A9%B1%E5%8A%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-text">3.9 initcall 机制与驱动初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-1-%E4%BB%80%E4%B9%88%E6%98%AF-initcall"><span class="nav-text">3.9.1 什么是 initcall</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-2-%E5%85%AB%E4%B8%AA-initcall-%E7%BA%A7%E5%88%AB"><span class="nav-text">3.9.2 八个 initcall 级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-3-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-text">3.9.3 实现原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-4-%E9%93%BE%E6%8E%A5%E5%99%A8%E5%A6%82%E4%BD%95%E6%94%B6%E9%9B%86-initcall"><span class="nav-text">3.9.4 链接器如何收集 initcall</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-5-init-%E4%B8%8E-initdata"><span class="nav-text">3.9.5 __init 与 __initdata</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-6-%E6%97%A9%E6%9C%9F-initcall"><span class="nav-text">3.9.6 早期 initcall</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-9-7-%E6%A8%A1%E5%9D%97%E7%9A%84-initcall"><span class="nav-text">3.9.7 模块的 initcall</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-10-%E6%8C%82%E8%BD%BD%E6%A0%B9%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E4%B8%8E-exec-init"><span class="nav-text">3.10 挂载根文件系统与 exec &#x2F;init</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-1-%E6%A0%B9%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%9B%B0%E5%A2%83"><span class="nav-text">3.10.1 根文件系统困境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-2-initramfs-%E6%9C%BA%E5%88%B6"><span class="nav-text">3.10.2 initramfs 机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-3-%E6%A0%B9%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E6%8C%82%E8%BD%BD%E6%B5%81%E7%A8%8B"><span class="nav-text">3.10.3 根文件系统挂载流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-4-do-mount-root-%E4%B8%8E-mount-root"><span class="nav-text">3.10.4 do_mount_root() 与 mount_root()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-5-exec-init%EF%BC%9A%E4%BB%8E%E5%86%85%E6%A0%B8%E5%88%B0%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4"><span class="nav-text">3.10.5 exec &#x2F;init：从内核到用户空间</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-10-6-PID-1-%E7%9A%84%E8%81%8C%E8%B4%A3"><span class="nav-text">3.10.6 PID 1 的职责</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/main.js" ></script>
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Typed.min.js" ></script>
+
+
+
+
+
+
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+
+
+	
+</body>
+
+</html>

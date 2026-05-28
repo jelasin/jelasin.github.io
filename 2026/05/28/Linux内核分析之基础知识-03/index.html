@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="韩乔落">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+        
+        
+        
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="https://jelasin.github.io/2026/05/28/linux内核分析之基础知识-03/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="会当身由己，婉转入江湖">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux内核分析之基础知识-03">
+<meta property="og:url" content="https://jelasin.github.io/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-03/index.html">
+<meta property="og:site_name" content="Jelasin">
+<meta property="og:description" content="会当身由己，婉转入江湖">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jelasin.github.io/images/touxiang.jpg">
+<meta property="article:published_time" content="2026-05-28T09:11:53.000Z">
+<meta property="article:modified_time" content="2026-05-28T10:39:58.750Z">
+<meta property="article:author" content="Jelasin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jelasin.github.io/images/touxiang.jpg">
+    
+    
+        <!-- Google tag (gtag.js) -->
+        <script src="https://www.googletagmanager.com/gtag/js?id=G-3333333333"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-3333333333');
+        </script>
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/favicon.ico" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Linux内核分析之基础知识-03 | Jelasin
+        
+    </title>
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Chillax/chillax.css">
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/css/build/tailwind.css">
+    
+
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/GeistMono/geist-mono.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fonts/Geist/geist.css">
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"jelasin.github.io","root":"/","language":"en","path":"search.json"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":false,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":true,"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":"Noto Sans SC","url":"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"},"english":{"enable":false,"family":"Farsan","url":"https://fonts.googleapis.com/css2?family=Farsan&display=swap"},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":true,"percentage":true},"website_counter":{"url":"https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js","enable":true,"site_pv":false,"site_uv":false,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/touxiang.jpg","description":"会当身由己，婉转入江湖"},"google_analytics":{"enable":true,"id":"G-3333333333"}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"“会当身由己，婉转入江湖”","subtitle":{"text":["Loading..."],"hitokoto":{"enable":true,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":null,"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"About":{"icon":"fa-regular fa-user","submenus":{"kanxue":"https://bbs.kanxue.com/homepage-958172.htm","Github":"https://github.com/jelasin","中国诗歌网":"https://www.zgshige.com/c/2022-04-13/21151100.shtml"}}},"search":{"enable":true,"preload":false}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":{"AI":{"path":"/AI","icon":"fa-brands fa-python"},"IOT":{"path":"/IOT","icon":"fas fa-network-wired"},"CTF":{"path":"/CTF","icon":"fa-solid fa-snowflake"},"Web":{"path":"/Web","icon":"fa-solid fa-shield"},"Linux":{"path":"/Linux","icon":"fa-brands fa-linux"},"Android":{"path":"/Android","icon":"fa-brands fa-android"},"Windows":{"path":"/Windows","icon":"fa-brands fa-windows"}}},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":4},"tags":{"enable":true,"limit":4}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-circle-info fa-beat-fade\" style=\"--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;\" ></i>","start":"2023/9/20 11:45:14","statistics":true,"customize":"关山初度尘未洗，策马扬鞭再奋蹄。","icp":{"enable":false,"number":null,"url":null}},"footerStart":"2023/9/20 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/fontawesome.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/brands.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/solid.min.css">
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/fontawesome/regular.min.css">
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+	<span class="scroll-progress-bar"></span>
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/favicon.ico" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Jelasin
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">
+                                                    KANXUE
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/jelasin">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">
+                                                    中国诗歌网
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                        <li class="navbar-item search search-popup-trigger">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://bbs.kanxue.com/homepage-958172.htm">KANXUE</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/jelasin">GITHUB</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://www.zgshige.com/c/2022-04-13/21151100.shtml">中国诗歌网</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/AI"
+                        >
+                            <span>AI</span>
+                            <i class="fa-brands fa-python fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/IOT"
+                        >
+                            <span>IOT</span>
+                            <i class="fas fa-network-wired fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/CTF"
+                        >
+                            <span>CTF</span>
+                            <i class="fa-solid fa-snowflake fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Web"
+                        >
+                            <span>Web</span>
+                            <i class="fa-solid fa-shield fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Linux"
+                        >
+                            <span>Linux</span>
+                            <i class="fa-brands fa-linux fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Android"
+                        >
+                            <span>Android</span>
+                            <i class="fa-brands fa-android fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+                    
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full active"
+                           href="/Windows"
+                        >
+                            <span>Windows</span>
+                            <i class="fa-brands fa-windows fa-sm fa-fw"></i>
+                        </a>
+                    </li>
+                
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">42</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">16</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">148</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Linux内核分析之基础知识-03</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/touxiang.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">韩乔落</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-05-28 17:11:53</span>
+        <span class="mobile">2026-05-28 17:11:53</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-05-28 18:39:58</span>
+            <span class="mobile">2026-05-28 18:39:58</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Linux-kernel/">Linux kernel</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="4-1-Kbuild-系统概述"><a href="#4-1-Kbuild-系统概述" class="headerlink" title="4.1 Kbuild 系统概述"></a>4.1 Kbuild 系统概述</h1><h2 id="什么是-Kbuild"><a href="#什么是-Kbuild" class="headerlink" title="什么是 Kbuild"></a>什么是 Kbuild</h2><p>Kbuild 是 Linux 内核专用的构建系统，它构建在 GNU Make 之上，但绝非简单的 Makefile 集合。面对数万个源文件、数百个目录、数千个配置选项的复杂性，Kbuild 通过一套精心设计的递归构建机制，实现了高效、灵活、可扩展的编译流程。</p>
+<p>Kbuild 的核心设计理念是：<strong>每个目录自治管理自己的编译规则，顶层 Makefile 负责全局调度</strong>。这种递归 make 模式使得各子系统可以独立演进，互不干扰。</p>
+<h2 id="核心文件解析"><a href="#核心文件解析" class="headerlink" title="核心文件解析"></a>核心文件解析</h2><h3 id="顶层-Makefile"><a href="#顶层-Makefile" class="headerlink" title="顶层 Makefile"></a>顶层 Makefile</h3><p>顶层 <code>Makefile</code>（位于内核源码根目录）是整个构建系统的入口点，它负责：</p>
+<ul>
+<li><strong>版本信息定义</strong>：内核版本号由 <code>Makefile</code> 顶部的 <code>VERSION</code>、<code>PATCHLEVEL</code>、SUBLEVEL<code>、</code>EXTRAVERSION&#96; 四个变量组合而成</li>
+<li><strong>架构设定</strong>：通过 <code>ARCH</code> 变量指定目标架构（如 <code>x86</code>、<code>arm64</code>），默认为当前主机架构</li>
+<li><strong>交叉编译配置</strong>：通过 <code>CROSS_COMPILE</code> 变量指定交叉编译工具链前缀</li>
+<li><strong>全局编译标志</strong>：定义 <code>-O2</code>、<code>-fno-strict-aliasing</code> 等全局编译选项</li>
+<li><strong>递归构建入口</strong>：将构建任务分发到各子目录</li>
+</ul>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 顶层 Makefile 中的关键变量</span></span><br><span class="line">VERSION = 7</span><br><span class="line">PATCHLEVEL = 0</span><br><span class="line">SUBLEVEL = 10</span><br><span class="line">EXTRAVERSION =</span><br><span class="line">NAME = ...</span><br><span class="line"></span><br><span class="line">ARCH ?= <span class="variable">$(<span class="built_in">shell</span> uname -m | sed -e s/i.86/x86/ ...)</span></span><br><span class="line">CROSS_COMPILE ?=</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="scripts-Kbuild-include"><a href="#scripts-Kbuild-include" class="headerlink" title="scripts&#x2F;Kbuild.include"></a>scripts&#x2F;Kbuild.include</h3><p>这是一个被所有 Makefile 共同包含的公共规则文件。它定义了通用的编译规则、标志处理函数、文件检查逻辑等。比如将 <code>cc-option</code> 函数用于检测编译器是否支持某个选项：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 如果 gcc 支持 -fno-stack-protector，则使用该选项</span></span><br><span class="line">cflags-y += <span class="variable">$(<span class="built_in">call</span> cc-option, -fno-stack-protector)</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="scripts-Makefile-build"><a href="#scripts-Makefile-build" class="headerlink" title="scripts&#x2F;Makefile.build"></a>scripts&#x2F;Makefile.build</h3><p>这是 Kbuild 的真正引擎。每当 make 递归进入一个子目录时，实际上就是调用这个文件：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(MAKE) -f scripts/Makefile.build obj=&lt;目标目录&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p>它会读取该目录下的 <code>Kbuild</code> 或 <code>Makefile</code>，解析其中的 <code>obj-y</code>、<code>obj-m</code> 等变量，然后执行编译、链接等操作。</p>
+<h3 id="arch-x86-Makefile"><a href="#arch-x86-Makefile" class="headerlink" title="arch&#x2F;x86&#x2F;Makefile"></a>arch&#x2F;x86&#x2F;Makefile</h3><p>架构相关的 Makefile 定义了 x86 特有的编译标志和规则：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># x86 32 位与 64 位的不同编译选项</span></span><br><span class="line"><span class="keyword">ifeq</span> (<span class="variable">$(CONFIG_X86_64)</span>,y)</span><br><span class="line">        KBUILD_CFLAGS += -mno-red-zone -mcmodel=kernel -fno-pic ...</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">        KBUILD_CFLAGS += -march=i386 ...</span><br><span class="line"><span class="keyword">endif</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 链接 vmlinux 时使用的特殊标志</span></span><br><span class="line">LDFLAGS_vmlinux := -e startup_64</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="arch-x86-boot-Makefile"><a href="#arch-x86-boot-Makefile" class="headerlink" title="arch&#x2F;x86&#x2F;boot&#x2F;Makefile"></a>arch&#x2F;x86&#x2F;boot&#x2F;Makefile</h3><p>启动映像的构建规则在此定义，包括 setup.elf 的链接、compressed 目录的递归构建，以及最终 bzImage 的生成。这个 Makefile 中的规则体现了从编译产物到可引导映像的最后加工步骤。</p>
+<h2 id="构建流程"><a href="#构建流程" class="headerlink" title="构建流程"></a>构建流程</h2><h3 id="第一步：配置-make-config"><a href="#第一步：配置-make-config" class="headerlink" title="第一步：配置 (make config)"></a>第一步：配置 (make config)</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">make menuconfig    <span class="comment"># 基于 ncurses 的菜单式配置</span></span><br><span class="line">make defconfig     <span class="comment"># 使用默认配置</span></span><br><span class="line">make olddefconfig  <span class="comment"># 基于现有 .config 自动应用新默认值</span></span><br></pre></td></tr></table></figure></div>
+
+<p>配置的结果是生成 <code>.config</code> 文件，它是一个键值对列表：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_X86_64=y</span><br><span class="line">CONFIG_SMP=y</span><br><span class="line">CONFIG_MODULES=y</span><br><span class="line">CONFIG_DEBUG_INFO=y</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="第二步：编译-make"><a href="#第二步：编译-make" class="headerlink" title="第二步：编译 (make)"></a>第二步：编译 (make)</h3><p>执行 <code>make</code> 时，Kbuild 会：</p>
+<ol>
+<li>将 <code>.config</code> 转换为 <code>include/generated/autoconf.h</code> 头文件</li>
+<li>递归遍历所有包含 <code>obj-y</code>&#x2F;<code>obj-m</code> 条目的目录</li>
+<li>编译所有需要的 <code>.c</code> 文件为 <code>.o</code> 文件</li>
+<li>将所有 <code>obj-y</code> 对应的 <code>.o</code> 文件链接为 <code>vmlinux</code></li>
+<li>编译所有 <code>obj-m</code> 对应的 <code>.o</code> 文件为独立的 <code>.ko</code> 模块</li>
+</ol>
+<h3 id="第三步：生成-bzImage"><a href="#第三步：生成-bzImage" class="headerlink" title="第三步：生成 bzImage"></a>第三步：生成 bzImage</h3><p>x86 架构的 Makefile 中定义了从 <code>vmlinux</code> 到 <code>bzImage</code> 的特殊规则链，这个流程将在下一节详细分析。</p>
+<h2 id="obj-y-obj-m-机制"><a href="#obj-y-obj-m-机制" class="headerlink" title="obj-y &#x2F; obj-m 机制"></a>obj-y &#x2F; obj-m 机制</h2><p>这是 Kbuild 最核心的设计模式。每个子目录的 Makefile 通过这两个变量声明该目录需要编译的内容：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 直接编译并链接进内核</span></span><br><span class="line">obj-y += sched.o</span><br><span class="line">obj-y += fork.o</span><br><span class="line">obj-y += exec.o</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译为可加载模块</span></span><br><span class="line">obj-m += mydriver.o</span><br><span class="line"></span><br><span class="line"><span class="comment"># 条件编译：CONFIG_FOO=y 时链接进内核，=m 时编译为模块，未设置时跳过</span></span><br><span class="line">obj-<span class="variable">$(CONFIG_FOO)</span> += foo.o</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>obj-y 的行为</strong>：<code>foo.c</code> 被编译为 <code>foo.o</code>，最终链接进 <code>built-in.a</code>（该目录的静态库），再逐级汇总到 <code>vmlinux</code> 中。</p>
+<p><strong>obj-m 的行为</strong>：<code>bar.c</code> 被编译为 <code>bar.o</code>，然后单独链接为 <code>bar.ko</code> 内核模块文件，不会进入 <code>vmlinux</code>。</p>
+<p><strong>条件编译</strong>：<code>obj-$(CONFIG_FOO) += foo.o</code> 会展开为三种情况之一：</p>
+<ul>
+<li><code>CONFIG_FOO=y</code> → <code>obj-y += foo.o</code>（编入内核）</li>
+<li><code>CONFIG_FOO=m</code> → <code>obj-m += foo.o</code>（编为模块）</li>
+<li><code># CONFIG_FOO is not set</code> → <code>obj- += foo.o</code>（被忽略，不编译）</li>
+</ul>
+<h2 id="autoconf-h：从配置到代码的桥梁"><a href="#autoconf-h：从配置到代码的桥梁" class="headerlink" title="autoconf.h：从配置到代码的桥梁"></a>autoconf.h：从配置到代码的桥梁</h2><p><code>include/generated/autoconf.h</code> 是由 <code>.config</code> 自动生成的 C 头文件，它将 Makefile 层面的配置选项转化为 C 预处理器可用的宏定义：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_X86_64 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_SMP 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_DEBUG_INFO 1</span></span><br><span class="line"><span class="comment">/* #undef CONFIG_FOO */</span></span><br></pre></td></tr></table></figure></div>
+
+<p>内核源码中大量使用 <code>#ifdef CONFIG_XXX</code> 来实现条件编译，这些宏的值全部来自 <code>autoconf.h</code>。这条从 <code>.config</code> 到 <code>autoconf.h</code> 再到源码的链路，是内核可配置性的基石。</p>
+<h2 id="常用-make-目标"><a href="#常用-make-目标" class="headerlink" title="常用 make 目标"></a>常用 make 目标</h2><table>
+<thead>
+<tr>
+<th>目标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>vmlinux</code></td>
+<td>仅编译并链接生成未压缩的 ELF 内核</td>
+</tr>
+<tr>
+<td><code>bzImage</code></td>
+<td>生成完整的可引导压缩映像（x86 默认目标）</td>
+</tr>
+<tr>
+<td><code>modules</code></td>
+<td>编译所有配置为模块的代码</td>
+</tr>
+<tr>
+<td><code>modules_install</code></td>
+<td>将编译好的模块安装到 <code>/lib/modules/</code></td>
+</tr>
+<tr>
+<td><code>install</code></td>
+<td>将 bzImage 安装到 <code>/boot</code></td>
+</tr>
+<tr>
+<td><code>clean</code></td>
+<td>清除大部分构建产物</td>
+</tr>
+<tr>
+<td><code>mrproper</code></td>
+<td>清除所有构建产物，包括 <code>.config</code></td>
+</tr>
+<tr>
+<td><code>distclean</code></td>
+<td><code>mrproper</code> + 清除编辑器备份等杂项文件</td>
+</tr>
+</tbody></table>
+<h2 id="目录遍历顺序"><a href="#目录遍历顺序" class="headerlink" title="目录遍历顺序"></a>目录遍历顺序</h2><p>Kbuild 遍历目录的顺序由 <code>obj-y</code> 中条目的排列顺序决定。对于链接顺序敏感的场景（如初始化调用顺序），这一点至关重要。内核通过 <code>include/linux/init.h</code> 中定义的各级 <code>initcall</code> 级别来保证初始化顺序，而非依赖链接顺序本身。4.2 bzImage 生成流程</p>
+<h2 id="构建流水线总览"><a href="#构建流水线总览" class="headerlink" title="构建流水线总览"></a>构建流水线总览</h2><p>从源代码到最终可引导的 bzImage，经历了一条精心设计的多阶段流水线。每一步都是一个格式转换过程，逐步将原始编译产物转化为引导加载程序能够识别和加载的格式：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">源代码(.c/.S)</span><br><span class="line">    ↓ gcc / clang</span><br><span class="line">目标文件(.o)</span><br><span class="line">    ↓ ld (链接器)</span><br><span class="line">vmlinux (完整 ELF 可执行文件，含符号表和调试信息)</span><br><span class="line">    ↓ objcopy -O binary</span><br><span class="line">vmlinux.bin (原始二进制，ELF 头已剥离)</span><br><span class="line">    ↓ gzip / xz / lz4 / zstd</span><br><span class="line">vmlinux.bin.gz (压缩后的内核负载)</span><br><span class="line">    ↓ piggy.S (汇编包装)</span><br><span class="line">piggy.o (包含压缩数据的目标文件)</span><br><span class="line">    ↓ ld (与解压代码链接)</span><br><span class="line">arch/x86/boot/compressed/vmlinux (自解压 ELF)</span><br><span class="line">    ↓ objcopy -O binary</span><br><span class="line">arch/x86/boot/compressed/vmlinux.bin (自解压原始二进制)</span><br><span class="line">    ↓ tools/build.c (拼接)</span><br><span class="line">arch/x86/boot/bzImage (最终可引导映像)</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="逐步详解"><a href="#逐步详解" class="headerlink" title="逐步详解"></a>逐步详解</h2><h3 id="阶段一：编译（-c-→-o）"><a href="#阶段一：编译（-c-→-o）" class="headerlink" title="阶段一：编译（.c → .o）"></a>阶段一：编译（.c → .o）</h3><p>每个 <code>.c</code> 源文件被独立编译为对应的目标文件。Kbuild 根目录递归遍历所有子目录，对 <code>obj-y</code> 列出的源文件执行编译：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gcc -c -o kernel/sched/core.o kernel/sched/core.c</span><br><span class="line">gcc -c -o kernel/fork.o kernel/fork.c</span><br><span class="line"><span class="comment"># ... 数千个文件</span></span><br></pre></td></tr></table></figure></div>
+
+<p>同目录下的 <code>.o</code> 文件被合并为 <code>built-in.a</code> 静态归档。</p>
+<h3 id="阶段二：链接生成-vmlinux（-o-→-vmlinux）"><a href="#阶段二：链接生成-vmlinux（-o-→-vmlinux）" class="headerlink" title="阶段二：链接生成 vmlinux（.o → vmlinux）"></a>阶段二：链接生成 vmlinux（.o → vmlinux）</h3><p>所有 <code>built-in.a</code> 文件被链接为一个完整的 ELF 可执行文件 <code>vmlinux</code>。这是整个内核在未压缩状态下的完整二进制表示，包含：</p>
+<ul>
+<li>所有内核代码和数据段（.text, .data, .rodata, .bss 等）</li>
+<li>完整的 ELF 头和段头表</li>
+<li>符号表（可用 <code>nm vmlinux</code> 查看）</li>
+<li>调试信息（如果启用了 <code>CONFIG_DEBUG_INFO</code>）</li>
+</ul>
+<p>链接过程由 <code>vmlinux.lds.S</code>（x86_64 为 <code>arch/x86/kernel/vmlinux.lds.S</code>）生成的链接脚本控制，它精确安排了各段的布局：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">/* 简化的链接脚本结构 */</span><br><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">    . = 0xffffffff81000000;    /* 内核虚拟基地址 */</span><br><span class="line">    .text : &#123; *(.text) &#125;       /* 代码段 */</span><br><span class="line">    .rodata : &#123; *(.rodata) &#125;   /* 只读数据 */</span><br><span class="line">    .data : &#123; *(.data) &#125;       /* 可写数据 */</span><br><span class="line">    .bss : &#123; *(.bss) &#125;         /* 未初始化数据 */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>此时生成的 <code>vmlinux</code> 文件体积可达数百 MB（含调试信息时），但它还不能被 BIOS 或 UEFI 直接引导。</p>
+<h3 id="阶段三：生成原始二进制（vmlinux-→-vmlinux-bin）"><a href="#阶段三：生成原始二进制（vmlinux-→-vmlinux-bin）" class="headerlink" title="阶段三：生成原始二进制（vmlinux → vmlinux.bin）"></a>阶段三：生成原始二进制（vmlinux → vmlinux.bin）</h3><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">objcopy -O binary -R .note -R .comment -S vmlinux vmlinux.bin</span><br></pre></td></tr></table></figure></div>
+
+<p><code>objcopy</code> 执行以下操作：</p>
+<ul>
+<li><code>-O binary</code>：将输出格式设为原始二进制（剥离所有 ELF 结构）</li>
+<li><code>-R .note</code>：移除 .note 段</li>
+<li><code>-R .comment</code>：移除编译器注释段</li>
+<li><code>-S</code>：移除调试符号</li>
+</ul>
+<p>结果是一个纯粹的二进制映像，只包含需要加载到内存中的原始字节。文件体积大幅缩小。</p>
+<h3 id="阶段四：压缩（vmlinux-bin-→-vmlinux-bin-gz）"><a href="#阶段四：压缩（vmlinux-bin-→-vmlinux-bin-gz）" class="headerlink" title="阶段四：压缩（vmlinux.bin → vmlinux.bin.gz）"></a>阶段四：压缩（vmlinux.bin → vmlinux.bin.gz）</h3><p>内核支持多种压缩算法，通过 <code>CONFIG_KERNEL_*</code> 选项选择：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># arch/x86/boot/compressed/Makefile 中的压缩规则</span></span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_GZIP)</span>   = gz</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_BZIP2)</span>  = bz2</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_LZMA)</span>   = lzma</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_XZ)</span>     = xz</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_LZO)</span>    = lzo</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_LZ4)</span>    = lz4</span><br><span class="line">suffix_<span class="variable">$(CONFIG_KERNEL_ZSTD)</span>   = zstd</span><br></pre></td></tr></table></figure></div>
+
+<p>默认使用 gzip，压缩率与解压速度的平衡较好。zstd 是较新的选择，在大内核上表现优秀。</p>
+<h3 id="阶段五：制作-piggy（压缩数据-→-piggy-o）"><a href="#阶段五：制作-piggy（压缩数据-→-piggy-o）" class="headerlink" title="阶段五：制作 piggy（压缩数据 → piggy.o）"></a>阶段五：制作 piggy（压缩数据 → piggy.o）</h3><p>这是整个流程中最精巧的一步。内核使用一个汇编文件 <code>piggy.S</code> 将压缩后的二进制数据包装成一个目标文件：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/* arch/x86/boot/compressed/piggy.S */</span><br><span class="line">.section &quot;.rodata..compressed&quot;,&quot;a&quot;,@progbits</span><br><span class="line">.globl z_input_len</span><br><span class="line">z_input_len:</span><br><span class="line">    .long &lt;压缩数据大小&gt;</span><br><span class="line">.globl z_output_len</span><br><span class="line">z_output_len:</span><br><span class="line">    .long &lt;解压后大小&gt;</span><br><span class="line">.globl input_data</span><br><span class="line">input_data:</span><br><span class="line">    .incbin &quot;arch/x86/boot/compressed/vmlinux.bin.gz&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>.incbin</code> 伪指令直接将压缩后的二进制文件作为原始字节嵌入到目标文件的 <code>.rodata..compressed</code> 段中。同时导出 <code>input_data</code>（压缩数据起始地址）、<code>z_input_len</code>（压缩大小）和 <code>z_output_len</code>（解压后大小）三个符号，供解压代码使用。</p>
+<h3 id="阶段六：链接自解压映像（piggy-o-解压代码-→-compressed-vmlinux）"><a href="#阶段六：链接自解压映像（piggy-o-解压代码-→-compressed-vmlinux）" class="headerlink" title="阶段六：链接自解压映像（piggy.o + 解压代码 → compressed&#x2F;vmlinux）"></a>阶段六：链接自解压映像（piggy.o + 解压代码 → compressed&#x2F;vmlinux）</h3><p>在 <code>arch/x86/boot/compressed/</code> 目录下，piggy.o 与多个解压相关模块链接为自解压的 ELF 映像：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">piggy.o          ← 包含压缩的内核数据</span><br><span class="line">head_64.o        ← 16 位/32 位到 64 位模式切换，自解压入口</span><br><span class="line">misc.o           ← 解压主逻辑，调用解压函数</span><br><span class="line">kaslr.o          ← 内核地址随机化（KASLR）相关处理</span><br><span class="line">efi_thunk_64.o   ← EFI 兼容层（如需要）</span><br><span class="line">string.o         ← 基本字符串操作（解压过程中使用）</span><br><span class="line">cmdline.o        ← 命令行解析</span><br><span class="line">error.o          ← 错误处理</span><br></pre></td></tr></table></figure></div>
+
+<p>这些代码构成了一个微型自举程序，它的工作是：</p>
+<ol>
+<li>从引导加载程序手中接管 CPU</li>
+<li>设置基本的 64 位执行环境</li>
+<li>将嵌入的压缩内核解压到正确的内存位置</li>
+<li>跳转到解压后的内核入口点 <code>startup_64</code></li>
+</ol>
+<h3 id="阶段七：生成压缩二进制（compressed-vmlinux-→-compressed-vmlinux-bin）"><a href="#阶段七：生成压缩二进制（compressed-vmlinux-→-compressed-vmlinux-bin）" class="headerlink" title="阶段七：生成压缩二进制（compressed&#x2F;vmlinux → compressed&#x2F;vmlinux.bin）"></a>阶段七：生成压缩二进制（compressed&#x2F;vmlinux → compressed&#x2F;vmlinux.bin）</h3><p>再次使用 objcopy 剥离 ELF 头：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">objcopy -O binary -R .note -R .comment -S compressed/vmlinux compressed/vmlinux.bin</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="阶段八：合成-bzImage（setup-compressed-→-bzImage）"><a href="#阶段八：合成-bzImage（setup-compressed-→-bzImage）" class="headerlink" title="阶段八：合成 bzImage（setup + compressed → bzImage）"></a>阶段八：合成 bzImage（setup + compressed → bzImage）</h3><p>最终的合成由内核源码中的 <code>arch/x86/boot/tools/build.c</code> 工具完成。这个 C 程序将两个部分拼接为 bzImage：</p>
+<ol>
+<li><strong>setup.elf</strong>：实模式启动代码，包含引导参数处理、硬件探测等</li>
+<li><strong>compressed&#x2F;vmlinux.bin</strong>：包含自解压代码和压缩内核的负载</li>
+</ol>
+<p><code>tools/build.c</code> 执行的关键操作：</p>
+<ul>
+<li>读取 setup 部分，计算大小并填充头部字段</li>
+<li>将 PE&#x2F;COFF 头部附加到映像开头（使 bzImage 可被 UEFI 固件识别为合法的可执行文件）</li>
+<li>追加压缩的内核负载</li>
+<li>写入校验和和大小信息</li>
+</ul>
+<h2 id="bzImage-最终结构"><a href="#bzImage-最终结构" class="headerlink" title="bzImage 最终结构"></a>bzImage 最终结构</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────┐</span><br><span class="line">│      PE/COFF Header             │  ← UEFI 可识别的头部</span><br><span class="line">├─────────────────────────────────┤</span><br><span class="line">│      Boot Sector (512B)         │  ← 传统 BIOS 引导扇区</span><br><span class="line">├─────────────────────────────────┤</span><br><span class="line">│      Setup Code                 │  ← 实模式设置代码</span><br><span class="line">│      (video, e820, cmdline)     │</span><br><span class="line">├─────────────────────────────────┤</span><br><span class="line">│      Compressed Kernel Payload  │  ← 自解压代码 + 压缩的 vmlinux</span><br><span class="line">│      (piggy.o + decompressor)   │</span><br><span class="line">└─────────────────────────────────┘</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="arch-x86-boot-Makefile-中的关键规则"><a href="#arch-x86-boot-Makefile-中的关键规则" class="headerlink" title="arch&#x2F;x86&#x2F;boot&#x2F;Makefile 中的关键规则"></a>arch&#x2F;x86&#x2F;boot&#x2F;Makefile 中的关键规则</h2><div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 链接实模式 setup 代码</span></span><br><span class="line"><span class="variable">$(obj)</span>/setup.elf: $(setup-objs) FORCE</span><br><span class="line">    <span class="variable">$(<span class="built_in">call</span> if_changed,ld)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成 bzImage：调用 tools/build 拼接</span></span><br><span class="line"><span class="variable">$(obj)</span>/bzImage: <span class="variable">$(obj)</span>/setup.elf <span class="variable">$(obj)</span>/compressed/vmlinux.bin \</span><br><span class="line">                <span class="variable">$(obj)</span>/tools/build FORCE</span><br><span class="line">    <span class="variable">$(<span class="built_in">call</span> if_changed,image)</span></span><br><span class="line">    <span class="variable">$(Q)</span><span class="variable">$(obj)</span>/tools/build <span class="variable">$(obj)</span>/setup.elf <span class="variable">$(obj)</span>/compressed/vmlinux.bin \</span><br><span class="line">        &gt; <span class="variable">$(obj)</span>/bzImage</span><br></pre></td></tr></table></figure></div>
+
+<p>整个流程体现了 Unix 哲学：每个工具做好一件事，通过管道（pipeline）串联完成复杂任务。从编译器到链接器，从 objcopy 到压缩工具，再到自定义的 build 工具，每一步都在为最终的可引导映像添加必要的层次。4.3 vmlinux、vmlinuz 与 bzImage 的区别</p>
+<p>Linux 内核构建过程中会产生多种中间映像和最终映像文件，它们各有不同的用途和特征。理解这些格式之间的区别，对于内核调试、系统部署和故障排查都至关重要。</p>
+<h2 id="vmlinux：原始未压缩-ELF-内核"><a href="#vmlinux：原始未压缩-ELF-内核" class="headerlink" title="vmlinux：原始未压缩 ELF 内核"></a>vmlinux：原始未压缩 ELF 内核</h2><p><code>vmlinux</code> 是内核构建的第一个完整产物，位于源码树根目录。它是一个标准的 ELF（Executable and Linkable Format）可执行文件，具有以下特征：</p>
+<p><strong>格式</strong>：ELF 64-bit LSB executable, x86-64</p>
+<p><strong>内容完整</strong>：</p>
+<ul>
+<li>完整的 ELF 头和段头表（program headers &amp; section headers）</li>
+<li>所有内核代码（.text 段）</li>
+<li>所有内核数据（.data、.rodata、.bss 段）</li>
+<li>完整的符号表（可用 <code>nm vmlinux</code> 或 <code>readelf -s vmlinux</code> 查看）</li>
+<li>调试信息（若启用 <code>CONFIG_DEBUG_INFO</code>，包含 DWARF 格式的源码级调试数据）</li>
+</ul>
+<p><strong>不可直接引导</strong>：BIOS 和 UEFI 固件无法识别 ELF 格式，因此 vmlinux 不能被固件直接加载和执行。</p>
+<p><strong>核心用途</strong>：</p>
+<ul>
+<li><strong>GDB 调试</strong>：<code>gdb vmlinux /proc/kcore</code> 可以对运行中的内核进行源码级调试</li>
+<li><strong>崩溃分析</strong>：配合 <code>crash</code> 工具和 vmcore 转储文件分析内核崩溃原因</li>
+<li><strong>符号解析</strong>：内核 Oops 信息中的地址需要通过 vmlinux 的符号表转换为函数名</li>
+<li><strong>代码审查</strong>：使用 <code>objdump -d vmlinux</code> 反汇编查看最终生成的机器码</li>
+</ul>
+<p><strong>典型体积</strong>：100MB - 800MB（取决于配置，启用完整调试信息时更大）</p>
+<h2 id="vmlinux-bin：剥离-ELF-头的原始二进制"><a href="#vmlinux-bin：剥离-ELF-头的原始二进制" class="headerlink" title="vmlinux.bin：剥离 ELF 头的原始二进制"></a>vmlinux.bin：剥离 ELF 头的原始二进制</h2><p><code>vmlinux.bin</code> 是通过 objcopy 从 vmlinux 生成的原始二进制映像：</p>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">objcopy -O binary -R .note -R .comment -S vmlinux vmlinux.bin</span><br></pre></td></tr></table></figure></div>
+
+<p>这个过程做了什么：</p>
+<ul>
+<li>去除 ELF 头、段头表等元数据结构</li>
+<li>去除符号表和调试信息（<code>-S</code> 标志）</li>
+<li>去除 .note 和 .comment 段</li>
+<li>只保留需要加载到内存中的纯净代码和数据</li>
+</ul>
+<p>结果是包含所有内核代码和数据的原始字节流，没有任何文件格式包装。这个文件是压缩的输入原料。</p>
+<p><strong>典型体积</strong>：30MB - 50MB</p>
+<h2 id="vmlinuz：一个约定俗成的名称"><a href="#vmlinuz：一个约定俗成的名称" class="headerlink" title="vmlinuz：一个约定俗成的名称"></a>vmlinuz：一个约定俗成的名称</h2><p><code>vmlinuz</code> 这个名字需要特别澄清——它<strong>不是</strong>构建过程中产生的一个特定文件格式，而是一个历史沿用的命名约定：</p>
+<ul>
+<li><code>vmlinux</code> + <code>z</code>（compressed）&#x3D; <code>vmlinuz</code></li>
+<li>在现代 x86 构建中，<code>bzImage</code> 文件被安装到 <code>/boot/</code> 目录时被命名为 <code>vmlinuz-&lt;version&gt;</code></li>
+<li>这是为了与传统命名习惯保持一致</li>
+</ul>
+<div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装后的文件命名</span></span><br><span class="line">/boot/vmlinuz-7.0.10</span><br><span class="line">/boot/vmlinuz-7.0.10-old</span><br></pre></td></tr></table></figure></div>
+
+<p>所以当你看到 <code>/boot/vmlinuz-*</code> 文件时，它实际上就是一个 bzImage 格式的文件，只是换了名字。</p>
+<h2 id="bzImage：”big-zImage”"><a href="#bzImage：”big-zImage”" class="headerlink" title="bzImage：”big zImage”"></a>bzImage：”big zImage”</h2><p>bzImage 是 x86 平台上最终的、可引导的内核映像。名称中的 “bz” 代表 “big zImage”，而不是 “bzip2 压缩”——这是一个常见的误解。</p>
+<h3 id="为什么叫-“big”"><a href="#为什么叫-“big”" class="headerlink" title="为什么叫 “big”"></a>为什么叫 “big”</h3><p>在早期的 Linux 内核中，<code>zImage</code> 格式的内核必须被加载到低于 640KB 的内存区域（实模式内存限制）。随着内核体积不断增长，这个限制变得越来越不合理。bzImage 格式打破了这一限制，它可以将内核负载放置在 1MB 以上的地址，因此被称为”big zImage”。</p>
+<h3 id="bzImage-的组成"><a href="#bzImage-的组成" class="headerlink" title="bzImage 的组成"></a>bzImage 的组成</h3><p>bzImage 并非只是一个压缩文件，它是一个多层封装的复合映像：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">PE/COFF Header      ← UEFI 固件可识别的可执行文件头部</span><br><span class="line">Boot Sector         ← 传统 BIOS 引导扇区（前 512 字节）</span><br><span class="line">Setup Code          ← 实模式设置代码（硬件探测、模式切换）</span><br><span class="line">Kernel Payload      ← 自解压代码 + 压缩的原始内核二进制</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="bzImage-的引导过程"><a href="#bzImage-的引导过程" class="headerlink" title="bzImage 的引导过程"></a>bzImage 的引导过程</h3><ol>
+<li>BIOS&#x2F;UEFI 固件加载引导加载程序（GRUB、systemd-boot 等）</li>
+<li>引导加载程序读取 bzImage</li>
+<li>将 setup 代码加载到实模式地址（通常 0x90000）</li>
+<li>将内核负载加载到受保护的内存区域（通常 1MB 以上）</li>
+<li>跳转到 setup 代码入口</li>
+<li>setup 代码完成硬件初始化后，跳转到压缩负载入口</li>
+<li>自解压代码将内核解压到最终位置</li>
+<li>跳转到解压后的内核入口 <code>startup_64</code></li>
+</ol>
+<p><strong>典型体积</strong>：8MB - 30MB（压缩后）</p>
+<h2 id="zImage：已淘汰的旧格式"><a href="#zImage：已淘汰的旧格式" class="headerlink" title="zImage：已淘汰的旧格式"></a>zImage：已淘汰的旧格式</h2><p>zImage 是早期 Linux 内核使用的压缩映像格式，现已完全淘汰：</p>
+<ul>
+<li>内核负载必须加载到 640KB 以下的实模式内存</li>
+<li>无法支持大于约 512KB 的压缩内核</li>
+<li>在 Linux 2.3.x 之后被 bzImage 取代</li>
+<li>现代内核构建不再生成 zImage</li>
+</ul>
+<h2 id="体积对比"><a href="#体积对比" class="headerlink" title="体积对比"></a>体积对比</h2><p>以一个典型的 x86_64 allmodconfig 构建为例：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>格式</th>
+<th>典型体积</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>vmlinux</td>
+<td>ELF</td>
+<td>200-800MB</td>
+<td>含符号表和调试信息</td>
+</tr>
+<tr>
+<td>vmlinux.bin</td>
+<td>Raw binary</td>
+<td>30-50MB</td>
+<td>剥离 ELF 元数据</td>
+</tr>
+<tr>
+<td>vmlinux.bin.gz</td>
+<td>gzip compressed</td>
+<td>8-15MB</td>
+<td>纯压缩的内核二进制</td>
+</tr>
+<tr>
+<td>bzImage</td>
+<td>Bootable image</td>
+<td>8-30MB</td>
+<td>含 setup + 压缩内核</td>
+</tr>
+</tbody></table>
+<p>从 vmlinux 到 bzImage，体积缩小了 10-50 倍，这正是压缩的威力。</p>
+<h2 id="其他映像格式"><a href="#其他映像格式" class="headerlink" title="其他映像格式"></a>其他映像格式</h2><p><strong>vmlinux.gz</strong>：gzip 压缩的 vmlinux ELF 文件。常用于 kdump 和 kexec 场景——kexec 工具可以直接加载 vmlinux 格式的内核，跳过 BIOS 的完整引导流程。</p>
+<p><strong>vmlinux.zst</strong>：zstd 压缩的 vmlinux，部分发行版使用此格式减小 <code>/boot</code> 分区占用。</p>
+<p><strong>install image</strong>：某些架构（如 ARM）的安装映像会额外包含 initramfs，形成一个自包含的引导包。</p>
+<h2 id="实用参考"><a href="#实用参考" class="headerlink" title="实用参考"></a>实用参考</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 vmlinux 的 ELF 信息</span></span><br><span class="line">file vmlinux</span><br><span class="line">readelf -h vmlinux</span><br><span class="line">nm vmlinux | grep startup_64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 bzImage 的头部信息</span></span><br><span class="line">file <span class="built_in">arch</span>/x86/boot/bzImage</span><br><span class="line"><span class="comment"># 输出：arch/x86/boot/bzImage: Linux kernel x86 boot executable</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 解压 bzImage 中的内核（使用 extract-vmlinux 脚本）</span></span><br><span class="line">scripts/extract-vmlinux <span class="built_in">arch</span>/x86/boot/bzImage &gt; extracted-vmlinux</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从 /boot 中的 vmlinuz 提取原始 vmlinux</span></span><br><span class="line">/scripts/extract-vmlinux /boot/vmlinuz-$(<span class="built_in">uname</span> -r)</span><br></pre></td></tr></table></figure></div>
+
+<h1 id="4-4-内核链接脚本分析"><a href="#4-4-内核链接脚本分析" class="headerlink" title="4.4 内核链接脚本分析"></a>4.4 内核链接脚本分析</h1><p>链接脚本（Linker Script）是控制内核最终内存映像布局的核心文件。它决定了各个代码段和数据段的排列顺序、对齐方式以及在内存中的具体位置，并定义了大量供内核运行时使用的关键符号。理解链接脚本是深入理解内核内存布局的必经之路。</p>
+<h2 id="4-4-1-链接脚本的作用"><a href="#4-4-1-链接脚本的作用" class="headerlink" title="4.4.1 链接脚本的作用"></a>4.4.1 链接脚本的作用</h2><p>链接脚本的三大核心职责：</p>
+<ol>
+<li><strong>控制内存布局</strong>：指定内核映像在虚拟地址空间中的起始位置，以及各段的排列顺序和对齐方式。</li>
+<li><strong>段排序与合并</strong>：将所有目标文件中同名段（如 <code>.text</code>）合并为一个大段，并按指定顺序排列。</li>
+<li><strong>符号定义</strong>：在段的起始和结束位置定义符号变量，供 C 代码引用以获取段边界地址。</li>
+</ol>
+<h2 id="4-4-2-主链接脚本"><a href="#4-4-2-主链接脚本" class="headerlink" title="4.4.2 主链接脚本"></a>4.4.2 主链接脚本</h2><p>x86_64 架构的主链接脚本位于 <code>arch/x86/kernel/vmlinux.lds.S</code>。注意其扩展名为 <code>.lds.S</code>（大写 S），这意味着它是一个经过 C 预处理器（CPP）处理的链接脚本。预处理阶段会展开 <code>#include</code>、<code>#define</code> 以及条件编译 <code>#ifdef</code> 等指令，最终生成 <code>.lds</code> 文件供链接器 <code>ld</code> 使用。</p>
+<p>该脚本首先通过 <code>#include &lt;asm-generic/vmlinux.lds.h&gt;</code> 引入通用的链接脚本辅助宏，如 <code>INIT_TEXT_SECTION</code>、<code>PERCPU_SECTION</code> 等，然后定义 x86_64 特有的内存布局。</p>
+<h2 id="4-4-3-关键段定义"><a href="#4-4-3-关键段定义" class="headerlink" title="4.4.3 关键段定义"></a>4.4.3 关键段定义</h2><h3 id="text-段"><a href="#text-段" class="headerlink" title=".text 段"></a>.text 段</h3><p><code>.text</code> 段存放内核的可执行机器码。其中 <code>.head.text</code> 子段具有特殊地位——它包含内核的引导入口点代码（如 <code>startup_64</code>），必须位于整个内核映像的最前面。这是因为 BIOS 或引导加载器在加载内核时，总是从映像的起始位置开始执行。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">.text : AT(ADDR(.text) - LOAD_OFFSET) &#123;</span><br><span class="line">    _text = .;</span><br><span class="line">    *(.head.text)        /* 引导代码，必须最先出现 */</span><br><span class="line">    *(.text)             /* 普通内核代码 */</span><br><span class="line">    ...</span><br><span class="line">    _etext = .;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>.text</code> 段通常要求 2MB 对齐，以利用大页（huge page）减少 TLB 未命中。</p>
+<h3 id="data-段"><a href="#data-段" class="headerlink" title=".data 段"></a>.data 段</h3><p><code>.data</code> 段存放已初始化的全局变量和静态变量。<code>_sdata</code> 和 <code>_edata</code> 分别标记该段的起始和结束地址。</p>
+<h3 id="rodata-段"><a href="#rodata-段" class="headerlink" title=".rodata 段"></a>.rodata 段</h3><p><code>.rodata</code>（read-only data）段存放只读数据，包括 <code>const</code> 修饰的常量、跳转表（jump table）、格式字符串等。该段在运行时通过页表设置为只读权限，任何写入尝试都会触发页故障异常。</p>
+<h3 id="bss-段"><a href="#bss-段" class="headerlink" title=".bss 段"></a>.bss 段</h3><p><code>.bss</code>（Block Started by Symbol）段存放零初始化的全局变量和静态变量。内核启动时将该段清零。<code>__bss_start</code> 和 <code>__bss_stop</code> 标记其边界。BSS 段不占用磁盘空间，仅在内存中分配。</p>
+<h3 id="init-段"><a href="#init-段" class="headerlink" title=".init 段"></a>.init 段</h3><p><code>.init.text</code> 和 <code>.init.data</code> 存放仅在内核初始化期间使用的代码和数据。典型的例子包括驱动程序的 <code>xxx_init()</code> 函数和 <code>__initdata</code> 变量。内核完成引导后，从 <code>__init_begin</code> 到 <code>__init_end</code> 之间的内存会被回收并释放给伙伴分配器使用。这是通过 <code>free_initmem()</code> 函数实现的。</p>
+<p>与 <code>.init</code> 段配套的是一系列 initcall 段：</p>
+<ul>
+<li><code>__initcall_start</code> 到 <code>__initcall_end</code>：存放 initcall 函数指针数组</li>
+<li>按优先级分为 <code>early_initcall</code>、<code>pure_initcall</code>、<code>core_initcall</code>、<code>postcore_initcall</code>、<code>arch_initcall</code>、<code>subsys_initcall</code>、<code>fs_initcall</code>、<code>device_initcall</code>、<code>late_initcall</code> 等级别</li>
+<li>内核按顺序遍历这些函数指针数组，依次调用每个初始化函数</li>
+</ul>
+<h3 id="exit-段"><a href="#exit-段" class="headerlink" title=".exit 段"></a>.exit 段</h3><p><code>.exit.text</code> 和 <code>.exit.data</code> 存放模块卸载时执行的代码和数据。对于内建（built-in）驱动，这些代码在启动后永远不会被执行，因此会被链接器丢弃以节省空间。对于可加载模块，这些代码保留在模块中，在 <code>rmmod</code> 时执行。</p>
+<h3 id="setup-段"><a href="#setup-段" class="headerlink" title="__setup 段"></a>__setup 段</h3><p><code>__setup_start</code> 到 <code>__setup_end</code> 之间的区域存放内核启动参数处理器的注册表。每个 <code>__setup()</code> 宏定义的参数处理器在此段中占一个条目，内核在解析命令行参数时遍历此表进行匹配。</p>
+<h3 id="ex-table-段"><a href="#ex-table-段" class="headerlink" title="__ex_table 段"></a>__ex_table 段</h3><p><code>__ex_table</code>（异常表）段存放 <code>copy_to_user</code>、<code>copy_from_user</code> 等函数的故障恢复地址对。当用户空间访问发生页故障时，内核通过查找异常表跳转到对应的修复代码，而不是触发 oops。每个表项包含（故障指令地址, 修复指令地址）二元组。</p>
+<h3 id="per-cpu-段"><a href="#per-cpu-段" class="headerlink" title="__per_cpu 段"></a>__per_cpu 段</h3><p><code>__per_cpu_start</code> 到 <code>__per_cpu_end</code> 定义了 per-CPU 数据的模板区域。PER-CPU 变量通过 <code>DEFINE_PER_CPU()</code> 宏定义，在编译时存放在此段中。系统启动时，内核为每个 CPU 分配一份独立的拷贝，并通过 <code>per_cpu()</code> 宏加上 CPU 编号偏移来访问对应 CPU 的实例。</p>
+<h3 id="param-段"><a href="#param-段" class="headerlink" title="__param 段"></a>__param 段</h3><p><code>__start___param</code> 到 <code>__stop___param</code> 存放模块参数（module_param）的元数据。每个内核模块参数在此段中注册一个 <code>struct kernel_param</code> 结构体，包含参数名、类型、权限和读写回调。</p>
+<h2 id="4-4-4-关键符号"><a href="#4-4-4-关键符号" class="headerlink" title="4.4.4 关键符号"></a>4.4.4 关键符号</h2><p>链接脚本定义的符号在 C 代码中通过 <code>extern</code> 声明后即可使用。以下是 x86_64 内核中最重要的符号：</p>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>_text</code> &#x2F; <code>_etext</code></td>
+<td>内核代码段的起始和结束</td>
+</tr>
+<tr>
+<td><code>_sdata</code> &#x2F; <code>_edata</code></td>
+<td>数据段的起始和结束</td>
+</tr>
+<tr>
+<td><code>__bss_start</code> &#x2F; <code>__bss_stop</code></td>
+<td>BSS 段的起始和结束</td>
+</tr>
+<tr>
+<td><code>_end</code></td>
+<td>整个内核映像的结束地址</td>
+</tr>
+<tr>
+<td><code>__init_begin</code> &#x2F; <code>__init_end</code></td>
+<td>init 段的起始和结束（引导后释放）</td>
+</tr>
+<tr>
+<td><code>phys_base</code></td>
+<td>内核加载的物理基地址</td>
+</tr>
+<tr>
+<td><code>__START_KERNEL_map</code></td>
+<td>内核代码的虚拟地址映射起点（<code>0xFFFFFFFF80000000</code>）</td>
+</tr>
+</tbody></table>
+<p>其中 <code>__START_KERNEL_map</code> 的值 <code>0xFFFFFFFF80000000</code> 是 x86_64 内核文本段在直接映射区之上的固定映射地址，属于内核地址空间的高地址区域。</p>
+<h2 id="4-4-5-段排序的重要性"><a href="#4-4-5-段排序的重要性" class="headerlink" title="4.4.5 段排序的重要性"></a>4.4.5 段排序的重要性</h2><p>段的排列顺序不是随意的，而是经过精心设计的：</p>
+<ol>
+<li><code>.head.text</code> 必须排在最前面，因为引导加载器从映像头部开始执行</li>
+<li><code>.text</code> 紧随其后，包含主体内核代码</li>
+<li><code>.rodata</code> 放在代码段之后，可以与 <code>.text</code> 共享同一个大页映射</li>
+<li><code>.data</code> 和 <code>.bss</code> 放在只读数据之后</li>
+<li><code>.init</code> 段单独放在末尾区域，便于启动后整块释放</li>
+</ol>
+<p>这种排序确保了：</p>
+<ul>
+<li>引导代码能被正确找到和执行</li>
+<li>相同页权限的段可以连续排列，减少页表开销</li>
+<li>init 段可以作为一个连续区域被整体回收</li>
+</ul>
+<h2 id="4-4-6-Per-CPU-段的详细机制"><a href="#4-4-6-Per-CPU-段的详细机制" class="headerlink" title="4.4.6 Per-CPU 段的详细机制"></a>4.4.6 Per-CPU 段的详细机制</h2><p>per-CPU 机制是内核实现高性能数据访问的关键技术。其工作原理如下：</p>
+<ol>
+<li><strong>编译期</strong>：所有 per-CPU 变量在链接时被集中放置在 <code>__per_cpu_start</code> 到 <code>__per_cpu_end</code> 之间的模板区域</li>
+<li><strong>启动期</strong>：内核为每个 CPU 分配一段与模板等大的内存，并将模板内容复制到每份拷贝中</li>
+<li><strong>运行期</strong>：通过 GS 段寄存器（x86_64）保存当前 CPU 的 per-CPU 区域偏移，使用 <code>per_cpu()</code> 宏访问时自动加上该偏移</li>
+</ol>
+<p>这种方式避免了锁竞争——每个 CPU 只访问自己的数据副本，无需加锁同步，是内核中实现无锁算法的重要基础设施。</p>
+<h1 id="4-5-内核配置系统（Kconfig）"><a href="#4-5-内核配置系统（Kconfig）" class="headerlink" title="4.5 内核配置系统（Kconfig）"></a>4.5 内核配置系统（Kconfig）</h1><p>Linux 内核包含数以千计的可配置选项，从架构支持到驱动程序、从调试功能到安全机制，几乎每个子系统都提供了丰富的配置点。Kconfig 是内核的配置描述语言和配置管理框架，它提供了一套完整的机制来定义配置选项、管理选项间的依赖关系，并为用户提供多种配置界面。</p>
+<h2 id="4-5-1-Kconfig-文件的组织"><a href="#4-5-1-Kconfig-文件的组织" class="headerlink" title="4.5.1 Kconfig 文件的组织"></a>4.5.1 Kconfig 文件的组织</h2><p>内核源码树的几乎每个子目录都包含一个 <code>Kconfig</code> 文件，用于描述该目录所对应子系统或模块的配置选项。顶层 <code>Kconfig</code> 文件通过 <code>source</code> 指令引入各子目录的 Kconfig 文件，形成一棵完整的配置选项树。</p>
+<p>例如，<code>arch/x86/Kconfig</code> 定义了 x86 架构特有的选项，而 <code>drivers/net/Kconfig</code> 定义了网络驱动相关的选项。这种分散式的组织方式使得每个子系统可以独立维护自己的配置描述。</p>
+<h2 id="4-5-2-配置选项类型"><a href="#4-5-2-配置选项类型" class="headerlink" title="4.5.2 配置选项类型"></a>4.5.2 配置选项类型</h2><p>Kconfig 支持以下几种基本类型：</p>
+<ul>
+<li><strong>bool</strong>：布尔型，取值为 <code>y</code>（启用）或 <code>n</code>（禁用）。用于只能编译为内建或完全不编译的选项。</li>
+<li><strong>tristate</strong>：三态型，取值为 <code>y</code>（内建）、<code>m</code>（模块）或 <code>n</code>（禁用）。这是内核特有的类型，用于既可内建也可编译为可加载模块的选项。</li>
+<li><strong>int</strong>：整型，取值为十进制整数。</li>
+<li><strong>hex</strong>：十六进制整型，取值为十六进制数。</li>
+<li><strong>string</strong>：字符串型，取值为任意字符串。</li>
+</ul>
+<p>Kconfig 还提供了简化写法：<code>def_bool</code> 和 <code>def_tristate</code> 可以在单行内同时定义类型和默认值。</p>
+<h2 id="4-5-3-依赖关系"><a href="#4-5-3-依赖关系" class="headerlink" title="4.5.3 依赖关系"></a>4.5.3 依赖关系</h2><p>配置选项之间可以建立依赖关系，这是 Kconfig 最强大的特性之一：</p>
+<ul>
+<li><strong>depends on</strong>：声明直接依赖。被依赖的选项未启用时，当前选项不可见也不可选。</li>
+<li><strong>select</strong>：强制启用另一个选项。当当前选项被启用时，被 select 的选项会被自动启用（无论其依赖是否满足）。这种”反向依赖”使用时需谨慎，因为可能导致违反依赖约束。</li>
+<li><strong>imply</strong>：弱式反向依赖。当当前选项启用时，建议启用另一个选项，但用户仍可手动关闭。这比 <code>select</code> 更安全。</li>
+<li><strong>if</strong>：条件表达式，可在选项定义行内使用，等效于 <code>depends on</code>。</li>
+</ul>
+<h2 id="4-5-4-Choice-分组"><a href="#4-5-4-Choice-分组" class="headerlink" title="4.5.4 Choice 分组"></a>4.5.4 Choice 分组</h2><p><code>choice</code> 语句定义一组互斥选项，同一时刻只能选择其中一个。典型的应用场景是选择不同的调度策略、不同的 I&#x2F;O 调度器或不同的定时器频率。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">choice</span><br><span class="line">    prompt &quot;Timer frequency&quot;</span><br><span class="line">    default HZ_250</span><br><span class="line"></span><br><span class="line">config HZ_100</span><br><span class="line">    bool &quot;100 HZ&quot;</span><br><span class="line"></span><br><span class="line">config HZ_250</span><br><span class="line">    bool &quot;250 HZ&quot;</span><br><span class="line"></span><br><span class="line">config HZ_1000</span><br><span class="line">    bool &quot;1000 HZ&quot;</span><br><span class="line">endchoice</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="4-5-5-配置界面"><a href="#4-5-5-配置界面" class="headerlink" title="4.5.5 配置界面"></a>4.5.5 配置界面</h2><p>内核提供了多种配置界面，适应不同的使用场景：</p>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>界面类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>make menuconfig</code></td>
+<td>ncurses TUI</td>
+<td>最常用的文本菜单界面</td>
+</tr>
+<tr>
+<td><code>make xconfig</code></td>
+<td>Qt GUI</td>
+<td>图形化配置界面（需 Qt 库）</td>
+</tr>
+<tr>
+<td><code>make gconfig</code></td>
+<td>GTK GUI</td>
+<td>图形化配置界面（需 GTK 库）</td>
+</tr>
+<tr>
+<td><code>make config</code></td>
+<td>逐行问答</td>
+<td>最基本的交互式配置方式</td>
+</tr>
+<tr>
+<td><code>make oldconfig</code></td>
+<td>仅新选项</td>
+<td>在已有 .config 基础上只询问新增选项</td>
+</tr>
+<tr>
+<td><code>make defconfig</code></td>
+<td>默认配置</td>
+<td>生成当前架构的默认配置</td>
+</tr>
+<tr>
+<td><code>make olddefconfig</code></td>
+<td>默认新选项</td>
+<td>对新选项自动采用默认值，无需交互</td>
+</tr>
+</tbody></table>
+<p>对于内核开发者而言，<code>make menuconfig</code> 是最常用的配置方式。升级内核版本后，<code>make olddefconfig</code> 可以快速将旧配置迁移到新版本。</p>
+<h2 id="4-5-6-配置文件-config"><a href="#4-5-6-配置文件-config" class="headerlink" title="4.5.6 配置文件 .config"></a>4.5.6 配置文件 .config</h2><p>用户通过配置界面所做的选择保存在源码树根目录的 <code>.config</code> 文件中。该文件的格式如下：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># 未启用的选项</span><br><span class="line"># CONFIG_FOO is not set</span><br><span class="line"></span><br><span class="line"># 内建选项</span><br><span class="line">CONFIG_X86_64=y</span><br><span class="line"></span><br><span class="line"># 编译为模块</span><br><span class="line">CONFIG_NFS=m</span><br><span class="line"></span><br><span class="line"># 整数值</span><br><span class="line">CONFIG_HZ=250</span><br><span class="line"></span><br><span class="line"># 字符串值</span><br><span class="line">CONFIG_DEFAULT_HOSTNAME=&quot;localhost&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>.config</code> 文件由内核配置系统自动生成和修改，不建议直接手动编辑。如果需要手动调整，建议使用 <code>scripts/config</code> 工具脚本，或者在修改后运行 <code>make olddefconfig</code> 来验证和补全依赖。</p>
+<h2 id="4-5-7-生成的文件"><a href="#4-5-7-生成的文件" class="headerlink" title="4.5.7 生成的文件"></a>4.5.7 生成的文件</h2><p>配置过程会生成以下关键文件，分别服务于不同的消费者：</p>
+<h3 id="include-generated-autoconf-h"><a href="#include-generated-autoconf-h" class="headerlink" title="include&#x2F;generated&#x2F;autoconf.h"></a>include&#x2F;generated&#x2F;autoconf.h</h3><p>该头文件将配置选项转换为 C 预处理器宏，供内核 C 代码使用：</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_X86_64 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_SMP 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CONFIG_MODULES 1</span></span><br><span class="line"><span class="comment">/* #undef CONFIG_FOO */</span>  <span class="comment">/* 未启用的选项不定义宏 */</span></span><br></pre></td></tr></table></figure></div>
+
+<p>所有 C 文件都通过 <code>include/linux/kconfig.h</code> 间接包含此文件。代码中可以使用 <code>#ifdef CONFIG_xxx</code> 或 <code>IS_ENABLED(CONFIG_xxx)</code> 宏来测试配置选项。</p>
+<h3 id="include-config-auto-conf"><a href="#include-config-auto-conf" class="headerlink" title="include&#x2F;config&#x2F;auto.conf"></a>include&#x2F;config&#x2F;auto.conf</h3><p>该文件采用 Makefile 语法，供顶层 Makefile 和各子目录的 Makefile 使用：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_X86_64=y</span><br><span class="line">CONFIG_SMP=y</span><br><span class="line">CONFIG_NFS=m</span><br></pre></td></tr></table></figure></div>
+
+<p>构建系统根据这些变量决定哪些目录需要编译、哪些对象需要链接。</p>
+<h3 id="include-config-tristate-conf"><a href="#include-config-tristate-conf" class="headerlink" title="include&#x2F;config&#x2F;tristate.conf"></a>include&#x2F;config&#x2F;tristate.conf</h3><p>该文件专门处理三态选项的值，用于 Makefile 中判断某个选项是 <code>y</code> 还是 <code>m</code>：</p>
+<div class="code-container" data-rel="Makefile"><figure class="iseeu highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_X86_64=Y</span><br><span class="line">CONFIG_SMP=Y</span><br><span class="line">CONFIG_NFS=M</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="4-5-8-重要的-x86-64-配置选项"><a href="#4-5-8-重要的-x86-64-配置选项" class="headerlink" title="4.5.8 重要的 x86_64 配置选项"></a>4.5.8 重要的 x86_64 配置选项</h2><p>以下列举 x86_64 架构下一些关键配置选项及其作用：</p>
+<p><strong>架构与处理器支持</strong></p>
+<ul>
+<li><code>CONFIG_X86_64</code>：64 位 x86 内核，必须启用。这是整个 x86_64 架构支持的总开关。</li>
+<li><code>CONFIG_SMP</code>：对称多处理（Symmetric Multi-Processing），启用多核&#x2F;多处理器支持。现代系统均应启用。</li>
+<li><code>CONFIG_X86_5LEVEL</code>：5 级页表支持。当物理内存超过 64TB（4 级页表上限）时需要启用此选项。</li>
+<li><code>CONFIG_GENERIC_CPU</code> &#x2F; <code>CONFIG_MCORE2</code> &#x2F; <code>CONFIG_MATOM</code> 等：处理器微架构优化选项，选择与目标 CPU 匹配的选项可获得最佳性能。</li>
+</ul>
+<p><strong>抢占模型</strong></p>
+<ul>
+<li><code>CONFIG_PREEMPT_NONE</code>：无抢占，服务器场景默认值，吞吐量最优</li>
+<li><code>CONFIG_PREEMPT_VOLUNTARY</code>：自愿抢占，在显式抢占点检查，是桌面场景的推荐选项</li>
+<li><code>CONFIG_PREEMPT</code>：完全抢占，除临界区外均可抢占，降低调度延迟</li>
+<li><code>CONFIG_PREEMPT_RT</code>：实时抢占（需 PREEMPT_RT 补丁），提供确定性延迟保证</li>
+</ul>
+<p><strong>定时器频率</strong></p>
+<ul>
+<li><code>CONFIG_HZ_100</code>：100 Hz，适合服务器负载</li>
+<li><code>CONFIG_HZ_250</code>：250 Hz，桌面默认值</li>
+<li><code>CONFIG_HZ_300</code>：300 Hz（少见）</li>
+<li><code>CONFIG_HZ_1000</code>：1000 Hz，低延迟场景首选，但会增加系统开销</li>
+</ul>
+<p><strong>安全与加密</strong></p>
+<ul>
+<li><code>CONFIG_RANDOMIZE_BASE</code>：内核地址空间布局随机化（KASLR），使内核虚拟地址在每次启动时随机偏移，是重要的安全防护机制</li>
+<li><code>CONFIG_AMD_MEM_ENCRYPT</code>：AMD SEV&#x2F;SME（Secure Encrypted Virtualization &#x2F; Secure Memory Encryption）支持，利用 AMD 处理器的内存加密功能保护虚拟机隔离</li>
+<li><code>CONFIG_KASAN</code>：内核地址消毒器（Kernel Address SANitizer），运行时检测越界访问和释放后使用漏洞</li>
+<li><code>CONFIG_KMSAN</code>：内核内存消毒器（Kernel Memory SANitizer），检测未初始化内存的使用</li>
+</ul>
+<p><strong>引导与固件</strong></p>
+<ul>
+<li><code>CONFIG_EFI_STUB</code>：EFI Stub 支持，允许内核作为 EFI 应用程序直接被 UEFI 固件加载，无需中间引导加载器</li>
+<li><code>CONFIG_EFI_MIXED</code>：混合 EFI 模式，支持在 32 位 EFI 固件上启动 64 位内核</li>
+</ul>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Linux内核分析之基础知识-03</li>
+        <li><strong>Author:</strong> 韩乔落</li>
+        <li><strong>Created at
+                :</strong> 2026-05-28 17:11:53</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-05-28 18:39:58
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://jelasin.github.io/2026/05/28/Linux内核分析之基础知识-03/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-04/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-04</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/05/28/Linux%E5%86%85%E6%A0%B8%E5%88%86%E6%9E%90%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-02/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Linux内核分析之基础知识-02</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "not-lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "jelasin/jelasin.github.io",
+                    "data-repo-id": "R_kgDOKVydDA",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOKVydDM4CZe2W",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Linux内核分析之基础知识-03</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#4-1-Kbuild-%E7%B3%BB%E7%BB%9F%E6%A6%82%E8%BF%B0"><span class="nav-text">4.1 Kbuild 系统概述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-Kbuild"><span class="nav-text">什么是 Kbuild</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E6%96%87%E4%BB%B6%E8%A7%A3%E6%9E%90"><span class="nav-text">核心文件解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A1%B6%E5%B1%82-Makefile"><span class="nav-text">顶层 Makefile</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scripts-Kbuild-include"><span class="nav-text">scripts&#x2F;Kbuild.include</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scripts-Makefile-build"><span class="nav-text">scripts&#x2F;Makefile.build</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#arch-x86-Makefile"><span class="nav-text">arch&#x2F;x86&#x2F;Makefile</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#arch-x86-boot-Makefile"><span class="nav-text">arch&#x2F;x86&#x2F;boot&#x2F;Makefile</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E6%B5%81%E7%A8%8B"><span class="nav-text">构建流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE-make-config"><span class="nav-text">第一步：配置 (make config)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%BC%96%E8%AF%91-make"><span class="nav-text">第二步：编译 (make)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E7%94%9F%E6%88%90-bzImage"><span class="nav-text">第三步：生成 bzImage</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#obj-y-obj-m-%E6%9C%BA%E5%88%B6"><span class="nav-text">obj-y &#x2F; obj-m 机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#autoconf-h%EF%BC%9A%E4%BB%8E%E9%85%8D%E7%BD%AE%E5%88%B0%E4%BB%A3%E7%A0%81%E7%9A%84%E6%A1%A5%E6%A2%81"><span class="nav-text">autoconf.h：从配置到代码的桥梁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8-make-%E7%9B%AE%E6%A0%87"><span class="nav-text">常用 make 目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%AE%E5%BD%95%E9%81%8D%E5%8E%86%E9%A1%BA%E5%BA%8F"><span class="nav-text">目录遍历顺序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E6%B5%81%E6%B0%B4%E7%BA%BF%E6%80%BB%E8%A7%88"><span class="nav-text">构建流水线总览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%90%E6%AD%A5%E8%AF%A6%E8%A7%A3"><span class="nav-text">逐步详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E4%B8%80%EF%BC%9A%E7%BC%96%E8%AF%91%EF%BC%88-c-%E2%86%92-o%EF%BC%89"><span class="nav-text">阶段一：编译（.c → .o）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E4%BA%8C%EF%BC%9A%E9%93%BE%E6%8E%A5%E7%94%9F%E6%88%90-vmlinux%EF%BC%88-o-%E2%86%92-vmlinux%EF%BC%89"><span class="nav-text">阶段二：链接生成 vmlinux（.o → vmlinux）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E4%B8%89%EF%BC%9A%E7%94%9F%E6%88%90%E5%8E%9F%E5%A7%8B%E4%BA%8C%E8%BF%9B%E5%88%B6%EF%BC%88vmlinux-%E2%86%92-vmlinux-bin%EF%BC%89"><span class="nav-text">阶段三：生成原始二进制（vmlinux → vmlinux.bin）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E5%9B%9B%EF%BC%9A%E5%8E%8B%E7%BC%A9%EF%BC%88vmlinux-bin-%E2%86%92-vmlinux-bin-gz%EF%BC%89"><span class="nav-text">阶段四：压缩（vmlinux.bin → vmlinux.bin.gz）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E4%BA%94%EF%BC%9A%E5%88%B6%E4%BD%9C-piggy%EF%BC%88%E5%8E%8B%E7%BC%A9%E6%95%B0%E6%8D%AE-%E2%86%92-piggy-o%EF%BC%89"><span class="nav-text">阶段五：制作 piggy（压缩数据 → piggy.o）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E5%85%AD%EF%BC%9A%E9%93%BE%E6%8E%A5%E8%87%AA%E8%A7%A3%E5%8E%8B%E6%98%A0%E5%83%8F%EF%BC%88piggy-o-%E8%A7%A3%E5%8E%8B%E4%BB%A3%E7%A0%81-%E2%86%92-compressed-vmlinux%EF%BC%89"><span class="nav-text">阶段六：链接自解压映像（piggy.o + 解压代码 → compressed&#x2F;vmlinux）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E4%B8%83%EF%BC%9A%E7%94%9F%E6%88%90%E5%8E%8B%E7%BC%A9%E4%BA%8C%E8%BF%9B%E5%88%B6%EF%BC%88compressed-vmlinux-%E2%86%92-compressed-vmlinux-bin%EF%BC%89"><span class="nav-text">阶段七：生成压缩二进制（compressed&#x2F;vmlinux → compressed&#x2F;vmlinux.bin）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5%E5%85%AB%EF%BC%9A%E5%90%88%E6%88%90-bzImage%EF%BC%88setup-compressed-%E2%86%92-bzImage%EF%BC%89"><span class="nav-text">阶段八：合成 bzImage（setup + compressed → bzImage）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bzImage-%E6%9C%80%E7%BB%88%E7%BB%93%E6%9E%84"><span class="nav-text">bzImage 最终结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arch-x86-boot-Makefile-%E4%B8%AD%E7%9A%84%E5%85%B3%E9%94%AE%E8%A7%84%E5%88%99"><span class="nav-text">arch&#x2F;x86&#x2F;boot&#x2F;Makefile 中的关键规则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#vmlinux%EF%BC%9A%E5%8E%9F%E5%A7%8B%E6%9C%AA%E5%8E%8B%E7%BC%A9-ELF-%E5%86%85%E6%A0%B8"><span class="nav-text">vmlinux：原始未压缩 ELF 内核</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#vmlinux-bin%EF%BC%9A%E5%89%A5%E7%A6%BB-ELF-%E5%A4%B4%E7%9A%84%E5%8E%9F%E5%A7%8B%E4%BA%8C%E8%BF%9B%E5%88%B6"><span class="nav-text">vmlinux.bin：剥离 ELF 头的原始二进制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#vmlinuz%EF%BC%9A%E4%B8%80%E4%B8%AA%E7%BA%A6%E5%AE%9A%E4%BF%97%E6%88%90%E7%9A%84%E5%90%8D%E7%A7%B0"><span class="nav-text">vmlinuz：一个约定俗成的名称</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bzImage%EF%BC%9A%E2%80%9Dbig-zImage%E2%80%9D"><span class="nav-text">bzImage：”big zImage”</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8F%AB-%E2%80%9Cbig%E2%80%9D"><span class="nav-text">为什么叫 “big”</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bzImage-%E7%9A%84%E7%BB%84%E6%88%90"><span class="nav-text">bzImage 的组成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bzImage-%E7%9A%84%E5%BC%95%E5%AF%BC%E8%BF%87%E7%A8%8B"><span class="nav-text">bzImage 的引导过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zImage%EF%BC%9A%E5%B7%B2%E6%B7%98%E6%B1%B0%E7%9A%84%E6%97%A7%E6%A0%BC%E5%BC%8F"><span class="nav-text">zImage：已淘汰的旧格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%93%E7%A7%AF%E5%AF%B9%E6%AF%94"><span class="nav-text">体积对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E6%98%A0%E5%83%8F%E6%A0%BC%E5%BC%8F"><span class="nav-text">其他映像格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%94%A8%E5%8F%82%E8%80%83"><span class="nav-text">实用参考</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-4-%E5%86%85%E6%A0%B8%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC%E5%88%86%E6%9E%90"><span class="nav-text">4.4 内核链接脚本分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-1-%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="nav-text">4.4.1 链接脚本的作用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-2-%E4%B8%BB%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC"><span class="nav-text">4.4.2 主链接脚本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-3-%E5%85%B3%E9%94%AE%E6%AE%B5%E5%AE%9A%E4%B9%89"><span class="nav-text">4.4.3 关键段定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#text-%E6%AE%B5"><span class="nav-text">.text 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#data-%E6%AE%B5"><span class="nav-text">.data 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rodata-%E6%AE%B5"><span class="nav-text">.rodata 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bss-%E6%AE%B5"><span class="nav-text">.bss 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#init-%E6%AE%B5"><span class="nav-text">.init 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#exit-%E6%AE%B5"><span class="nav-text">.exit 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#setup-%E6%AE%B5"><span class="nav-text">__setup 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ex-table-%E6%AE%B5"><span class="nav-text">__ex_table 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#per-cpu-%E6%AE%B5"><span class="nav-text">__per_cpu 段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#param-%E6%AE%B5"><span class="nav-text">__param 段</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-4-%E5%85%B3%E9%94%AE%E7%AC%A6%E5%8F%B7"><span class="nav-text">4.4.4 关键符号</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-5-%E6%AE%B5%E6%8E%92%E5%BA%8F%E7%9A%84%E9%87%8D%E8%A6%81%E6%80%A7"><span class="nav-text">4.4.5 段排序的重要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-4-6-Per-CPU-%E6%AE%B5%E7%9A%84%E8%AF%A6%E7%BB%86%E6%9C%BA%E5%88%B6"><span class="nav-text">4.4.6 Per-CPU 段的详细机制</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-5-%E5%86%85%E6%A0%B8%E9%85%8D%E7%BD%AE%E7%B3%BB%E7%BB%9F%EF%BC%88Kconfig%EF%BC%89"><span class="nav-text">4.5 内核配置系统（Kconfig）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-1-Kconfig-%E6%96%87%E4%BB%B6%E7%9A%84%E7%BB%84%E7%BB%87"><span class="nav-text">4.5.1 Kconfig 文件的组织</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-2-%E9%85%8D%E7%BD%AE%E9%80%89%E9%A1%B9%E7%B1%BB%E5%9E%8B"><span class="nav-text">4.5.2 配置选项类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-3-%E4%BE%9D%E8%B5%96%E5%85%B3%E7%B3%BB"><span class="nav-text">4.5.3 依赖关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-4-Choice-%E5%88%86%E7%BB%84"><span class="nav-text">4.5.4 Choice 分组</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-5-%E9%85%8D%E7%BD%AE%E7%95%8C%E9%9D%A2"><span class="nav-text">4.5.5 配置界面</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-6-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6-config"><span class="nav-text">4.5.6 配置文件 .config</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-7-%E7%94%9F%E6%88%90%E7%9A%84%E6%96%87%E4%BB%B6"><span class="nav-text">4.5.7 生成的文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#include-generated-autoconf-h"><span class="nav-text">include&#x2F;generated&#x2F;autoconf.h</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#include-config-auto-conf"><span class="nav-text">include&#x2F;config&#x2F;auto.conf</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#include-config-tristate-conf"><span class="nav-text">include&#x2F;config&#x2F;tristate.conf</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-5-8-%E9%87%8D%E8%A6%81%E7%9A%84-x86-64-%E9%85%8D%E7%BD%AE%E9%80%89%E9%A1%B9"><span class="nav-text">4.5.8 重要的 x86_64 配置选项</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+            <div class="customize-info my-1">关山初度尘未洗，策马扬鞭再奋蹄。</div>
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2023</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-circle-info fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;" ></i>&nbsp;&nbsp;<a href="/">韩乔落</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        148 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+	<div class="search-pop-overlay">
+	<div class="popup search-popup">
+		<div class="search-header">
+			<span class="search-input-field-pre">
+				<i class="fa-solid fa-keyboard"></i>
+			</span>
+			<div class="search-input-container">
+				<input autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Search..." spellcheck="false" type="search" class="search-input">
+			</div>
+			<span class="popup-btn-close">
+				<i class="fa-solid fa-times"></i>
+			</span>
+		</div>
+		<div id="search-result">
+			<div id="no-result">
+				<i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
+			</div>
+		</div>
+	</div>
+</div>
+	
+
+</main>
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Swup.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupSlideTheme.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScriptsPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupProgressPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupScrollPlugin.min.js" ></script><script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/SwupPreloadPlugin.min.js" ></script>
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	<script type="module" src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/main.js" ></script>
+
+
+    <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/odometer.min.js" ></script>
+    <link rel="stylesheet" href="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+  <script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/Typed.min.js" ></script>
+
+
+
+
+
+
+
+
+<script  src="https://registry.npmmirror.com/hexo-theme-redefine/2.9.0/files/source/js/build/libs/moment-with-locales.min.js" data-swup-reload-script></script>
+
+
+	
+</body>
+
+</html>
